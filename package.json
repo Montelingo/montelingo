@@ -1,0 +1,12 @@
+{
+  "name": "montelingo",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @montelingo/web dev",
+    "test:web": "pnpm --filter @montelingo/web test",
+    "lint:web": "pnpm --filter @montelingo/web lint",
+    "typecheck:web": "pnpm --filter @montelingo/web typecheck",
+    "build:web": "pnpm --filter @montelingo/web build"
+  }
+}
