@@ -1,52 +1,42 @@
-export type ErrorCode = "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "internal_server_error" | "bad_request";
-
-export type ErrorDetail = {
-  field?: string | null;
-  code: string;
-  message: string;
-};
-
-export type ErrorEnvelope = {
-  error: {
-    code: ErrorCode;
-    message: string;
-    request_id: string;
-    details?: ErrorDetail[] | null;
-  };
-};
-
 export type ErrorBody = {
-  code?: string;
-  details?: unknown;
-  message?: string;
-  request_id?: string;
+  code: string;
+  details?: ErrorDetail[] | null;
+  message: string;
+  request_id: string;
 };
+
 export type ErrorDetail = {
   code?: string;
-  field?: unknown;
+  field?: string | null;
   message?: string;
 };
+
 export type ErrorEnvelope = {
-  error?: unknown;
+  error: ErrorBody;
 };
+
 export type ExampleCreate = {
-  language?: unknown;
-  name?: string;
+  language?: LocalizedText | null;
+  name: string;
 };
+
 export type ExampleResource = {
-  id?: string;
-  language?: unknown;
-  name?: string;
+  id: string;
+  language?: LocalizedText | null;
+  name: string;
 };
+
 export type LocalizedText = {
-  language_code?: string;
-  value?: string;
+  language_code: string;
+  value: string;
 };
+
 export type PageInfo = {
   has_more?: boolean;
-  next_cursor?: unknown;
+  next_cursor?: string | null;
 };
-export type PaginatedResponseExampleResource = {
-  items?: unknown[];
-  page?: unknown;
+
+export type PaginatedResponse_ExampleResource_ = {
+  items: ExampleResource[];
+  page: PageInfo;
 };

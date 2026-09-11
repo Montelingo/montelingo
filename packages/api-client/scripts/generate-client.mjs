@@ -9,66 +9,108 @@ const generatedDir = path.join(root, 'packages', 'api-client', 'src', 'generated
 const schema = JSON.parse(fs.readFileSync(openApiPath, 'utf8'));
 fs.mkdirSync(generatedDir, { recursive: true });
 
-const types = [];
-for (const [name, definition] of Object.entries(schema.components?.schemas ?? {})) {
-  if (!definition || typeof definition !== 'object') continue;
-  if (definition.type === 'object') {
-    const props = definition.properties ?? {};
-    const entries = Object.entries(props).map(([key, value]) => {
-      const type = mapSchemaToTs(value, key);
-      return `  ${key}${value.required ? '' : '?'}: ${type};`;
-    });
-    types.push(`export type ${pascalCase(name)} = {\n${entries.join('\n')}\n};`);
-  }
-}
+const definitions = schema.components?.schemas ?? {};
+const types = Object.entries(definitions)
+  .filter(([, definition]) => definition && typeof definition === 'object')
+  .map(([name, definition]) => {
+    if (definition.type === 'object' || definition.properties || definition.anyOf || definition.oneOf || definition.allOf) {
+      const typeName = sanitizeTypeName(name);
+      const typeBody = mapSchemaToTs(definition, new Set(definition.required ?? []), `#/components/schemas/${name}`);
+      return `export type ${typeName} = ${typeBody};`;
+    }
+    return null;
+  })
+  .filter(Boolean);
 
-const index = [
-  'export type ErrorCode = "validation_error" | "authentication_error" | "authorization_error" | "not_found" | "conflict" | "rate_limited" | "internal_server_error" | "bad_request";',
-  '',
-  'export type ErrorDetail = {',
-  '  field?: string | null;',
-  '  code: string;',
-  '  message: string;',
-  '};',
-  '',
-  'export type ErrorEnvelope = {',
-  '  error: {',
-  '    code: ErrorCode;',
-  '    message: string;',
-  '    request_id: string;',
-  '    details?: ErrorDetail[] | null;',
-  '  };',
-  '};',
-  '',
-  ...types,
-].join('\n');
-
-fs.writeFileSync(path.join(generatedDir, 'index.ts'), index + '\n');
+fs.writeFileSync(path.join(generatedDir, 'index.ts'), `${types.join('\n\n')}\n`);
 fs.writeFileSync(path.join(generatedDir, 'client.ts'), 'export * from "./index";\n');
 
 console.log('Generated TypeScript client types');
 
-function pascalCase(value) {
+function sanitizeTypeName(value) {
   return value
-    .replace(/[^a-zA-Z0-9]+/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
+    .replace(/[^A-Za-z0-9_$]+/g, '_')
+    .replace(/^[^A-Za-z_$]+/, '_')
+    .replace(/_+/g, '_');
 }
 
-function mapSchemaToTs(value, key) {
-  if (!value || typeof value !== 'object') return 'unknown';
-  if (value.$ref) return 'unknown';
-  if (value.type === 'string') return value.format === 'uuid' ? 'string' : 'string';
-  if (value.type === 'integer' || value.type === 'number') return 'number';
-  if (value.type === 'boolean') return 'boolean';
-  if (value.type === 'array') return `${mapSchemaToTs(value.items)}[]`;
-  if (value.type === 'object' || value.properties) {
-    return 'Record<string, unknown>';
+function resolveRef(ref) {
+  if (!ref.startsWith('#/components/schemas/')) {
+    return 'unknown';
   }
-  if (value.oneOf) {
-    return value.oneOf.map((item) => mapSchemaToTs(item)).join(' | ');
+  const typeName = ref.split('/').at(-1) ?? 'Unknown';
+  return sanitizeTypeName(typeName);
+}
+
+function mapSchemaToTs(schema, required = new Set(), refPath = 'inline') {
+  if (!schema || typeof schema !== 'object') {
+    return 'unknown';
   }
+
+  if (schema.$ref) {
+    return resolveRef(schema.$ref);
+  }
+
+  if (schema.type === 'null') {
+    return 'null';
+  }
+
+  if (schema.anyOf) {
+    const members = schema.anyOf.map((item) => mapSchemaToTs(item, required, refPath));
+    const nullable = members.includes('null');
+    const uniqueMembers = [...new Set(members.filter((item) => item !== 'null'))];
+    const type = uniqueMembers.length === 0 ? 'null' : uniqueMembers.length === 1 ? uniqueMembers[0] : uniqueMembers.join(' | ');
+    return nullable ? `${type} | null` : type;
+  }
+
+  if (schema.oneOf) {
+    const members = schema.oneOf.map((item) => mapSchemaToTs(item, required, refPath));
+    const nullable = members.includes('null');
+    const uniqueMembers = [...new Set(members.filter((item) => item !== 'null'))];
+    const type = uniqueMembers.length === 0 ? 'null' : uniqueMembers.length === 1 ? uniqueMembers[0] : uniqueMembers.join(' | ');
+    return nullable ? `${type} | null` : type;
+  }
+
+  if (schema.allOf) {
+    return schema.allOf.map((item) => mapSchemaToTs(item, required, refPath)).join(' & ');
+  }
+
+  if (schema.type === 'string') {
+    if (schema.enum) {
+      return schema.enum.map((item) => JSON.stringify(item)).join(' | ');
+    }
+    return 'string';
+  }
+
+  if (schema.type === 'integer' || schema.type === 'number') {
+    return 'number';
+  }
+
+  if (schema.type === 'boolean') {
+    return 'boolean';
+  }
+
+  if (schema.type === 'array') {
+    return `${mapSchemaToTs(schema.items, required, refPath)}[]`;
+  }
+
+  if (schema.type === 'object' || schema.properties) {
+    const properties = schema.properties ?? {};
+    const objectRequired = new Set(schema.required ?? []);
+    const entries = Object.entries(properties).map(([key, value]) => {
+      const propertyName = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
+      const suffix = objectRequired.has(key) ? '' : '?';
+      return `  ${propertyName}${suffix}: ${mapSchemaToTs(value, objectRequired, refPath)};`;
+    });
+
+    if (entries.length === 0) {
+      return 'Record<string, unknown>';
+    }
+
+    return `{
+${entries.join('\n')}
+}`;
+  }
+
   return 'unknown';
 }

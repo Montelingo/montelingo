@@ -76,8 +76,9 @@ def list_examples(
     "/examples",
     operation_id="examples_create",
     response_model=ExampleResource,
+    status_code=201,
     responses={
-        200: {"description": "Created example"},
+        201: {"description": "Created example"},
         400: {"description": "Bad request", "model": ErrorEnvelope},
         422: {"description": "Validation failed", "model": ErrorEnvelope},
         500: {"description": "Unexpected server error", "model": ErrorEnvelope},

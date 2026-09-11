@@ -6,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const openApiPath = path.join(root, 'packages', 'api-client', 'openapi.json');
 const generatedPath = path.join(root, 'packages', 'api-client', 'src', 'generated', 'index.ts');
+const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
 
-const exportResult = spawnSync('py', ['apps/api/scripts/export_openapi.py'], {
+const exportResult = spawnSync(python, ['apps/api/scripts/export_openapi.py'], {
   cwd: root,
   encoding: 'utf8',
 });
