@@ -5,6 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /workspace
 
+# Apply the latest Debian security patches for OS packages (e.g. gzip, perl,
+# libpcre2, libsqlite3) so the base image does not carry known CVEs.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml pyproject.toml

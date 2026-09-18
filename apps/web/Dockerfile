@@ -24,6 +24,10 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Apply the latest Alpine security patches so the runtime image does not
+# carry known OS-package CVEs.
+RUN apk update && apk upgrade --no-cache
+
 COPY --from=build /workspace/apps/web/.next/standalone ./
 COPY --from=build /workspace/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /workspace/apps/web/public ./apps/web/public
