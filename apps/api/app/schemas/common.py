@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import Generic, TypeVar
+from typing import Annotated, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 from pydantic.types import StringConstraints
-from typing_extensions import Annotated
 
 T = TypeVar("T")
 
-UUID_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+UUID_PATTERN = (
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
+    r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+)
 
 
 class ErrorDetail(BaseModel):
@@ -18,7 +20,7 @@ class ErrorDetail(BaseModel):
 
 
 class ErrorEnvelope(BaseModel):
-    error: "ErrorBody" = Field(...)
+    error: ErrorBody = Field(...)
 
 
 class ErrorBody(BaseModel):
@@ -32,7 +34,9 @@ UUIDString = Annotated[str, StringConstraints(pattern=UUID_PATTERN)]
 
 
 class LocalizedText(BaseModel):
-    language_code: str = Field(..., pattern=r"^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)?(?:_[A-Za-z0-9-]+)?$")
+    language_code: str = Field(
+        ..., pattern=r"^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)?(?:_[A-Za-z0-9-]+)?$"
+    )
     value: str
 
 
