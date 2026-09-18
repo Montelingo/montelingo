@@ -71,13 +71,19 @@ directly in components.
 ```bash
 uv sync --project apps/api --all-groups
 uv run --project apps/api fastapi dev apps/api/app/main.py
-uv run --project apps/api ruff check apps/api
-uv run --project apps/api ruff format --check apps/api
-uv run --project apps/api mypy apps/api/app
-uv run --project apps/api pytest apps/api/tests
-uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
-uv run --project apps/api alembic -c apps/api/alembic.ini check
+pnpm run format:check:api   # ruff format --check
+pnpm run lint:api           # ruff check
+pnpm run typecheck:api      # mypy
+pnpm run test:api           # pytest
+pnpm run db:upgrade         # alembic upgrade head
+pnpm run db:check           # alembic check (drift detection)
 ```
+
+All `pnpm run *:api` / `db:*` scripts are thin wrappers around `uv run
+--project apps/api ...` (see [package.json](package.json)) so the exact same
+commands run locally and in CI. Alembic's `script_location` is relative to
+the current working directory, so `-c apps/api/alembic.ini` must always be
+invoked from the repository root (not from inside `apps/api/`).
 
 Health endpoints (under the central `/api/v1` router):
 
@@ -103,28 +109,60 @@ docker compose down
 - The API image runs Alembic migrations then starts the server; it does not
   run the test suite on container startup.
 
+## Continuous Integration
+
+All CI workflows call the same root-level `pnpm run <script>` commands
+documented above — nothing in CI runs bespoke validation logic that isn't
+also reproducible on a developer machine. Workflows live in
+[.github/workflows](.github/workflows) and run on every pull request, on
+pushes to `main`, and on demand (`workflow_dispatch`):
+
+- **`ci.yml`** — the required status check for pull requests. Four
+  independent jobs:
+  - `frontend`: `pnpm run format:check:web`, `lint:web`, `typecheck:web`,
+    `test:web`, `build:web`.
+  - `backend`: `pnpm run format:check:api`, `lint:api`, `typecheck:api`,
+    an Alembic `upgrade head` against a Postgres service container, then
+    `pnpm run test:api` (JUnit results uploaded as an artifact).
+  - `database`: applies Alembic migrations to a fresh Postgres service
+    container and runs `pnpm run db:check` to catch model/migration drift.
+  - `contract`: regenerates and diffs the OpenAPI spec / TypeScript client
+    (`pnpm run contract:check`) and type-checks the generated client
+    (`pnpm run typecheck:api-client`), so `packages/api-client` can never
+    silently drift from `apps/api`.
+- **`containers.yml`** — builds the production `apps/api` and `apps/web`
+  Docker images, scans them with Trivy (fails on CRITICAL/HIGH
+  vulnerabilities), and, only on pushes to `main`, pushes the images to the
+  GitHub Container Registry tagged by commit SHA, branch, and semver (when
+  applicable).
+- **`e2e.yml`** — runs `docker compose up --build` for the full production
+  stack (`postgres` + `api` + `web`) and then `pnpm run e2e:smoke`
+  ([tests/e2e/smoke.sh](tests/e2e/smoke.sh)), which polls both services'
+  health endpoints and asserts they return `200`. Compose logs are uploaded
+  as an artifact on failure, and the stack is always torn down
+  (`docker compose down -v`) at the end of the job.
+
 ## Validation performed
 
 The following was run and verified locally:
 
-- `pnpm install`, `pnpm lint:web`, `pnpm typecheck:web`, `pnpm test:web`,
-  `pnpm build:web` — all pass (2 vitest tests, production build with
-  `output: "standalone"`, Tailwind CSS compiled via PostCSS).
-- `uv sync --project apps/api --all-groups`, `ruff check`, `ruff format
-  --check`, `mypy`, `pytest apps/api/tests` — all pass (2 tests: live health,
-  ready-without-database).
-- `alembic upgrade head` and `alembic check` against a local PostgreSQL
-  container — succeed with no drift (empty baseline migration only).
-- Frontend started alone (`pnpm dev:web`) without the backend running;
-  page renders "API live state: unavailable".
-- Backend started alone (`fastapi dev`) without the frontend running;
-  `/api/v1/health/live` returns 200 while PostgreSQL was stopped, and
-  `/api/v1/health/ready` returned 503 `not_ready`. After restarting
-  PostgreSQL and re-running the Alembic upgrade, `/api/v1/health/ready`
-  returned 200 `ready`.
+- `pnpm run format:check:web`, `lint:web`, `typecheck:web`, `test:web`,
+  `build:web` — all pass (production build with `output: "standalone"`,
+  Tailwind CSS compiled via PostCSS).
+- `pnpm run format:check:api`, `lint:api`, `typecheck:api`, `test:api` — all
+  pass (6 tests covering health, examples, and contract checks).
+- `pnpm run db:upgrade` and `pnpm run db:check` against a local PostgreSQL
+  container — succeed with no drift.
+- `pnpm run contract:check` and `pnpm run typecheck:api-client` — pass,
+  confirming `packages/api-client` matches the live OpenAPI schema.
+- Both `apps/api/Dockerfile` and `apps/web/Dockerfile` build successfully
+  (`runtime` target) with `uv.lock` / `pnpm-lock.yaml` respected
+  (`uv sync --locked`, matching lockfiles).
 - `docker compose up --build` started `postgres`, `api`, and `web`; all
-  reported healthy, `http://localhost:3000` rendered "API live state:
-  healthy", and both `http://localhost:8000/api/v1/health/live` and
-  `/api/v1/health/ready` returned 200. `docker compose down` cleanly
-  removed containers and the network.
+  reported healthy, and `pnpm run e2e:smoke` passed against the running
+  stack. `docker compose down` cleanly removed containers and the network.
+- All three workflow YAML files (`ci.yml`, `containers.yml`, `e2e.yml`)
+  parse successfully and their lockfile-dependent steps
+  (`uv sync --locked`, `pnpm install --frozen-lockfile`) succeed against the
+  committed lockfiles.
 
