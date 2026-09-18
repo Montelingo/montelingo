@@ -3,11 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Montelingo",
-  description: "Monorepo skeleton for web and api"
+  description: "Monorepo skeleton for web and api",
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {

@@ -2,19 +2,20 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Query
 from pydantic import BaseModel, Field
 
+from app.api.v1.endpoints.health import router as health_router
 from app.core.errors import ApiError, ErrorCode
 from app.schemas.common import (
     ErrorEnvelope,
     LocalizedText,
-    PageInfo,
     PaginatedResponse,
     UUIDString,
 )
 
 router = APIRouter(tags=["v1"])
+router.include_router(health_router, prefix="/health", tags=["health"])
 
 
 class ExampleResource(BaseModel):
@@ -60,16 +61,18 @@ def list_examples(
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     cursor: str | None = Query(default=None, description="Opaque pagination cursor"),
 ) -> PaginatedResponse[ExampleResource]:
-    return PaginatedResponse[
-        ExampleResource
-    ].model_validate({
-        "items": [{
-            "id": "11111111-1111-4111-8111-111111111111",
-            "name": "sample",
-            "language": {"language_code": "en", "value": "sample"},
-        }],
-        "page": {"next_cursor": None, "has_more": False},
-    })
+    return PaginatedResponse[ExampleResource].model_validate(
+        {
+            "items": [
+                {
+                    "id": "11111111-1111-4111-8111-111111111111",
+                    "name": "sample",
+                    "language": {"language_code": "en", "value": "sample"},
+                }
+            ],
+            "page": {"next_cursor": None, "has_more": False},
+        }
+    )
 
 
 @router.post(

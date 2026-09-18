@@ -2,9 +2,22 @@
   "name": "montelingo-workspace",
   "private": true,
   "scripts": {
+    "dev:web": "pnpm --filter @montelingo/web dev",
+    "test:web": "pnpm --filter @montelingo/web test",
+    "lint:web": "pnpm --filter @montelingo/web lint",
+    "format:check:web": "pnpm --filter @montelingo/web format:check",
+    "typecheck:web": "pnpm --filter @montelingo/web typecheck",
+    "build:web": "pnpm --filter @montelingo/web build",
     "contract:check": "node packages/api-client/scripts/check-generated.mjs",
     "generate:api-client": "pnpm --filter @app/api-client generate",
-    "typecheck:api-client": "pnpm --filter @app/api-client typecheck"
+    "typecheck:api-client": "pnpm --filter @app/api-client typecheck",
+    "format:check:api": "uv run --project apps/api ruff format --check apps/api",
+    "lint:api": "uv run --project apps/api ruff check apps/api",
+    "typecheck:api": "uv run --project apps/api mypy apps/api/app apps/api/scripts",
+    "test:api": "uv run --project apps/api pytest apps/api/tests -q",
+    "db:upgrade": "uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head",
+    "db:check": "uv run --project apps/api alembic -c apps/api/alembic.ini check",
+    "e2e:smoke": "bash tests/e2e/smoke.sh"
   },
   "packageManager": "pnpm@9.12.0"
 }
