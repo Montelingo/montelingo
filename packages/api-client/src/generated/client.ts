@@ -125,6 +125,26 @@ export async function health_get(options: ClientRequestOptions = {}): Promise<Re
 
   return requestJson<Record<string, unknown>>(buildUrl("/api/v1/health", {}, {}), init, options.baseUrl ?? DEFAULT_API_BASE_URL);
 }
+export async function live_api_v1_health_live_get(options: ClientRequestOptions = {}): Promise<Record<string, unknown>> {
+  const url = buildUrl("/api/v1/health/live", {}, {});
+  const init: RequestInit = {
+    method: "GET",
+    headers: { ...(options.headers ?? {}) },
+    signal: options.signal,
+  };
+
+  return requestJson<Record<string, unknown>>(buildUrl("/api/v1/health/live", {}, {}), init, options.baseUrl ?? DEFAULT_API_BASE_URL);
+}
+export async function ready_api_v1_health_ready_get(options: ClientRequestOptions = {}): Promise<void> {
+  const url = buildUrl("/api/v1/health/ready", {}, {});
+  const init: RequestInit = {
+    method: "GET",
+    headers: { ...(options.headers ?? {}) },
+    signal: options.signal,
+  };
+
+  return requestJson<void>(buildUrl("/api/v1/health/ready", {}, {}), init, options.baseUrl ?? DEFAULT_API_BASE_URL);
+}
 export async function not_found_example(options: ClientRequestOptions = {}): Promise<void> {
   const url = buildUrl("/api/v1/not-found", {}, {});
   const init: RequestInit = {
