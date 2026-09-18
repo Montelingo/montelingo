@@ -8,9 +8,10 @@ WORKDIR /workspace
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml pyproject.toml
+COPY uv.lock uv.lock
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
 
-RUN uv sync --project apps/api --all-groups
+RUN uv sync --project apps/api --all-groups --locked
 
 COPY apps/api apps/api
 
