@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [".next/**", "dist/**", "eslint.config.mjs"]
+    ignores: [".next/**", "dist/**", "eslint.config.mjs"],
   },
   js.configs.recommended,
   {
@@ -13,15 +13,15 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         project: "./tsconfig.json",
-        tsconfigRootDir: import.meta.dirname
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.browser,
-        ...globals.node
-      }
+        ...globals.node,
+      },
     },
     rules: {
-      "@typescript-eslint/no-floating-promises": "error"
-    }
-  }
+      "@typescript-eslint/no-floating-promises": "error",
+    },
+  },
 );

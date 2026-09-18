@@ -9,7 +9,7 @@ async function fetchApiHealth(): Promise<HealthResponse | null> {
 
   try {
     const response = await fetch(`${baseUrl}/api/v1/health/live`, {
-      cache: "no-store"
+      cache: "no-store",
     });
 
     if (!response.ok) {
