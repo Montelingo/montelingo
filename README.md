@@ -3,6 +3,7 @@
 ## Architecture documentation
 
 - [FastAPI modular-monolith boundaries and rules](docs/fastapi-modular-monolith.md)
+- [Frontend architecture conventions](docs/frontend-architecture.md)
 # Montelingo
 
 Minimal runnable monorepo where the frontend (`apps/web`) and backend
@@ -31,7 +32,8 @@ for why this repo does not use Nx/Turborepo.
 │   └── web/                # Next.js frontend (pnpm project)
 │       ├── src/
 │       │   ├── app/        # App Router (layout, page, globals.css)
-│       │   └── lib/        # health state helper + unit test
+│       │   ├── features/   # feature slices (health: API adapter, model, UI, tests)
+│       │   └── lib/        # shared utilities (API request options)
 │       ├── Dockerfile
 │       ├── eslint.config.mjs
 │       ├── next.config.ts
