@@ -19,5 +19,11 @@
     "db:check": "uv run --project apps/api alembic -c apps/api/alembic.ini check",
     "e2e:smoke": "bash tests/e2e/smoke.sh"
   },
-  "packageManager": "pnpm@9.12.0"
+  "packageManager": "pnpm@9.12.0",
+  "pnpm": {
+    "overrides": {
+      "next>postcss": "^8.5.12",
+      "next>sharp": "^0.35.3"
+    }
+  }
 }
