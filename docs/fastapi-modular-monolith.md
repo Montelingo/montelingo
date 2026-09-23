@@ -31,12 +31,12 @@ A typical module should look like this:
 apps/api/app/
   api/
     v1/
-      routers/
-        account_router.py
+      router.py
       deps.py
   modules/
     accounts/
       __init__.py
+      router.py
       domain.py
       service.py
       repository.py
@@ -62,6 +62,20 @@ apps/api/app/
         test_authorization.py
         test_account_concurrency.py
 ```
+
+Each module owns its own `router.py`; there is no shared, flat `routers/` directory. `app/api/v1/router.py` is the only exception — it is not a module router but the top-level aggregator that registers each module's router under the versioned API:
+
+```python
+# app/api/v1/router.py
+from fastapi import APIRouter
+
+from app.modules.accounts.router import router as accounts_router
+
+router = APIRouter()
+router.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
+```
+
+Because every module keeps its `router.py` inside its own directory, filenames never collide across modules — `modules/accounts/router.py` and `modules/orders/router.py` are distinct files, so no module-name prefix is needed. If a shared, flat router directory is reintroduced later, that decision must come with a prefix convention again to avoid collisions; do not drop the prefix without also removing the shared directory, or vice versa.
 
 If a module grows, split by bounded context, not by technical convenience. A bounded context should own its domain rules and data model.
 
@@ -397,28 +411,28 @@ async def get_account(
 
 ### 4.2 Naming rules
 
-Use consistent names by layer:
+Use one generic filename per layer, inside each module's own directory. The directory — not a filename prefix — disambiguates one module's router, service, or repository from another's, since each module lives in its own folder:
 
-- router: `account_router.py`
-- schema: `account_schema.py` or `schemas.py` inside the module
-- service: `account_service.py`
-- repository: `account_repository.py`
-- model: `account_model.py` or database-specific naming in the module
-- domain: `account.py` or `domain.py` with the entity and invariants
+- router: `router.py`
+- schema: `schemas.py`
+- service: `service.py`
+- repository: `repository.py`
+- model: `models.py`
+- domain: `domain.py` (the entity and invariants)
 
-Prefer explicit names over generic names like `utils.py` or `helpers.py` inside a business module.
+Prefer these generic-but-scoped names over generic top-level names like `utils.py` or `helpers.py` inside a business module. Do not add a module-name prefix (`account_router.py`, `account_service.py`, ...) — it duplicates information the directory already carries, and only becomes necessary if a shared, unscoped directory (see §1.2) is reintroduced.
 
 Example — the `accounts` module:
 
 ```text
 modules/accounts/
-  account_router.py     # or api/v1/routers/account_router.py
-  schemas.py             # CreateAccountRequest, AccountResponse
-  domain.py               # Account, Account.new(), Account.rename()
-  service.py               # AccountService
-  repository.py             # AccountRepository, SqlAlchemyAccountRepository
-  models.py                  # AccountORM
-  errors.py                   # AccountAlreadyExistsError, AuthorizationError
+  router.py       # accounts endpoints
+  schemas.py      # CreateAccountRequest, AccountResponse
+  domain.py       # Account, Account.new(), Account.rename()
+  service.py      # AccountService
+  repository.py   # AccountRepository, SqlAlchemyAccountRepository
+  models.py       # AccountORM
+  errors.py       # AccountAlreadyExistsError, AuthorizationError
 ```
 
 ```python
@@ -438,7 +452,7 @@ Import ordering should be standardized:
 
 Use absolute imports for application modules and avoid circular imports. Domain logic must not import FastAPI classes directly.
 
-Example — `account_router.py`:
+Example — `modules/accounts/router.py`:
 
 ```python
 # 1. standard library
@@ -602,7 +616,7 @@ class SqlAlchemyAccountRepository:
 ```
 
 ```python
-# app/api/v1/routers/account_router.py
+# app/modules/accounts/router.py
 @router.post("/accounts", response_model=AccountResponse)
 async def create_account(
     payload: CreateAccountRequest,
@@ -648,3 +662,4 @@ This revision resolves six cross-referential inconsistencies found in the previo
 4. The §6 router example called `service.create_account(...)` without `await` — fixed.
 5. Test directory structure differed between §1.2 (`apps/api/app/tests/...`) and §5.2 (`tests/...`) — both now show the same `apps/api/app/tests/unit/` and `apps/api/app/tests/integration/postgres/` tree.
 6. §4.2 (naming) and §4.3 (imports) had no code examples, unlike the rest of §4 — added a file-listing example and an import-order example to each.
+7. §1.2 placed the router in a shared `api/v1/routers/` directory, which forced the `account_router.py` prefix used throughout §4.2/§6. The actual codebase (`apps/api/app/api/v1/router.py`, no `modules/` yet) confirmed the intended layout is per-module (`modules/accounts/router.py`), so the shared directory was removed, `app/api/v1/router.py` is now documented as the aggregator that includes each module's router, and the prefix was dropped from §4.2/§4.3/§6 accordingly.
