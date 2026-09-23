@@ -30,6 +30,11 @@ ENV NODE_ENV=production
 # carry known OS-package CVEs.
 RUN apk update && apk upgrade --no-cache
 
+# The standalone server only needs node. Drop the package managers bundled in
+# the base image so their dependencies do not ship (or get scanned) at runtime.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
+
 COPY --from=build /workspace/apps/web/.next/standalone ./
 COPY --from=build /workspace/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /workspace/apps/web/public ./apps/web/public
