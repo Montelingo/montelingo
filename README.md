@@ -96,7 +96,8 @@ Health endpoints (under the central `/api/v1` router):
 
 - `GET /api/v1/health/live` — always returns `{"status": "ok"}` when the process is up.
 - `GET /api/v1/health/ready` — returns `200 {"status": "ready"}` when PostgreSQL
-  is reachable, or `503 {"status": "not_ready"}` otherwise (fails safe).
+  is reachable, or `503` with the shared error envelope
+  (`code: "service_unavailable"`) otherwise (fails safe).
 
 ## Local Docker Compose
 
@@ -157,7 +158,7 @@ The following was run and verified locally:
   `build:web` — all pass (production build with `output: "standalone"`,
   Tailwind CSS compiled via PostCSS).
 - `pnpm run format:check:api`, `lint:api`, `typecheck:api`, `test:api` — all
-  pass (6 tests covering health, examples, and contract checks).
+  pass (health endpoints plus OpenAPI contract checks).
 - `pnpm run db:upgrade` and `pnpm run db:check` against a local PostgreSQL
   container — succeed with no drift.
 - `pnpm run contract:check` and `pnpm run typecheck:api-client` — pass,
