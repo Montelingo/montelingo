@@ -1,0 +1,109 @@
+name: montelingo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-montelingo}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    env_file:
+      - .env.example
+    environment:
+      MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "8000:8000"
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runtime
+    env_file:
+      - .env.example
+    environment:
+      API_INTERNAL_BASE_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "3000:3000"
+    networks:
+      - internal
+
+  api-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    env_file:
+      - .env.example
+    environment:
+      MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
+    command: uv run --project apps/api fastapi dev apps/api/app/main.py --host 0.0.0.0 --port 8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    networks:
+      - internal
+
+  web-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    env_file:
+      - .env.example
+    environment:
+      API_INTERNAL_BASE_URL: http://api-dev:8001
+    command: pnpm --filter @montelingo/web dev --hostname 0.0.0.0 --port 3001
+    depends_on:
+      api-dev:
+        condition: service_started
+    ports:
+      - "3001:3001"
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge
