@@ -122,7 +122,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
 ```tsx
 // ❌ business logic in the route
 export default async function LessonPage({ params }: LessonPageProps) {
-  const raw = await examples_list();
+  const raw = await unwrap(getApiClient().GET("/api/v1/lessons"));
   const passed = raw.items.filter((item) => item.score >= 0.8).length; // scoring rule in a page
   // ...
 }
@@ -173,9 +173,9 @@ export function LessonCard({ lesson, onStart }: LessonCardProps) {
 
 ```tsx
 // ❌ coupled to the wire format
-import type { ExampleResource } from "@app/api-client";
+import type { Schemas } from "@app/api-client";
 
-export function LessonCard({ resource }: { resource: ExampleResource }) {
+export function LessonCard({ resource }: { resource: Schemas["LessonResource"] }) {
   return <h2>{resource.title.en}</h2>; // knows about snake_case, localization envelope, etc.
 }
 ```
@@ -273,7 +273,7 @@ export function useLessonSession(lesson: Lesson) {
 
 ### 5.1 One path to the API
 
-All HTTP access to the FastAPI backend goes through `@app/api-client`, whose types and operations are **generated from the FastAPI OpenAPI schema** (see [ADR 0002](adr/0002-openapi-contract-and-client-generation.md) and [API conventions](architecture/api-conventions.md)). CI (`pnpm contract:check`) fails if the generated client drifts from the backend.
+All HTTP access to the FastAPI backend goes through `@app/api-client`: a typed [`openapi-fetch`](https://openapi-ts.dev/openapi-fetch/) client whose paths, parameters, and response bodies are **generated from the FastAPI OpenAPI schema** by `openapi-typescript` (see [ADR 0002](adr/0002-openapi-contract-and-client-generation.md) and [API conventions](architecture/api-conventions.md)). CI (`pnpm contract:check`) fails if the generated client drifts from the backend.
 
 Components, hooks, and pages never call `fetch` against the API directly and never hand-write API response types.
 
@@ -287,19 +287,18 @@ page.tsx ──▶ features/<x>/api/<x>-api.ts ──▶ @app/api-client (genera
 
 Each feature has an adapter module in `api/` that:
 
-1. calls the generated client operation
-2. validates the payload at runtime when the generated type is not precise (for example `Record<string, unknown>`), using a schema from `schemas.ts`
-3. maps the API shape (`snake_case`, localization envelopes, cursors) to the feature's domain type
-4. lets `ApiClientError` propagate, or converts expected cases (such as 404 → `null`) into typed results
+1. calls the typed client (`getApiClient().GET("/api/v1/...")`) and passes the result to `unwrap()`, which returns the typed success body or throws `ApiClientError`
+2. maps the API shape (`snake_case`, localization envelopes, cursors) to the feature's domain type
+3. lets `ApiClientError` propagate, or converts expected cases (such as 404 → `null`) into typed results
 
 ```ts
 // src/features/lessons/api/lessons-api.ts
-import { ApiClientError, lessons_get, type LessonResource } from "@app/api-client";
+import { ApiClientError, type Schemas, unwrap } from "@app/api-client";
 
-import { apiRequestOptions } from "@/lib/api";
+import { getApiClient } from "@/lib/api";
 import type { Lesson } from "../model/lesson";
 
-function toLesson(resource: LessonResource): Lesson {
+function toLesson(resource: Schemas["LessonResource"]): Lesson {
   return {
     id: resource.id,
     title: resource.title.en,
@@ -310,7 +309,12 @@ function toLesson(resource: LessonResource): Lesson {
 
 export async function getLesson(lessonId: string): Promise<Lesson | null> {
   try {
-    return toLesson(await lessons_get({ lesson_id: lessonId }, apiRequestOptions()));
+    const resource = await unwrap(
+      getApiClient().GET("/api/v1/lessons/{lesson_id}", {
+        params: { path: { lesson_id: lessonId } },
+      }),
+    );
+    return toLesson(resource);
   } catch (error) {
     if (error instanceof ApiClientError && error.status === 404) {
       return null;
@@ -320,16 +324,17 @@ export async function getLesson(lessonId: string): Promise<Lesson | null> {
 }
 ```
 
+The API contract guarantees every documented JSON response has a precise generated type (a backend contract test enforces it), so adapters do not re-validate API responses. If a response type is ever imprecise, fix the FastAPI response model instead of adding a schema on the frontend.
+
 Use runtime validation (a Zod schema in `schemas.ts`) when data crosses a boundary TypeScript cannot check:
 
-- a generated operation returns an untyped body (`Record<string, unknown>`, `void`)
 - data comes from `localStorage`, URL params, `postMessage`, or form input
 
 Add `zod` to `apps/web` with the first schema. Do not duplicate types the generator already provides.
 
 ### 5.3 Base URL and request options
 
-Base URL selection lives in one place, `src/lib/api.ts` (`apiRequestOptions()`). It uses `API_INTERNAL_BASE_URL` on the server and the browser origin on the client. Adapters never read `process.env` themselves.
+Base URL selection lives in one place, `src/lib/api.ts` (`getApiClient()`). It uses `API_INTERNAL_BASE_URL` on the server and the browser origin on the client. Adapters never read `process.env` themselves.
 
 ## 6. TypeScript
 
@@ -502,7 +507,7 @@ Tests are **co-located** with the file they test, named `<file>.test.ts` or `<fi
 | What                              | Kind of test                         | Example                              |
 | --------------------------------- | ------------------------------------ | ------------------------------------ |
 | `model/` pure functions, reducers | Unit (node), exhaustive edge cases   | `scoring.test.ts`                    |
-| `api/` adapters                   | Unit, with the generated client operation mocked at the module boundary | `lessons-api.test.ts` |
+| `api/` adapters                   | Unit, with `@/lib/api` mocked to return `createApiClient({ fetch })` over a fake `fetch` | `lessons-api.test.ts` |
 | Hooks with logic                  | `renderHook` (jsdom)                 | `use-lesson-session.test.ts`         |
 | Components                        | Behavior + accessibility (jsdom)     | `LessonCard.test.tsx`                |
 | Full user journeys across the stack | End-to-end in `tests/e2e/`         | `tests/e2e/smoke.sh`                 |
@@ -581,7 +586,7 @@ expect(container).toMatchSnapshot();
 
 ## 12. Current state and known gaps
 
-`src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter over the generated `live_api_v1_health_live_get` operation, pure logic in `model/`, a presentational component, and co-located tests.
+`src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
 
 Known gaps to close as real features land:
 
