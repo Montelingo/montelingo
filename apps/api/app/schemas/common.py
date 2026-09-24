@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.types import StringConstraints
 
 T = TypeVar("T")
@@ -13,17 +13,27 @@ UUID_PATTERN = (
 )
 
 
-class ErrorDetail(BaseModel):
+class ApiSchema(BaseModel):
+    """Base for public API schemas.
+
+    Fields with defaults are always serialized, so response schemas mark them
+    as required; the generated client then types them as present, not optional.
+    """
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class ErrorDetail(ApiSchema):
     field: str | None = None
     code: str = "invalid_value"
     message: str = "Invalid value"
 
 
-class ErrorEnvelope(BaseModel):
+class ErrorEnvelope(ApiSchema):
     error: ErrorBody = Field(...)
 
 
-class ErrorBody(BaseModel):
+class ErrorBody(ApiSchema):
     code: str
     message: str
     request_id: str
@@ -33,18 +43,18 @@ class ErrorBody(BaseModel):
 UUIDString = Annotated[str, StringConstraints(pattern=UUID_PATTERN)]
 
 
-class LocalizedText(BaseModel):
+class LocalizedText(ApiSchema):
     language_code: str = Field(
         ..., pattern=r"^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)?(?:_[A-Za-z0-9-]+)?$"
     )
     value: str
 
 
-class PageInfo(BaseModel):
+class PageInfo(ApiSchema):
     next_cursor: str | None = None
     has_more: bool = False
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse(ApiSchema, Generic[T]):
     items: list[T]
     page: PageInfo

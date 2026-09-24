@@ -14,6 +14,7 @@ class ErrorCode(str, Enum):
     RATE_LIMITED = "rate_limited"
     UNEXPECTED_ERROR = "internal_server_error"
     BAD_REQUEST = "bad_request"
+    SERVICE_UNAVAILABLE = "service_unavailable"
 
 
 @dataclass
