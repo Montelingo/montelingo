@@ -33,7 +33,8 @@
         "required": [
           "code",
           "message",
-          "request_id"
+          "request_id",
+          "details"
         ],
         "title": "ErrorBody",
         "type": "object"
@@ -62,6 +63,11 @@
             "type": "string"
           }
         },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ],
         "title": "ErrorDetail",
         "type": "object"
       },
@@ -77,119 +83,34 @@
         "title": "ErrorEnvelope",
         "type": "object"
       },
-      "ExampleCreate": {
+      "LiveHealth": {
         "properties": {
-          "language": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LocalizedText"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
             "type": "string"
           }
         },
         "required": [
-          "name"
+          "status"
         ],
-        "title": "ExampleCreate",
+        "title": "LiveHealth",
         "type": "object"
       },
-      "ExampleResource": {
+      "ReadyHealth": {
         "properties": {
-          "id": {
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
-            "title": "Id",
-            "type": "string"
-          },
-          "language": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LocalizedText"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
+          "status": {
+            "const": "ready",
+            "default": "ready",
+            "title": "Status",
             "type": "string"
           }
         },
         "required": [
-          "id",
-          "name"
+          "status"
         ],
-        "title": "ExampleResource",
-        "type": "object"
-      },
-      "LocalizedText": {
-        "properties": {
-          "language_code": {
-            "pattern": "^[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)?(?:_[A-Za-z0-9-]+)?$",
-            "title": "Language Code",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "string"
-          }
-        },
-        "required": [
-          "language_code",
-          "value"
-        ],
-        "title": "LocalizedText",
-        "type": "object"
-      },
-      "PageInfo": {
-        "properties": {
-          "has_more": {
-            "default": false,
-            "title": "Has More",
-            "type": "boolean"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "title": "PageInfo",
-        "type": "object"
-      },
-      "PaginatedResponse_ExampleResource_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ExampleResource"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "$ref": "#/components/schemas/PageInfo"
-          }
-        },
-        "required": [
-          "items",
-          "page"
-        ],
-        "title": "PaginatedResponse[ExampleResource]",
+        "title": "ReadyHealth",
         "type": "object"
       }
     }
@@ -200,252 +121,52 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/v1/examples": {
-      "get": {
-        "operationId": "examples_list",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page_size",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Page Size",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Opaque pagination cursor",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Opaque pagination cursor",
-              "title": "Cursor"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_ExampleResource_"
-                }
-              }
-            },
-            "description": "Examples list"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Bad request"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unexpected server error"
-          }
-        },
-        "summary": "List Examples",
-        "tags": [
-          "v1"
-        ]
-      },
-      "post": {
-        "operationId": "examples_create",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExampleCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExampleResource"
-                }
-              }
-            },
-            "description": "Created example"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Bad request"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unexpected server error"
-          }
-        },
-        "summary": "Create Example",
-        "tags": [
-          "v1"
-        ]
-      }
-    },
-    "/api/v1/health": {
-      "get": {
-        "operationId": "health_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "example": {
-                  "status": "ok"
-                },
-                "schema": {
-                  "title": "Response Health Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Service health check"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unexpected server error"
-          }
-        },
-        "summary": "Health",
-        "tags": [
-          "v1"
-        ]
-      }
-    },
     "/api/v1/health/live": {
       "get": {
-        "operationId": "live_api_v1_health_live_get",
+        "operationId": "health_live",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Live Api V1 Health Live Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/LiveHealth"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
           }
         },
-        "summary": "Live",
+        "summary": "Liveness probe",
         "tags": [
-          "v1",
           "health"
         ]
       }
     },
     "/api/v1/health/ready": {
       "get": {
-        "operationId": "ready_api_v1_health_ready_get",
+        "operationId": "health_ready",
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Ready",
-        "tags": [
-          "v1",
-          "health"
-        ]
-      }
-    },
-    "/api/v1/not-found": {
-      "get": {
-        "operationId": "not_found_example",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyHealth"
+                }
               }
             },
             "description": "Successful Response"
           },
-          "404": {
+          "500": {
             "content": {
               "application/json": {
                 "schema": {
@@ -453,12 +174,22 @@
                 }
               }
             },
-            "description": "Resource not found"
+            "description": "Unexpected server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service unavailable"
           }
         },
-        "summary": "Not Found Example",
+        "summary": "Readiness probe",
         "tags": [
-          "v1"
+          "health"
         ]
       }
     }
