@@ -1,13 +1,21 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import error_responses
 from app.core.errors import ApiError, ErrorCode
 from app.db.session import get_db_session
-from app.schemas.health import LiveHealth, ReadyHealth
+
+from .repository import SqlAlchemyDatabaseProbe
+from .schemas import LiveHealth, ReadyHealth
+from .service import HealthService
 
 router = APIRouter()
+
+
+def get_health_service(session: AsyncSession = Depends(get_db_session)) -> HealthService:
+    return HealthService(database=SqlAlchemyDatabaseProbe(session))
 
 
 @router.get(
@@ -28,14 +36,7 @@ async def live() -> LiveHealth:
     response_model=ReadyHealth,
     responses=error_responses(500, 503),
 )
-async def ready(db: AsyncSession = Depends(get_db_session)) -> ReadyHealth:
-    try:
-        await db.execute(text("SELECT 1"))
-    except Exception as exc:
-        # Any failure to reach the database means "not ready"; fail safe.
-        raise ApiError(
-            ErrorCode.SERVICE_UNAVAILABLE,
-            "Service is not ready.",
-            status_code=503,
-        ) from exc
+async def ready(service: HealthService = Depends(get_health_service)) -> ReadyHealth:
+    if not await service.is_ready():
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "Service is not ready.", status_code=503)
     return ReadyHealth()
