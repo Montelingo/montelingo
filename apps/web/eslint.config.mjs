@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-// Conventions enforced here are documented in the wiki: https://github.com/Montelingo/montelingo/wiki/Frontend-Architecture
+// Conventions enforced here are documented in docs/frontend-architecture.md.
 export default tseslint.config(
   {
     ignores: [".next/**", "dist/**", "eslint.config.mjs", "next-env.d.ts"],
