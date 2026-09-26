@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+
+from app.schemas.common import ErrorDetail
 
 
 class ErrorCode(str, Enum):
@@ -10,6 +11,7 @@ class ErrorCode(str, Enum):
     AUTHENTICATION_ERROR = "authentication_error"
     AUTHORIZATION_ERROR = "authorization_error"
     NOT_FOUND = "not_found"
+    METHOD_NOT_ALLOWED = "method_not_allowed"
     CONFLICT = "conflict"
     RATE_LIMITED = "rate_limited"
     UNEXPECTED_ERROR = "internal_server_error"
@@ -22,7 +24,7 @@ class ApiError(Exception):
     code: ErrorCode | str
     message: str
     status_code: int = 400
-    details: Any | None = None
+    details: list[ErrorDetail] | None = None
 
     @property
     def stable_code(self) -> str:

@@ -10,8 +10,9 @@ Minimal runnable monorepo where the frontend (`apps/web`) and backend
 (`apps/api`) install, run, test, and build independently, while Docker
 Compose provides shared local infrastructure (PostgreSQL).
 
-See [docs/adr/0001-monorepo-without-heavyweight-orchestrator.md](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
-for why this repo does not use Nx/Turborepo.
+The workspace uses pnpm workspaces (`apps/web`, `packages/*`) and a uv
+workspace (`apps/api`) rather than a monorepo orchestrator such as Nx or
+Turborepo; root `package.json` scripts wrap each app's commands.
 
 ## Repository structure
 
@@ -20,12 +21,14 @@ for why this repo does not use Nx/Turborepo.
 ├── apps/
 │   ├── api/                # FastAPI backend (uv project)
 │   │   ├── app/
-│   │   │   ├── api/v1/     # /api/v1 router + endpoints (health)
-│   │   │   ├── core/       # settings (pydantic-settings)
+│   │   │   ├── api/v1/     # /api/v1 router (aggregates module routers)
+│   │   │   ├── core/       # settings, error codes/handlers, request IDs
 │   │   │   ├── db/         # async SQLAlchemy engine/session, Base
+│   │   │   ├── modules/    # business modules (health); see docs/fastapi-modular-monolith.md
+│   │   │   ├── schemas/    # shared API schemas (error envelope, pagination)
 │   │   │   └── main.py     # create_app() application factory
 │   │   ├── alembic/        # Alembic env + versions
-│   │   ├── tests/          # pytest tests
+│   │   ├── tests/          # pytest: contract/ and unit/ tests
 │   │   ├── alembic.ini
 │   │   ├── Dockerfile
 │   │   └── pyproject.toml

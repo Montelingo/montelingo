@@ -1,6 +1,8 @@
 # FastAPI modular-monolith boundaries and rules
 
-This repository follows a modular-monolith layout inside a single FastAPI application. The goal is to keep the system cohesive and easy to evolve without turning it into a "god service" or mixing transport, domain, persistence, and infrastructure concerns.
+`apps/api` is a modular monolith: a single FastAPI application split into modules with clear boundaries. The goal is to keep the system cohesive and easy to evolve without turning it into a "god service" or mixing transport, domain, persistence, and infrastructure concerns.
+
+This document describes the code as it is. `app/modules/health` is the reference module. Examples that use an `accounts` module are **illustrative**: no such module exists yet. They show how the rules apply to layers that `health` does not need (domain models, persistence models, transactions, account scoping).
 
 ## 1. Architectural boundaries
 
@@ -23,59 +25,75 @@ Dependencies always move inward:
 
 The API layer must never contain business rules, persistence queries, or cross-account authorization logic.
 
-### 1.2 Module structure
-
-A typical module should look like this:
+### 1.2 Directory layout
 
 ```text
-apps/api/app/
-  api/
-    v1/
-      router.py
-      deps.py
-  modules/
-    accounts/
-      __init__.py
-      router.py
-      domain.py
-      service.py
-      repository.py
-      schemas.py
-      models.py
-      errors.py
-  core/
-    config.py
-    logging.py
-    errors.py
+apps/api/
+  app/
+    main.py                  # create_app(): middleware, exception handlers, /api/v1 router
+    api/
+      responses.py           # error_responses(): documents ErrorEnvelope in OpenAPI
+      v1/
+        router.py            # aggregates module routers; defines no endpoints
+    core/
+      config.py              # Settings (pydantic-settings), get_settings()
+      errors.py              # ErrorCode, ApiError
+      exception_handlers.py  # maps every exception to the ErrorEnvelope contract
+      request_id.py          # X-Request-Id resolution and middleware
     db/
-      session.py
-      base.py
+      base.py                # SQLAlchemy DeclarativeBase (Alembic target metadata)
+      session.py             # async engine, get_db_session()
+    schemas/
+      common.py              # shared API schemas: ApiSchema, ErrorEnvelope, PaginatedResponse
+    modules/
+      health/
+        router.py            # GET /health/live, GET /health/ready
+        schemas.py           # LiveHealth, ReadyHealth
+        service.py           # HealthService
+        repository.py        # DatabaseProbe, SqlAlchemyDatabaseProbe
+  alembic/                   # migration environment and versions
+  scripts/
+    export_openapi.py        # writes packages/api-client/openapi.json
   tests/
+    conftest.py              # shared `app` and `client` fixtures
+    contract/                # OpenAPI and error-envelope contract tests
     unit/
-      test_account_domain.py
-      test_account_service.py
-    integration/
-      postgres/
-        test_account_repository.py
-        test_account_constraints.py
-        test_migrations.py
-        test_authorization.py
-        test_account_concurrency.py
+      core/                  # exception mapping, request ID
+      modules/
+        health/              # router and service tests
 ```
 
-Each module owns its own `router.py`; there is no shared, flat `routers/` directory. `app/api/v1/router.py` is the only exception — it is not a module router but the top-level aggregator that registers each module's router under the versioned API:
+`app/core`, `app/db`, `app/schemas`, and `app/api` are shared infrastructure. They contain no business logic and never import from `app/modules`.
+
+### 1.3 Module structure
+
+Every business capability is a module under `app/modules/<name>/`. A module creates only the files for the layers it actually has:
+
+| File            | Contents                                                      | In `health` |
+| --------------- | ------------------------------------------------------------- | ----------- |
+| `router.py`     | `APIRouter`, endpoints, `get_<name>_service` dependency       | yes         |
+| `schemas.py`    | Pydantic request/response schemas (inherit `ApiSchema`)       | yes         |
+| `service.py`    | use cases, transaction boundaries, authorization decisions    | yes         |
+| `repository.py` | repository protocol and SQLAlchemy implementation             | yes         |
+| `domain.py`     | domain entities, value objects, invariants                    | no          |
+| `models.py`     | SQLAlchemy persistence models                                 | no          |
+| `errors.py`     | typed domain errors                                           | no          |
+
+Each module owns its own `router.py`; there is no shared, flat `routers/` directory. `app/api/v1/router.py` is the only exception. It is not a module router but the top-level aggregator that registers each module's router under the versioned API:
 
 ```python
 # app/api/v1/router.py
 from fastapi import APIRouter
 
-from app.modules.accounts.router import router as accounts_router
+from app.modules.health.router import router as health_router
 
 router = APIRouter()
-router.include_router(accounts_router, prefix="/accounts", tags=["accounts"])
+router.include_router(health_router, prefix="/health", tags=["health"])
 ```
 
-Because every module keeps its `router.py` inside its own directory, filenames never collide across modules — `modules/accounts/router.py` and `modules/orders/router.py` are distinct files, so no module-name prefix is needed. If a shared, flat router directory is reintroduced later, that decision must come with a prefix convention again to avoid collisions; do not drop the prefix without also removing the shared directory, or vice versa.
+Adding a module means creating `app/modules/<name>/` and adding one `include_router` line here. The module's router does not set its own prefix; the aggregator does.
+
+Because every module keeps its `router.py` inside its own directory, filenames never collide across modules: `modules/health/router.py` and `modules/accounts/router.py` are distinct files, so no module-name prefix is needed. If a shared, flat router directory is ever introduced, it must come with a prefix convention to avoid collisions.
 
 If a module grows, split by bounded context, not by technical convenience. A bounded context should own its domain rules and data model.
 
@@ -89,7 +107,7 @@ Routers are responsible for:
 
 - parsing HTTP requests
 - verifying request body/params/headers
-- converting external errors into the API contract
+- converting results and errors into the API contract
 - delegating work to a service
 - returning serialized response schemas
 
@@ -100,31 +118,27 @@ Routers must not:
 - mutate domain state without a service call
 - read global FastAPI state or request-local hidden mutation
 
-Example:
+Example, from `app/modules/health/router.py`:
 
 ```python
-from fastapi import APIRouter, Depends
+def get_health_service(session: AsyncSession = Depends(get_db_session)) -> HealthService:
+    return HealthService(database=SqlAlchemyDatabaseProbe(session))
 
-from app.api.v1.deps import get_current_account
-from app.modules.accounts.schemas import CreateAccountRequest, AccountResponse
-from app.modules.accounts.service import AccountService
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
-
-@router.post("", response_model=AccountResponse)
-async def create_account(
-    payload: CreateAccountRequest,
-    account_service: AccountService = Depends(get_account_service),
-    current_account: AccountContext = Depends(get_current_account),
-):
-    return await account_service.create_account(
-        owner_id=current_account.id,
-        name=payload.name,
-        email=payload.email,
-    )
+@router.get(
+    "/ready",
+    operation_id="health_ready",
+    summary="Readiness probe",
+    response_model=ReadyHealth,
+    responses=error_responses(500, 503),
+)
+async def ready(service: HealthService = Depends(get_health_service)) -> ReadyHealth:
+    if not await service.is_ready():
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "Service is not ready.", status_code=503)
+    return ReadyHealth()
 ```
 
-The router does not make domain decisions. It enriches the external input and passes it to the application service.
+The router does not run the database check. It asks the service and translates the answer into the API contract (a `ReadyHealth` body or a 503 error envelope). Operation IDs, response models, and documented error responses follow [API conventions](architecture/api-conventions.md).
 
 ### 2.2 Schemas, domain models, and persistence models are separate
 
@@ -136,24 +150,25 @@ The codebase must distinguish among three different representations of data:
 
 They are not interchangeable.
 
-Example:
+Illustrative example (`accounts`):
 
 ```python
-# API schema
-class CreateAccountRequest(BaseModel):
+# modules/accounts/schemas.py: API schema
+class CreateAccountRequest(ApiSchema):
     name: str
     email: EmailStr
 
-# Domain model
+
+# modules/accounts/domain.py: domain model
 @dataclass(slots=True)
 class Account:
     id: UUID
     owner_id: UUID
     name: str
-    email: EmailStr
+    email: str
 
     @classmethod
-    def new(cls, *, owner_id: UUID, name: str, email: EmailStr) -> "Account":
+    def new(cls, *, owner_id: UUID, name: str, email: str) -> "Account":
         if not name.strip():
             raise ValueError("Account name cannot be empty")
         return cls(id=uuid4(), owner_id=owner_id, name=name.strip(), email=email)
@@ -163,14 +178,15 @@ class Account:
             raise ValueError("Account name cannot be empty")
         self.name = new_name.strip()
 
-# SQLAlchemy model
+
+# modules/accounts/models.py: SQLAlchemy model
 class AccountORM(Base):
     __tablename__ = "accounts"
 
-    id = mapped_column(UUID, primary_key=True, default=uuid4)
-    owner_id = mapped_column(UUID, nullable=False, index=True)
-    name = mapped_column(String(255), nullable=False)
-    email = mapped_column(String(255), unique=True, nullable=False)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 ```
 
 Rules:
@@ -179,6 +195,7 @@ Rules:
 - ORM models are not returned directly from services or routers
 - domain models validate invariant rules independent of HTTP or SQLAlchemy
 - conversion between representations happens at module boundaries, never deep inside a router
+- persistence models inherit `app.db.base.Base` so Alembic sees them
 
 ### 2.3 Repository owns persistence; service owns use cases
 
@@ -199,15 +216,44 @@ Service responsibilities:
 - authorization decisions
 - coordination between multiple repositories or providers
 
-Example:
+The service depends on a repository `Protocol`, and the router's dependency function supplies the SQLAlchemy implementation. From `app/modules/health`:
+
+```python
+# repository.py
+class DatabaseProbe(Protocol):
+    async def ping(self) -> None: ...
+
+
+class SqlAlchemyDatabaseProbe:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def ping(self) -> None:
+        await self.session.execute(text("SELECT 1"))
+
+
+# service.py
+class HealthService:
+    def __init__(self, database: DatabaseProbe) -> None:
+        self.database = database
+
+    async def is_ready(self) -> bool:
+        try:
+            await self.database.ping()
+        except Exception:
+            # Any failure to reach the database means "not ready"; fail safe.
+            logger.warning("readiness_check_failed", exc_info=True)
+            return False
+        return True
+```
+
+A service that writes data also owns the transaction and the authorization decision. Illustrative example (`accounts`):
 
 ```python
 class AccountRepository(Protocol):
     async def get_by_id(self, account_id: UUID) -> Account | None: ...
     async def save(self, account: Account) -> None: ...
 
-class AuthorizationService(Protocol):
-    async def ensure_can_create_account(self, owner_id: UUID) -> None: ...
 
 class AccountService:
     def __init__(
@@ -215,22 +261,18 @@ class AccountService:
         repo: AccountRepository,
         tx: TransactionManager,
         authz: AuthorizationService,
-    ):
+    ) -> None:
         self.repo = repo
         self.tx = tx
         self.authz = authz
 
-    async def create_account(
-        self, *, owner_id: UUID, name: str, email: EmailStr
-    ) -> Account:
+    async def create_account(self, *, owner_id: UUID, name: str, email: str) -> Account:
         await self.authz.ensure_can_create_account(owner_id)
         account = Account.new(owner_id=owner_id, name=name, email=email)
         async with self.tx.begin():
             await self.repo.save(account)
         return account
 ```
-
-This is the canonical `AccountService` shape used throughout this document — it owns both the transaction boundary and the authorization decision, matching the two responsibilities listed above. Do not introduce a second, differently-shaped constructor for the same service elsewhere; extend this one.
 
 A service may coordinate a database transaction, but the repository still contains the SQL logic.
 
@@ -247,17 +289,18 @@ Examples:
 - cache backend
 - notification bus
 
-Use protocol / interface + implementation pairs. The service depends on the interface, not the concrete provider.
+Use protocol / interface + implementation pairs. The service depends on the interface, not the concrete provider (as `HealthService` depends on `DatabaseProbe`, not on `AsyncSession`).
 
 ```python
 class NotificationClient(Protocol):
     async def send_welcome_email(self, *, user_email: str) -> None: ...
 
+
 class SendGridNotificationClient:
     async def send_welcome_email(self, *, user_email: str) -> None: ...
 ```
 
-This keeps vendor-specific code out of the business layer and makes testing easier.
+This keeps vendor-specific code out of the business layer and makes testing easier: `tests/unit/modules/health/test_service.py` tests `HealthService` with a fake probe and no database.
 
 ### 2.5 Dependencies are explicit and injected
 
@@ -266,25 +309,22 @@ Do not use FastAPI globals, mutable singleton state, or implicit request context
 Rules:
 
 - pass repositories and clients into services through constructors
-- keep `Depends` only at the API boundary
+- keep `Depends` only at the API boundary, in the module's `router.py`
 - avoid module-level mutable state for configuration values or per-request data
 - never reach into `request.app.state` for domain logic
 
-Example:
+Each module's router defines a `get_<name>_service` function that builds the service from its dependencies, as `get_health_service` does in §2.1. A module with more collaborators wires them the same way (illustrative):
 
 ```python
-def get_account_service(
-    session: AsyncSession = Depends(get_db_session),
-) -> AccountService:
-    repo = SqlAlchemyAccountRepository(session)
+def get_account_service(session: AsyncSession = Depends(get_db_session)) -> AccountService:
     return AccountService(
-        repo=repo,
+        repo=SqlAlchemyAccountRepository(session),
         tx=SessionTransactionManager(session),
         authz=DefaultAuthorizationService(),
     )
 ```
 
-If a module needs runtime configuration, inject a typed configuration object rather than reading environment variables directly from global state.
+If a module needs runtime configuration, inject `Settings` (§4.5) rather than reading environment variables directly.
 
 ### 2.6 Database access is account-scoped where required
 
@@ -297,7 +337,7 @@ Rules:
 - do not allow a service to silently read data from other accounts
 - ensure transaction ownership is unambiguous; a service or repository should declare whether it owns the transaction or receives one from the caller
 
-Example — extending the canonical `AccountService` from §2.3 with an account-scoped read:
+Illustrative example, extending `AccountService` from §2.3 with an account-scoped read:
 
 ```python
 class AccountService:
@@ -312,7 +352,7 @@ class AccountService:
         return account
 ```
 
-The scoping check happens explicitly in the service, using the `owner_id` already carried on the domain object — not by threading a raw `session` through a generic repository call. This prevents cross-account queries hidden behind a generic repository method.
+The scoping check happens explicitly in the service, using the `owner_id` already carried on the domain object, not by threading a raw `session` through a generic repository call. This prevents cross-account queries hidden behind a generic repository method.
 
 ### 2.7 Transactions are explicit and owned by one layer
 
@@ -323,17 +363,17 @@ Rules:
 - the service owns the business transaction boundary
 - repositories do not manage global transactions in hidden ways
 - if a transaction spans multiple repositories, the service starts and commits it
-- a transaction must not be started inside a router, except as a thin API boundary if the router is orchestrating a single service call and the service already owns the transaction
+- a transaction must not be started inside a router
 
-Example:
+`get_db_session()` yields a session without starting a transaction. The service opens one through a transaction manager (illustrative):
 
 ```python
 class SessionTransactionManager:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
     @asynccontextmanager
-    async def begin(self):
+    async def begin(self) -> AsyncIterator[None]:
         async with self.session.begin():
             yield
 ```
@@ -344,49 +384,55 @@ This keeps transaction flow deterministic and testable.
 
 ## 3. Error handling and API contract
 
-### 3.1 One place maps domain and infrastructure exceptions to the API contract
+### 3.1 One place maps exceptions to the API contract
 
-All business exceptions must be translated in a single place. This is usually a shared error mapping module.
+`app/core/exception_handlers.py` is the single place that turns exceptions into HTTP error responses. Every error, whether raised by our code or by FastAPI/Starlette, leaves the API as the shared error envelope.
+
+| Raised                                   | Response                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `ApiError(code, message, status_code)`   | `status_code` with `code` and `message` as given                   |
+| `RequestValidationError`                 | 422 `validation_error`, with one `details` entry per invalid field |
+| `HTTPException` 401                      | `authentication_error`                                             |
+| `HTTPException` 403                      | `authorization_error`                                              |
+| `HTTPException` 404 (also unknown routes) | `not_found`                                                       |
+| `HTTPException` 405                      | `method_not_allowed` (keeps the `Allow` header)                    |
+| `HTTPException` 429                      | `rate_limited` (keeps the `Retry-After` header)                    |
+| `HTTPException`, any other 4xx           | `bad_request`                                                      |
+| `HTTPException`, any 5xx                 | `internal_server_error`                                            |
+| any other exception                      | 500 `internal_server_error`; details are logged, never returned    |
+
+Codes are the values of `ErrorCode` in `app/core/errors.py`. Each mapping has a test in `tests/unit/core/test_exception_handlers.py`.
 
 Rules:
 
-- domain and service exceptions are typed and specific
-- infrastructure errors are wrapped before they reach the API layer
-- the HTTP layer translates domain exceptions to the public error contract
-- the mapping is centralized to avoid duplicate `try/except` blocks across routers
-
-Example:
-
-```python
-class DomainError(Exception):
-    pass
-
-class AccountAlreadyExistsError(DomainError):
-    pass
-
-class AuthorizationError(DomainError):
-    pass
-
-ERROR_MAP = {
-    AccountAlreadyExistsError: HTTPException(status_code=409, detail="account.already_exists"),
-    AuthorizationError: HTTPException(status_code=403, detail="forbidden"),
-}
-```
-
-The API response contract should remain stable across modules. A router should not invent ad hoc error payloads for each endpoint.
+- routers raise `ApiError` with an `ErrorCode`; they never build error payloads or return `JSONResponse` for errors
+- a router should not wrap calls in `try/except` just to produce an error response
+- when a module introduces typed domain errors (`modules/<name>/errors.py`), register a handler for them in `exception_handlers.py` rather than catching them in each router
+- infrastructure errors are handled or wrapped before they reach the API layer. For example, `HealthService` turns a database failure into `is_ready() == False`.
 
 ### 3.2 Public error model
 
-The API contract should use a single standard shape:
+All errors share one envelope, defined in `app/schemas/common.py`:
 
 ```python
-class ErrorResponse(BaseModel):
+class ErrorDetail(ApiSchema):
+    field: str | None = None
+    code: str = "invalid_value"
+    message: str = "Invalid value"
+
+
+class ErrorBody(ApiSchema):
     code: str
     message: str
-    details: dict[str, Any] | None = None
+    request_id: str
+    details: list[ErrorDetail] | None = None
+
+
+class ErrorEnvelope(ApiSchema):
+    error: ErrorBody
 ```
 
-Where possible, the contract should expose stable machine-readable codes (for example `account.not_found`, `auth.unauthorized`, `validation.failed`) instead of leaking raw database exceptions or stack traces.
+`code` is a stable, machine-readable `snake_case` value from `ErrorCode` (for example `not_found`, `validation_error`, `service_unavailable`). Raw database exceptions and stack traces are never exposed. `request_id` matches the `X-Request-Id` response header (§4.7).
 
 ---
 
@@ -394,81 +440,54 @@ Where possible, the contract should expose stable machine-readable codes (for ex
 
 ### 4.1 Type hints and async rules
 
-- use type hints everywhere in function signatures and return values
+- use type hints everywhere in function signatures and return values. mypy runs with `disallow_untyped_defs` and `check_untyped_defs` over `app/` and `scripts/` (`pnpm typecheck:api`, enforced in CI).
 - prefer `AsyncSession`, `AsyncClient`, and `async def` for I/O-bound work
 - use synchronous functions for CPU-bound logic and simple deterministic domain logic
 - never use `async def` when the function is only doing synchronous local work
 - avoid `Any` unless it is a deliberate boundary; use typed protocols and well-defined DTOs instead
 
-Example:
-
-```python
-async def get_account(
-    *, account_id: UUID, repo: AccountRepository
-) -> Account | None:
-    return await repo.get_by_id(account_id)
-```
-
 ### 4.2 Naming rules
 
-Use one generic filename per layer, inside each module's own directory. The directory — not a filename prefix — disambiguates one module's router, service, or repository from another's, since each module lives in its own folder:
-
-- router: `router.py`
-- schema: `schemas.py`
-- service: `service.py`
-- repository: `repository.py`
-- model: `models.py`
-- domain: `domain.py` (the entity and invariants)
-
-Prefer these generic-but-scoped names over generic top-level names like `utils.py` or `helpers.py` inside a business module. Do not add a module-name prefix (`account_router.py`, `account_service.py`, ...) — it duplicates information the directory already carries, and only becomes necessary if a shared, unscoped directory (see §1.2) is reintroduced.
-
-Example — the `accounts` module:
+Use one generic filename per layer, inside each module's own directory (see the table in §1.3). The directory, not a filename prefix, tells one module's router or service apart from another's:
 
 ```text
-modules/accounts/
-  router.py       # accounts endpoints
-  schemas.py      # CreateAccountRequest, AccountResponse
-  domain.py       # Account, Account.new(), Account.rename()
-  service.py      # AccountService
-  repository.py   # AccountRepository, SqlAlchemyAccountRepository
-  models.py       # AccountORM
-  errors.py       # AccountAlreadyExistsError, AuthorizationError
+modules/health/
+  router.py       # health endpoints and get_health_service
+  schemas.py      # LiveHealth, ReadyHealth
+  service.py      # HealthService
+  repository.py   # DatabaseProbe, SqlAlchemyDatabaseProbe
 ```
 
-```python
-# Avoid — generic, tells the reader nothing about the responsibility:
-modules/accounts/utils.py
-modules/accounts/helpers.py
-```
+Do not add a module-name prefix (`health_router.py`, `health_service.py`, ...). It duplicates information the directory already carries. Avoid generic names such as `utils.py` or `helpers.py` inside a business module; they tell the reader nothing about the responsibility.
+
+Operation IDs follow the `<resource>_<action>` rule in [API conventions](architecture/api-conventions.md#operation-ids).
 
 ### 4.3 Imports and dependency order
 
-Import ordering should be standardized:
+Import ordering (enforced by Ruff's `I` rules):
 
 1. standard library
 2. third-party packages
-3. application domain imports
-4. local module imports
+3. absolute application imports (`app.core`, `app.db`, other shared code)
+4. relative imports from the same module
 
-Use absolute imports for application modules and avoid circular imports. Domain logic must not import FastAPI classes directly.
+Use absolute imports for anything outside the module and relative imports for files inside it. Avoid circular imports. Domain logic must not import FastAPI classes. Modules must not import another module's internals; if two modules need to collaborate, one exposes a service the other depends on through an interface.
 
-Example — `modules/accounts/router.py`:
+Example: `app/modules/health/router.py`:
 
 ```python
-# 1. standard library
-from uuid import UUID
+from __future__ import annotations
 
-# 2. third-party packages
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# 3. application domain imports
-from app.modules.accounts.domain import Account
-from app.modules.accounts.errors import AccountAlreadyExistsError
+from app.api.responses import error_responses
+from app.core.errors import ApiError, ErrorCode
+from app.db.session import get_db_session
 
-# 4. local module imports
-from .schemas import CreateAccountRequest, AccountResponse
-from .service import AccountService
+from .repository import SqlAlchemyDatabaseProbe
+from .schemas import LiveHealth, ReadyHealth
+from .service import HealthService
 ```
 
 ### 4.4 Logging
@@ -480,30 +499,31 @@ Logging is a cross-cutting concern and should happen at the correct boundary:
 - repositories log persistence-level issues only if they add diagnostic value
 - do not log sensitive data such as tokens, passwords, or account secrets
 
-Example:
+Use a module-level logger and pass values as arguments, not by string concatenation:
 
 ```python
 logger = logging.getLogger(__name__)
 
-async def create_account(...):
-    logger.info("Creating account for owner=%s", owner_id)
+logger.warning("readiness_check_failed", exc_info=True)
 ```
 
-Prefer structured logging fields over free-form string concatenation, and keep logs actionable.
+Every error response is logged once by `exception_handlers.py` with its status, code, and request ID.
 
 ### 4.5 Configuration
 
-Use a typed configuration object loaded once at startup, not scattered environment access across modules.
+Configuration is a typed `Settings` object (pydantic-settings) in `app/core/config.py`, read from `MONTELINGO_*` environment variables and cached by `get_settings()`:
 
 ```python
-@dataclass(frozen=True)
-class Settings:
-    database_url: str
-    app_env: str
-    log_level: str
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="MONTELINGO_", case_sensitive=False)
+
+    env: str = Field(default="development")
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5433/montelingo"
+    )
 ```
 
-Modules should depend on `Settings` or a narrower config interface, not on global environment variables or dynamic mutation.
+Add new settings as typed fields here. Modules depend on `Settings` (through `Depends(get_settings)` at the API boundary), never on `os.environ`.
 
 ### 4.6 Migrations and schema evolution
 
@@ -511,10 +531,11 @@ Database schema changes must be managed with migrations and not by ad hoc `CREAT
 
 Rules:
 
-- all schema changes in PostgreSQL must be represented as Alembic migrations
+- all schema changes in PostgreSQL must be represented as Alembic migrations in `apps/api/alembic/versions/`
 - migrations must be reviewed for constraints, indexes, and data safety
 - repository and domain code must assume schema changes are explicit and versioned
 - do not create migrations from ORM metadata alone without verifying the generated SQL
+- CI applies all migrations to a clean database and runs `pnpm db:check` to catch model/migration drift
 
 Migration discipline:
 
@@ -522,13 +543,39 @@ Migration discipline:
 - account for indexes and concurrency implications
 - include data backfills or validation separately when required
 
+### 4.7 Request IDs
+
+`request_id_middleware` (`app/core/request_id.py`) resolves the request ID once per request. It reuses a safe incoming `X-Request-Id` header or generates a UUID, stores the ID on `request.state.request_id`, and echoes it in the `X-Request-Id` response header. Code that needs the ID calls `get_request_id(request)`, which returns the stored value and never generates a second one.
+
 ---
 
 ## 5. Test strategy
 
-### 5.1 Unit tests
+### 5.1 Layout and fixtures
 
-Unit tests verify business behavior in the domain and application layers. They must be fast and should not require a live PostgreSQL instance.
+```text
+apps/api/tests/
+  conftest.py            # `app` (fresh create_app(), unreachable DB) and `client` fixtures
+  contract/              # OpenAPI rules and error-envelope behaviour
+  unit/
+    core/                # exception mapping, request IDs
+    modules/<name>/      # per-module router and service tests
+```
+
+Tests use the shared `client` fixture and never import the module-level `app.main.app`. A test module that needs test-only routes overrides the `app` fixture and includes them:
+
+```python
+@pytest.fixture
+def app(app: FastAPI) -> FastAPI:
+    app.include_router(test_only_router)
+    return app
+```
+
+Demo endpoints are never added to the production router for testing. Pytest runs with `--import-mode=importlib`, so test files in different module folders can share names such as `test_router.py`.
+
+### 5.2 Unit tests
+
+Unit tests verify business behavior in the domain and application layers. They must be fast and must not require a live PostgreSQL instance.
 
 Coverage should include:
 
@@ -538,19 +585,18 @@ Coverage should include:
 - business exception mapping
 - edge cases and failure paths
 
-Example:
+Example, from `tests/unit/modules/health/test_service.py`:
 
 ```python
-def test_account_rename_rejects_blank_name():
-    account = Account.new(owner_id=uuid4(), name="Example", email="user@example.com")
-
-    with pytest.raises(ValueError, match="cannot be empty"):
-        account.rename("   ")
+@pytest.mark.asyncio
+async def test_not_ready_when_database_fails() -> None:
+    probe = _FakeProbe(error=ConnectionRefusedError("connection refused"))
+    assert await HealthService(database=probe).is_ready() is False
 ```
 
-### 5.2 PostgreSQL integration tests
+### 5.3 PostgreSQL integration tests
 
-Integration tests are run against PostgreSQL and cover persistence behavior, not a mocked repository.
+Integration tests run against PostgreSQL and cover persistence behavior, not a mocked repository. They go in `apps/api/tests/integration/postgres/`, created alongside the first persistence module. The CI `backend` job already provides a migrated PostgreSQL service through `MONTELINGO_DATABASE_URL`.
 
 Required coverage includes:
 
@@ -561,25 +607,9 @@ Required coverage includes:
 - concurrent updates and locking behavior
 - transaction boundaries and rollback correctness
 
-Recommended placement (same tree as §1.2):
-
-```text
-apps/api/app/tests/
-  unit/
-    test_account_domain.py
-    test_account_service.py
-  integration/
-    postgres/
-      test_account_repository.py
-      test_account_constraints.py
-      test_migrations.py
-      test_authorization.py
-      test_account_concurrency.py
-```
-
 Do not place repository integration tests in the unit layer and do not mock away PostgreSQL behavior when testing persistence or concurrency.
 
-### 5.3 Test principles
+### 5.4 Test principles
 
 - test real behavior, not mock structure
 - prefer fake implementations for unit tests when the boundary is important
@@ -591,47 +621,17 @@ Do not place repository integration tests in the unit layer and do not mock away
 
 ## 6. Putting it together: a compliant request flow
 
-This section traces one request end to end. The `AccountService` is not redefined here — see §2.3 for the canonical implementation; redefining it a second time is exactly what caused the constructor to drift in an earlier revision of this document.
+`GET /api/v1/health/ready` passes through every layer:
 
-```python
-# app/modules/accounts/repository.py
-class SqlAlchemyAccountRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+1. `request_id_middleware` resolves the request ID and stores it on `request.state` (§4.7).
+2. `app/api/v1/router.py` routes `/health/*` to `app/modules/health/router.py`.
+3. FastAPI resolves `get_health_service`, which opens a session with `get_db_session()` and builds `HealthService(database=SqlAlchemyDatabaseProbe(session))` (§2.5).
+4. The `ready` endpoint calls `service.is_ready()`. The service calls the probe through the `DatabaseProbe` protocol and turns any failure into `False` (§2.3).
+5. On success the router returns `ReadyHealth()`, serialized through `response_model` as `{"status": "ready"}`.
+6. On failure the router raises `ApiError(ErrorCode.SERVICE_UNAVAILABLE, ...)`. `exception_handlers.py` turns it into a 503 `ErrorEnvelope` carrying the same request ID (§3).
+7. The operation is published as `health_ready` in the OpenAPI schema, so the generated client types both responses (see [ADR 0002](adr/0002-openapi-contract-and-client-generation.md)).
 
-    async def get_by_id(self, account_id: UUID) -> Account | None:
-        orm = await self.session.get(AccountORM, account_id)
-        if orm is None:
-            return None
-        return Account(id=orm.id, owner_id=orm.owner_id, name=orm.name, email=orm.email)
-
-    async def save(self, account: Account) -> None:
-        orm = AccountORM(
-            id=account.id,
-            owner_id=account.owner_id,
-            name=account.name,
-            email=str(account.email),
-        )
-        self.session.add(orm)
-```
-
-```python
-# app/modules/accounts/router.py
-@router.post("/accounts", response_model=AccountResponse)
-async def create_account(
-    payload: CreateAccountRequest,
-    current_account: AccountContext = Depends(get_current_account),
-    service: AccountService = Depends(get_account_service),
-):
-    account = await service.create_account(
-        owner_id=current_account.id,
-        name=payload.name,
-        email=payload.email,
-    )
-    return AccountResponse.model_validate(account)
-```
-
-This layout keeps HTTP concerns on the outside, business rules in the service/domain, and persistence in the repository layer — with a single, unambiguous definition of each type.
+This layout keeps HTTP concerns on the outside, business rules in the service/domain, and persistence in the repository layer, with a single, unambiguous definition of each type.
 
 ---
 
@@ -649,17 +649,3 @@ The project should behave like a modular monolith, not a loosely organized web a
 - tests separate real domain behavior from PostgreSQL-backed integration guarantees
 
 If a change crosses these boundaries without a clear reason, it is a design smell and should be refactored before it becomes permanent.
-
----
-
-## Revision notes
-
-This revision resolves six cross-referential inconsistencies found in the previous draft:
-
-1. `AccountService` had two different constructors (§2.3 vs §6) — unified into one canonical constructor (`repo`, `tx`, `authz`) in §2.3; §6 now references it instead of redefining it.
-2. `Account.new(...)` was called in §2.3 and §6 but never defined — added `owner_id` field and a `new()` classmethod to the `Account` domain model in §2.2.
-3. The §2.6 example called `repo.get_by_id(session=session, ...)` against a `AccountRepository` protocol with no `session` parameter, and referenced an undefined `repo` — rewritten as an `AccountService` method using the already-injected repository and the domain object's own `owner_id`.
-4. The §6 router example called `service.create_account(...)` without `await` — fixed.
-5. Test directory structure differed between §1.2 (`apps/api/app/tests/...`) and §5.2 (`tests/...`) — both now show the same `apps/api/app/tests/unit/` and `apps/api/app/tests/integration/postgres/` tree.
-6. §4.2 (naming) and §4.3 (imports) had no code examples, unlike the rest of §4 — added a file-listing example and an import-order example to each.
-7. §1.2 placed the router in a shared `api/v1/routers/` directory, which forced the `account_router.py` prefix used throughout §4.2/§6. The actual codebase (`apps/api/app/api/v1/router.py`, no `modules/` yet) confirmed the intended layout is per-module (`modules/accounts/router.py`), so the shared directory was removed, `app/api/v1/router.py` is now documented as the aggregator that includes each module's router, and the prefix was dropped from §4.2/§4.3/§6 accordingly.
