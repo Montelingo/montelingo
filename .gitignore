@@ -159,7 +159,3 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
-
-# Markdown: only the root README.md is tracked (enforced by scripts/check-markdown.sh)
-*.md
-!/README.md

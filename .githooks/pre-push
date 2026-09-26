@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# Rejects pushes whose tip contains Markdown files other than the root README.md.
-set -euo pipefail
-
-zero=0000000000000000000000000000000000000000
-while read -r _local_ref local_sha _remote_ref _remote_sha; do
-  [ "$local_sha" = "$zero" ] && continue # branch deletion
-  bash scripts/check-markdown.sh "$local_sha"
-done
