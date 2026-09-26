@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 APP_DIR = ROOT / "apps" / "api"
@@ -14,9 +15,9 @@ from app.main import app
 OUTPUT = ROOT / "packages" / "api-client" / "openapi.json"
 
 
-def _strip_generic_object_noise(value):
+def _strip_generic_object_noise(value: Any) -> Any:
     if isinstance(value, dict):
-        cleaned = {}
+        cleaned: dict[str, Any] = {}
         for key, item in value.items():
             if key == "additionalProperties" and item is True and not value.get("properties"):
                 continue
