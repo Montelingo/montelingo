@@ -2,8 +2,12 @@
 
 ## Architecture documentation
 
-- [FastAPI modular-monolith boundaries and rules](docs/fastapi-modular-monolith.md)
-- [Frontend architecture conventions](docs/frontend-architecture.md)
+Architecture documentation and ADRs live in the [project wiki](https://github.com/Montelingo/montelingo/wiki):
+
+- [FastAPI modular-monolith boundaries and rules](https://github.com/Montelingo/montelingo/wiki/FastAPI-Modular-Monolith)
+- [Frontend architecture conventions](https://github.com/Montelingo/montelingo/wiki/Frontend-Architecture)
+- [API conventions](https://github.com/Montelingo/montelingo/wiki/API-Conventions)
+- [ADR 0002: OpenAPI contract and client generation](https://github.com/Montelingo/montelingo/wiki/ADR-0002-OpenAPI-Contract-and-Client-Generation)
 # Montelingo
 
 Minimal runnable monorepo where the frontend (`apps/web`) and backend
@@ -23,7 +27,7 @@ for why this repo does not use Nx/Turborepo.
 │   │   │   ├── api/v1/     # /api/v1 router (aggregates module routers)
 │   │   │   ├── core/       # settings, error codes/handlers, request IDs
 │   │   │   ├── db/         # async SQLAlchemy engine/session, Base
-│   │   │   ├── modules/    # business modules (health); see docs/fastapi-modular-monolith.md
+│   │   │   ├── modules/    # business modules (health); see the FastAPI-Modular-Monolith wiki page
 │   │   │   ├── schemas/    # shared API schemas (error envelope, pagination)
 │   │   │   └── main.py     # create_app() application factory
 │   │   ├── alembic/        # Alembic env + versions
@@ -42,7 +46,6 @@ for why this repo does not use Nx/Turborepo.
 │       └── package.json
 ├── packages/                # Placeholder for shared packages
 ├── tests/e2e/                # Placeholder for end-to-end tests
-├── docs/adr/                 # Architecture decision records
 ├── compose.yaml
 ├── pnpm-workspace.yaml
 ├── package.json
