@@ -20,12 +20,14 @@ for why this repo does not use Nx/Turborepo.
 ├── apps/
 │   ├── api/                # FastAPI backend (uv project)
 │   │   ├── app/
-│   │   │   ├── api/v1/     # /api/v1 router + endpoints (health)
-│   │   │   ├── core/       # settings (pydantic-settings)
+│   │   │   ├── api/v1/     # /api/v1 router (aggregates module routers)
+│   │   │   ├── core/       # settings, error codes/handlers, request IDs
 │   │   │   ├── db/         # async SQLAlchemy engine/session, Base
+│   │   │   ├── modules/    # business modules (health); see docs/fastapi-modular-monolith.md
+│   │   │   ├── schemas/    # shared API schemas (error envelope, pagination)
 │   │   │   └── main.py     # create_app() application factory
 │   │   ├── alembic/        # Alembic env + versions
-│   │   ├── tests/          # pytest tests
+│   │   ├── tests/          # pytest: contract/ and unit/ tests
 │   │   ├── alembic.ini
 │   │   ├── Dockerfile
 │   │   └── pyproject.toml

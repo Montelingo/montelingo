@@ -52,7 +52,7 @@ Every route declares `operation_id` explicitly. Never rely on FastAPI's auto-gen
 - Examples: `lessons_list`, `lessons_get`, `lessons_create`, `health_live`, `health_ready`.
 - IDs are unique across the API and never change once published. Renaming one is a breaking change.
 
-`apps/api/tests/contract/test_contract.py` enforces explicit IDs, uniqueness, and the format.
+`apps/api/tests/contract/test_openapi.py` enforces explicit IDs, uniqueness, and the format.
 
 ### Documented responses
 
@@ -69,4 +69,4 @@ Every route declares `operation_id` explicitly. Never rely on FastAPI's auto-gen
 
 ### Test-only routes
 
-Demo endpoints do not ship in the production router. Tests that need routes to exercise shared contract behavior mount them on an app created with `create_app()` inside the test module.
+Demo endpoints do not ship in the production router. Tests that need routes to exercise shared contract behavior override the shared `app` fixture and include test-only routers on it (see [modular-monolith rules §5.1](../fastapi-modular-monolith.md#51-layout-and-fixtures)).
