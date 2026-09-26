@@ -2,6 +2,8 @@
   "name": "montelingo-workspace",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "check:markdown": "bash scripts/check-markdown.sh",
     "dev:web": "pnpm --filter @montelingo/web dev",
     "test:web": "pnpm --filter @montelingo/web test",
     "lint:web": "pnpm --filter @montelingo/web lint",
