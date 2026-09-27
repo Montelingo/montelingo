@@ -175,7 +175,11 @@ export function LessonCard({ lesson, onStart }: LessonCardProps) {
 // ❌ coupled to the wire format
 import type { Schemas } from "@app/api-client";
 
-export function LessonCard({ resource }: { resource: Schemas["LessonResource"] }) {
+export function LessonCard({
+  resource,
+}: {
+  resource: Schemas["LessonResource"];
+}) {
   return <h2>{resource.title.en}</h2>; // knows about snake_case, localization envelope, etc.
 }
 ```
@@ -229,13 +233,13 @@ Rules:
 
 ### 4.1 Where state lives
 
-| Kind of state                                   | Where it lives                                                           |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| Server data (lessons, progress, account)        | Fetched in Server Components via feature adapters, passed down as props  |
-| Shareable UI state (filters, tab, page cursor)  | URL search params, read in the page and passed to the feature            |
-| Local interaction state (current answer, open)  | `useState` / `useReducer` inside the feature's client component or hook  |
-| Game session state (current exercise, streak)   | A `useReducer` whose reducer is a pure function in `model/`              |
-| Cross-feature client state                      | Avoid. Needs an ADR before introducing a global store or context         |
+| Kind of state                                  | Where it lives                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Server data (lessons, progress, account)       | Fetched in Server Components via feature adapters, passed down as props |
+| Shareable UI state (filters, tab, page cursor) | URL search params, read in the page and passed to the feature           |
+| Local interaction state (current answer, open) | `useState` / `useReducer` inside the feature's client component or hook |
+| Game session state (current exercise, streak)  | A `useReducer` whose reducer is a pure function in `model/`             |
+| Cross-feature client state                     | Avoid. Needs an ADR before introducing a global store or context        |
 
 Do not add a global state library or cross-feature React context without an ADR in `docs/adr/`.
 
@@ -254,11 +258,16 @@ import { initialSession, lessonSessionReducer } from "../model/session";
 import type { Lesson } from "../model/lesson";
 
 export function useLessonSession(lesson: Lesson) {
-  const [state, dispatch] = useReducer(lessonSessionReducer, lesson, initialSession);
+  const [state, dispatch] = useReducer(
+    lessonSessionReducer,
+    lesson,
+    initialSession,
+  );
 
   return {
     state,
-    submitAnswer: (answer: string) => dispatch({ type: "answer-submitted", answer }),
+    submitAnswer: (answer: string) =>
+      dispatch({ type: "answer-submitted", answer }),
     skip: () => dispatch({ type: "exercise-skipped" }),
   };
 }
@@ -344,14 +353,14 @@ Base URL selection lives in one place, `src/lib/api.ts` (`getApiClient()`). It u
 
 ### 6.2 Escape hatches **(enforced)**
 
-| Rule                                                       | What it forbids                                          |
-| ---------------------------------------------------------- | -------------------------------------------------------- |
-| `@typescript-eslint/no-explicit-any`                       | `any` in annotations                                     |
-| `@typescript-eslint/no-unsafe-*` (recommended-type-checked) | using values typed `any` (assign, call, member access, return) |
-| `@typescript-eslint/ban-ts-comment`                        | `@ts-ignore`, `@ts-nocheck`, and `@ts-expect-error` without a description |
-| `@typescript-eslint/no-non-null-assertion`                 | `value!`                                                 |
-| `@typescript-eslint/consistent-type-assertions`            | `{ ... } as Foo` object-literal assertions and `<Foo>x` syntax |
-| `reportUnusedDisableDirectives`                            | stale `eslint-disable` comments                          |
+| Rule                                                        | What it forbids                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `@typescript-eslint/no-explicit-any`                        | `any` in annotations                                                      |
+| `@typescript-eslint/no-unsafe-*` (recommended-type-checked) | using values typed `any` (assign, call, member access, return)            |
+| `@typescript-eslint/ban-ts-comment`                         | `@ts-ignore`, `@ts-nocheck`, and `@ts-expect-error` without a description |
+| `@typescript-eslint/no-non-null-assertion`                  | `value!`                                                                  |
+| `@typescript-eslint/consistent-type-assertions`             | `{ ... } as Foo` object-literal assertions and `<Foo>x` syntax            |
+| `reportUnusedDisableDirectives`                             | stale `eslint-disable` comments                                           |
 
 When an escape hatch is genuinely required, suppress one line with an explanation after `--`:
 
@@ -370,7 +379,10 @@ A suppression without a reason is rejected in review. Prefer these alternatives:
 - `satisfies` instead of `as` when you want checking without widening:
 
 ```ts
-const levels = { a1: "Beginner", a2: "Elementary" } satisfies Record<string, string>;
+const levels = { a1: "Beginner", a2: "Elementary" } satisfies Record<
+  string,
+  string
+>;
 ```
 
 - an explicit `if (x === undefined) throw …` or early return instead of `x!`
@@ -387,18 +399,18 @@ const levels = { a1: "Beginner", a2: "Elementary" } satisfies Record<string, str
 
 ### 7.1 Naming
 
-| Thing                        | Convention                  | Example                                   |
-| ---------------------------- | --------------------------- | ----------------------------------------- |
-| Component file and component | `PascalCase.tsx`            | `LessonCard.tsx` → `export function LessonCard` |
-| Hook file and hook           | `use-kebab-case.ts`, `useCamelCase` | `use-lesson-session.ts` → `useLessonSession` |
-| Other modules                | `kebab-case.ts`             | `lessons-api.ts`, `scoring.ts`            |
-| Tests                        | same name + `.test.ts(x)`   | `LessonCard.test.tsx`                     |
-| Feature folders              | `kebab-case`, domain noun   | `features/lessons`, `features/word-review` |
-| Types                        | `PascalCase`                | `Lesson`, `LessonCardProps`               |
-| Constants                    | `camelCase`, or `UPPER_SNAKE_CASE` for true module-level constants | `MAX_ATTEMPTS` |
-| Event-handler props / handlers | `onX` props, `handleX` functions | `onStart`, `handleSubmit`           |
-| Booleans                     | `is`/`has`/`can`/`should` prefix | `isCorrect`, `hasFinished`            |
-| Next.js special files        | framework names             | `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx` |
+| Thing                          | Convention                                                         | Example                                              |
+| ------------------------------ | ------------------------------------------------------------------ | ---------------------------------------------------- |
+| Component file and component   | `PascalCase.tsx`                                                   | `LessonCard.tsx` → `export function LessonCard`      |
+| Hook file and hook             | `use-kebab-case.ts`, `useCamelCase`                                | `use-lesson-session.ts` → `useLessonSession`         |
+| Other modules                  | `kebab-case.ts`                                                    | `lessons-api.ts`, `scoring.ts`                       |
+| Tests                          | same name + `.test.ts(x)`                                          | `LessonCard.test.tsx`                                |
+| Feature folders                | `kebab-case`, domain noun                                          | `features/lessons`, `features/word-review`           |
+| Types                          | `PascalCase`                                                       | `Lesson`, `LessonCardProps`                          |
+| Constants                      | `camelCase`, or `UPPER_SNAKE_CASE` for true module-level constants | `MAX_ATTEMPTS`                                       |
+| Event-handler props / handlers | `onX` props, `handleX` functions                                   | `onStart`, `handleSubmit`                            |
+| Booleans                       | `is`/`has`/`can`/`should` prefix                                   | `isCorrect`, `hasFinished`                           |
+| Next.js special files          | framework names                                                    | `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx` |
 
 ### 7.2 Imports **(partially enforced)**
 
@@ -457,13 +469,13 @@ export type { Lesson, LessonSummary } from "./model/lesson";
 
 ### 9.1 Error boundaries
 
-| Failure                                  | Handled by                                                                        |
-| ---------------------------------------- | --------------------------------------------------------------------------------- |
-| Resource does not exist                  | Adapter returns `null` → page calls `notFound()` → nearest `not-found.tsx`       |
-| Unexpected error while rendering a route | Nearest `error.tsx` in the route segment                                          |
-| Error in the root layout                 | `src/app/global-error.tsx`                                                        |
-| Expected, recoverable user error (wrong answer, validation) | Handled in the feature as state. Not thrown                    |
-| Failed mutation from a client component  | Caught in the feature hook, exposed as `{ status: "error", message }`             |
+| Failure                                                     | Handled by                                                                 |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Resource does not exist                                     | Adapter returns `null` → page calls `notFound()` → nearest `not-found.tsx` |
+| Unexpected error while rendering a route                    | Nearest `error.tsx` in the route segment                                   |
+| Error in the root layout                                    | `src/app/global-error.tsx`                                                 |
+| Expected, recoverable user error (wrong answer, validation) | Handled in the feature as state. Not thrown                                |
+| Failed mutation from a client component                     | Caught in the feature hook, exposed as `{ status: "error", message }`      |
 
 Every route segment that fetches data has an `error.tsx` (or inherits one from its parent). Error boundaries show a human message and a retry action. They never show `error.message` from the server verbatim:
 
@@ -504,13 +516,13 @@ export default function LessonError({ reset }: ErrorPageProps) {
 
 Tests are **co-located** with the file they test, named `<file>.test.ts` or `<file>.test.tsx`. Vitest picks up `src/**/*.test.{ts,tsx}`. `.tsx` tests run in `jsdom`. `.ts` tests run in `node`.
 
-| What                              | Kind of test                         | Example                              |
-| --------------------------------- | ------------------------------------ | ------------------------------------ |
-| `model/` pure functions, reducers | Unit (node), exhaustive edge cases   | `scoring.test.ts`                    |
-| `api/` adapters                   | Unit, with `@/lib/api` mocked to return `createApiClient({ fetch })` over a fake `fetch` | `lessons-api.test.ts` |
-| Hooks with logic                  | `renderHook` (jsdom)                 | `use-lesson-session.test.ts`         |
-| Components                        | Behavior + accessibility (jsdom)     | `LessonCard.test.tsx`                |
-| Full user journeys across the stack | End-to-end in `tests/e2e/`         | `tests/e2e/smoke.sh`                 |
+| What                                | Kind of test                                                                             | Example                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- |
+| `model/` pure functions, reducers   | Unit (node), exhaustive edge cases                                                       | `scoring.test.ts`            |
+| `api/` adapters                     | Unit, with `@/lib/api` mocked to return `createApiClient({ fetch })` over a fake `fetch` | `lessons-api.test.ts`        |
+| Hooks with logic                    | `renderHook` (jsdom)                                                                     | `use-lesson-session.test.ts` |
+| Components                          | Behavior + accessibility (jsdom)                                                         | `LessonCard.test.tsx`        |
+| Full user journeys across the stack | End-to-end in `tests/e2e/`                                                               | `tests/e2e/smoke.sh`         |
 
 ### 10.2 Component tests cover behavior and accessibility
 
@@ -531,7 +543,12 @@ import { axe } from "vitest-axe";
 
 import { LessonCard } from "./LessonCard";
 
-const lesson = { id: "l-1", title: "Greetings", wordCount: 12, publishedAt: "2026-09-01T00:00:00Z" };
+const lesson = {
+  id: "l-1",
+  title: "Greetings",
+  wordCount: 12,
+  publishedAt: "2026-09-01T00:00:00Z",
+};
 
 describe("LessonCard", () => {
   it("starts the lesson when the user clicks start", async () => {
@@ -546,11 +563,15 @@ describe("LessonCard", () => {
   it("exposes the lesson as a labelled article", () => {
     render(<LessonCard lesson={lesson} onStart={vi.fn()} />);
 
-    expect(screen.getByRole("article", { name: "Greetings" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("article", { name: "Greetings" }),
+    ).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {
-    const { container } = render(<LessonCard lesson={lesson} onStart={vi.fn()} />);
+    const { container } = render(
+      <LessonCard lesson={lesson} onStart={vi.fn()} />,
+    );
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -573,16 +594,16 @@ expect(container).toMatchSnapshot();
 
 ## 11. Enforcement summary
 
-| Convention                                          | Mechanism                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------- |
-| Strict compiler options                             | `tsconfig.json` → `pnpm typecheck:web`                        |
-| No `any`, unsafe `any` usage, `!`, object-literal `as`, bare `@ts-*` | `eslint.config.mjs` → `pnpm lint:web`        |
-| Type-only imports                                   | `consistent-type-imports` → `pnpm lint:web`                   |
-| No deep imports into other features                 | `no-restricted-imports` → `pnpm lint:web`                     |
-| Shared folders don't import features                | `no-restricted-imports` (scoped override) → `pnpm lint:web`   |
-| Generated client matches FastAPI                    | `pnpm contract:check`                                         |
-| Formatting                                          | Prettier → `pnpm format:check:web`                            |
-| Page thinness, prop typing, `"use client"` placement, test style | Code review against this document                |
+| Convention                                                           | Mechanism                                                   |
+| -------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Strict compiler options                                              | `tsconfig.json` → `pnpm typecheck:web`                      |
+| No `any`, unsafe `any` usage, `!`, object-literal `as`, bare `@ts-*` | `eslint.config.mjs` → `pnpm lint:web`                       |
+| Type-only imports                                                    | `consistent-type-imports` → `pnpm lint:web`                 |
+| No deep imports into other features                                  | `no-restricted-imports` → `pnpm lint:web`                   |
+| Shared folders don't import features                                 | `no-restricted-imports` (scoped override) → `pnpm lint:web` |
+| Generated client matches FastAPI                                     | `pnpm contract:check`                                       |
+| Formatting                                                           | Prettier → `pnpm format:check:web`                          |
+| Page thinness, prop typing, `"use client"` placement, test style     | Code review against this document                           |
 
 ## 12. Current state and known gaps
 
