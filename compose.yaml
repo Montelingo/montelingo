@@ -24,7 +24,8 @@ services:
       target: runtime
     command: uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
       UV_CACHE_DIR: /tmp/.cache/uv
@@ -40,7 +41,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: runtime
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
       UV_CACHE_DIR: /tmp/.cache/uv
@@ -50,7 +52,11 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live')\""]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://127.0.0.1:8000/api/v1/health/live'')"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -65,7 +71,8 @@ services:
       dockerfile: apps/web/Dockerfile
       target: runtime
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       API_INTERNAL_BASE_URL: http://api:8000
     depends_on:
@@ -88,7 +95,8 @@ services:
       dockerfile: apps/api/Dockerfile
       target: dev
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
       UV_CACHE_DIR: /tmp/.cache/uv
@@ -110,7 +118,8 @@ services:
       dockerfile: apps/web/Dockerfile
       target: dev
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       API_INTERNAL_BASE_URL: http://api-dev:8001
     command: pnpm --filter @montelingo/web dev --hostname 0.0.0.0 --port 3001
