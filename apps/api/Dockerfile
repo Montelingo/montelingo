@@ -14,7 +14,7 @@ COPY apps/api/pyproject.toml apps/api/
 FROM base AS dev
 RUN uv sync --project apps/api --locked
 COPY apps/api apps/api
-CMD ["uv", "run", "--no-sync", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uv", "run", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8001"]
 
 FROM base AS runtime
 RUN uv sync --project apps/api --no-dev --locked
@@ -27,4 +27,4 @@ RUN addgroup --system --gid 1001 appgroup && \
 
 USER appuser
 
-CMD ["sh", "-c", "uv run --no-sync --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --no-sync --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uv run --frozen --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --frozen --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
