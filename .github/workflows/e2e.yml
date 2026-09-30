@@ -37,7 +37,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Build and start the stack
-        run: docker compose up --build -d
+        # --wait fails the step unless every service reports healthy.
+        run: docker compose up --build -d --wait --wait-timeout 300
 
       - name: Wait for services and run smoke checks
         run: pnpm run e2e:smoke
