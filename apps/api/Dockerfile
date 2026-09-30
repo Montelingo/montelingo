@@ -27,4 +27,4 @@ RUN addgroup --system --gid 1001 appgroup && \
 
 USER appuser
 
-CMD ["sh", "-c", "uv run --frozen --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --frozen --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
