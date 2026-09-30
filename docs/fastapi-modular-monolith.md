@@ -69,15 +69,15 @@ apps/api/
 
 Every business capability is a module under `app/modules/<name>/`. A module creates only the files for the layers it actually has:
 
-| File            | Contents                                                      | In `health` |
-| --------------- | ------------------------------------------------------------- | ----------- |
-| `router.py`     | `APIRouter`, endpoints, `get_<name>_service` dependency       | yes         |
-| `schemas.py`    | Pydantic request/response schemas (inherit `ApiSchema`)       | yes         |
-| `service.py`    | use cases, transaction boundaries, authorization decisions    | yes         |
-| `repository.py` | repository protocol and SQLAlchemy implementation             | yes         |
-| `domain.py`     | domain entities, value objects, invariants                    | no          |
-| `models.py`     | SQLAlchemy persistence models                                 | no          |
-| `errors.py`     | typed domain errors                                           | no          |
+| File            | Contents                                                   | In `health` |
+| --------------- | ---------------------------------------------------------- | ----------- |
+| `router.py`     | `APIRouter`, endpoints, `get_<name>_service` dependency    | yes         |
+| `schemas.py`    | Pydantic request/response schemas (inherit `ApiSchema`)    | yes         |
+| `service.py`    | use cases, transaction boundaries, authorization decisions | yes         |
+| `repository.py` | repository protocol and SQLAlchemy implementation          | yes         |
+| `domain.py`     | domain entities, value objects, invariants                 | no          |
+| `models.py`     | SQLAlchemy persistence models                              | no          |
+| `errors.py`     | typed domain errors                                        | no          |
 
 Each module owns its own `router.py`; there is no shared, flat `routers/` directory. `app/api/v1/router.py` is the only exception. It is not a module router but the top-level aggregator that registers each module's router under the versioned API:
 
@@ -388,18 +388,18 @@ This keeps transaction flow deterministic and testable.
 
 `app/core/exception_handlers.py` is the single place that turns exceptions into HTTP error responses. Every error, whether raised by our code or by FastAPI/Starlette, leaves the API as the shared error envelope.
 
-| Raised                                   | Response                                                           |
-| ---------------------------------------- | ------------------------------------------------------------------ |
-| `ApiError(code, message, status_code)`   | `status_code` with `code` and `message` as given                   |
-| `RequestValidationError`                 | 422 `validation_error`, with one `details` entry per invalid field |
-| `HTTPException` 401                      | `authentication_error`                                             |
-| `HTTPException` 403                      | `authorization_error`                                              |
-| `HTTPException` 404 (also unknown routes) | `not_found`                                                       |
-| `HTTPException` 405                      | `method_not_allowed` (keeps the `Allow` header)                    |
-| `HTTPException` 429                      | `rate_limited` (keeps the `Retry-After` header)                    |
-| `HTTPException`, any other 4xx           | `bad_request`                                                      |
-| `HTTPException`, any 5xx                 | `internal_server_error`                                            |
-| any other exception                      | 500 `internal_server_error`; details are logged, never returned    |
+| Raised                                    | Response                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| `ApiError(code, message, status_code)`    | `status_code` with `code` and `message` as given                   |
+| `RequestValidationError`                  | 422 `validation_error`, with one `details` entry per invalid field |
+| `HTTPException` 401                       | `authentication_error`                                             |
+| `HTTPException` 403                       | `authorization_error`                                              |
+| `HTTPException` 404 (also unknown routes) | `not_found`                                                        |
+| `HTTPException` 405                       | `method_not_allowed` (keeps the `Allow` header)                    |
+| `HTTPException` 429                       | `rate_limited` (keeps the `Retry-After` header)                    |
+| `HTTPException`, any other 4xx            | `bad_request`                                                      |
+| `HTTPException`, any 5xx                  | `internal_server_error`                                            |
+| any other exception                       | 500 `internal_server_error`; details are logged, never returned    |
 
 Codes are the values of `ErrorCode` in `app/core/errors.py`. Each mapping has a test in `tests/unit/core/test_exception_handlers.py`.
 

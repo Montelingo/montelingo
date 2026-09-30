@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from typing import Annotated, Generic, TypeVar
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.types import StringConstraints
-
-T = TypeVar("T")
 
 UUID_PATTERN = (
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
@@ -55,6 +53,6 @@ class PageInfo(ApiSchema):
     has_more: bool = False
 
 
-class PaginatedResponse(ApiSchema, Generic[T]):
+class PaginatedResponse[T](ApiSchema):
     items: list[T]
     page: PageInfo

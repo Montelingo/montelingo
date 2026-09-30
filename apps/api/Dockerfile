@@ -13,6 +13,7 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir uv
 
+COPY .python-version .python-version
 COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
 COPY apps/api/pyproject.toml apps/api/pyproject.toml

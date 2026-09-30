@@ -1,9 +1,3 @@
-# montelingo
-
-## Architecture documentation
-
-- [FastAPI modular-monolith boundaries and rules](docs/fastapi-modular-monolith.md)
-- [Frontend architecture conventions](docs/frontend-architecture.md)
 # Montelingo
 
 Minimal runnable monorepo where the frontend (`apps/web`) and backend
@@ -12,12 +6,28 @@ Compose provides shared local infrastructure (PostgreSQL).
 
 The workspace uses pnpm workspaces (`apps/web`, `packages/*`) and a uv
 workspace (`apps/api`) rather than a monorepo orchestrator such as Nx or
-Turborepo; root `package.json` scripts wrap each app's commands.
+Turborepo; root `package.json` scripts wrap each app's commands (see
+[ADR 0001](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)).
+
+## Documentation
+
+- [FastAPI modular-monolith boundaries and rules](docs/fastapi-modular-monolith.md)
+- [Frontend architecture conventions](docs/frontend-architecture.md)
+- [API conventions](docs/architecture/api-conventions.md)
+- Architecture decision records:
+  - [ADR 0001: Monorepo without a heavyweight orchestrator](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
+  - [ADR 0002: OpenAPI contract and client generation](docs/adr/0002-openapi-contract-and-client-generation.md)
+
+All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
+`pnpm format:check:docs` to check; CI runs the check).
 
 ## Repository structure
 
 ```
 .
+├── .github/
+│   ├── workflows/          # ci.yml, containers.yml, e2e.yml
+│   └── CODEOWNERS
 ├── apps/
 │   ├── api/                # FastAPI backend (uv project)
 │   │   ├── app/
@@ -28,11 +38,13 @@ Turborepo; root `package.json` scripts wrap each app's commands.
 │   │   │   ├── schemas/    # shared API schemas (error envelope, pagination)
 │   │   │   └── main.py     # create_app() application factory
 │   │   ├── alembic/        # Alembic env + versions
+│   │   ├── scripts/        # export_openapi.py (writes packages/api-client/openapi.json)
 │   │   ├── tests/          # pytest: contract/ and unit/ tests
 │   │   ├── alembic.ini
 │   │   ├── Dockerfile
 │   │   └── pyproject.toml
 │   └── web/                # Next.js frontend (pnpm project)
+│       ├── public/
 │       ├── src/
 │       │   ├── app/        # App Router (layout, page, globals.css)
 │       │   ├── features/   # feature slices (health: API adapter, model, UI, tests)
@@ -40,23 +52,39 @@ Turborepo; root `package.json` scripts wrap each app's commands.
 │       ├── Dockerfile
 │       ├── eslint.config.mjs
 │       ├── next.config.ts
+│       ├── tailwind.config.ts
+│       ├── vitest.config.ts
 │       └── package.json
-├── packages/                # Placeholder for shared packages
-├── tests/e2e/                # Placeholder for end-to-end tests
-├── docs/adr/                 # Architecture decision records
+├── packages/
+│   └── api-client/         # @app/api-client: generated OpenAPI types + openapi-fetch client
+│       ├── openapi.json    # committed OpenAPI schema exported from apps/api
+│       ├── scripts/        # check-generated.mjs (pnpm contract:check)
+│       └── src/            # client.ts, index.ts, generated/schema.ts
+├── tests/
+│   └── e2e/                # smoke.sh: Docker Compose stack smoke test (pnpm e2e:smoke)
+├── docs/
+│   ├── adr/                # architecture decision records
+│   ├── architecture/       # API conventions
+│   ├── fastapi-modular-monolith.md
+│   └── frontend-architecture.md
 ├── compose.yaml
-├── pnpm-workspace.yaml
-├── package.json
-├── pyproject.toml            # uv workspace root (apps/api member)
+├── package.json            # root scripts wrapping pnpm/uv commands; Prettier for Markdown
+├── pnpm-workspace.yaml     # pnpm workspace (apps/web, packages/*)
+├── pnpm-lock.yaml
+├── pyproject.toml          # uv workspace root (apps/api member)
+├── uv.lock
+├── .python-version         # Python version for uv (local, CI, API image)
 ├── .env.example
 ├── .editorconfig
+├── .dockerignore
 └── .gitignore
 ```
 
 ## Prerequisites
 
 - Node.js 22+, `pnpm` (pinned via `packageManager` in [package.json](package.json))
-- Python 3.12+, [`uv`](https://docs.astral.sh/uv/)
+- Python 3.12 (pinned in [.python-version](.python-version); `uv` downloads it if
+  missing), [`uv`](https://docs.astral.sh/uv/)
 - Docker + Docker Compose
 
 Copy `.env.example` to `.env` (or export the variables) before running Compose.
@@ -122,25 +150,28 @@ docker compose down
 
 ## Continuous Integration
 
-All CI workflows call the same root-level `pnpm run <script>` commands
-documented above — nothing in CI runs bespoke validation logic that isn't
-also reproducible on a developer machine. Workflows live in
+CI runs the same commands documented above: the root-level `pnpm run
+
+<script>` wrappers, or (in jobs that only install uv) the exact `uv run
+--project apps/api ...` commands those wrappers call. Nothing in CI runs
+bespoke validation logic that isn't also reproducible on a developer machine. Workflows live in
 [.github/workflows](.github/workflows) and run on every pull request, on
 pushes to `main`, and on demand (`workflow_dispatch`):
 
-- **`ci.yml`** — the required status check for pull requests. Four
+- **`ci.yml`** — the required status check for pull requests. Five
   independent jobs:
   - `frontend`: `pnpm run format:check:web`, `lint:web`, `typecheck:web`,
     `test:web`, `build:web`.
-  - `backend`: `pnpm run format:check:api`, `lint:api`, `typecheck:api`,
-    an Alembic `upgrade head` against a Postgres service container, then
-    `pnpm run test:api` (JUnit results uploaded as an artifact).
+  - `backend`: the commands behind `format:check:api`, `lint:api`,
+    `typecheck:api`, `db:upgrade` (against a Postgres service container),
+    then `test:api` (JUnit results uploaded as an artifact).
   - `database`: applies Alembic migrations to a fresh Postgres service
-    container and runs `pnpm run db:check` to catch model/migration drift.
+    container and runs the `db:check` command to catch model/migration drift.
   - `contract`: regenerates and diffs the OpenAPI spec / TypeScript client
     (`pnpm run contract:check`) and type-checks the generated client
     (`pnpm run typecheck:api-client`), so `packages/api-client` can never
     silently drift from `apps/api`.
+  - `docs`: `pnpm run format:check:docs` (Prettier over every Markdown file).
 - **`containers.yml`** — builds the production `apps/api` and `apps/web`
   Docker images, scans them with Trivy (fails on CRITICAL/HIGH
   vulnerabilities), and, only on pushes to `main`, pushes the images to the
@@ -176,4 +207,3 @@ The following was run and verified locally:
   parse successfully and their lockfile-dependent steps
   (`uv sync --locked`, `pnpm install --frozen-lockfile`) succeed against the
   committed lockfiles.
-
