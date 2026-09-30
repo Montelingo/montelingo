@@ -25,6 +25,11 @@ CMD ["pnpm", "--filter", "@montelingo/web", "dev", "--hostname", "0.0.0.0", "--p
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+# Docker sets HOSTNAME to the container ID, and the standalone server binds to
+# it, so it would only listen on the container's network address and the
+# in-container healthcheck on 127.0.0.1 would be refused. Bind all interfaces.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
 # Apply the latest Alpine security patches so the runtime image does not
 # carry known OS-package CVEs.
