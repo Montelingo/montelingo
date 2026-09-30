@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: runtime
-    command: uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
+    command: alembic -c apps/api/alembic.ini upgrade head
     env_file:
       - path: .env
         required: false
