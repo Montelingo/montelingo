@@ -2,9 +2,14 @@ FROM python:3.12-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    UV_CACHE_DIR=/tmp/.cache/uv
+    UV_CACHE_DIR=/tmp/.cache/uv \
+    UV_NO_SYNC=1
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
+
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
 
 WORKDIR /workspace
 
@@ -18,7 +23,6 @@ CMD ["uv", "run", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.
 
 FROM base AS runtime
 RUN uv sync --project apps/api --no-dev --locked
-
 
 ENV PATH="/workspace/.venv/bin:$PATH"
 
