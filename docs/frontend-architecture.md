@@ -1,8 +1,8 @@
 # Frontend architecture conventions
 
-This document defines how `apps/web` (Next.js App Router, React, TypeScript, Tailwind) is organized. It is the frontend counterpart to [FastAPI modular-monolith boundaries and rules](fastapi-modular-monolith.md): features are the frontend equivalent of backend modules, routes are the equivalent of routers, and `@app/api-client` is the only bridge between the two.
+This document defines how `apps/web` (Next.js 15 App Router, React 19, TypeScript, Tailwind) is organized. It is the frontend counterpart to [FastAPI modular-monolith boundaries and rules](fastapi-modular-monolith.md): features are the frontend equivalent of backend modules, routes are the equivalent of routers, and `@app/api-client` is the only bridge between the two.
 
-Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:web`. Everything else is enforced in code review.
+Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:web`. `pnpm lint:web` runs with `--max-warnings 0`, so lint warnings fail CI too. Everything else is enforced in code review.
 
 ## 1. Folder structure
 
@@ -276,6 +276,7 @@ export function useLessonSession(lesson: Lesson) {
 `lessonSessionReducer` is a pure function in `model/session.ts` and has its own unit tests, so the hook stays thin.
 
 - Hooks never return raw API responses. They return domain types.
+- Hooks follow the rules of hooks, and React Compiler-aware checks (no mutating props or state, no reading refs during render, no `setState` directly in an effect) are enforced by `eslint-plugin-react-hooks` **(enforced)**.
 - `useEffect` is for synchronizing with external systems (timers, audio, subscriptions). It is never used to derive state from props (compute it during render instead) or to fetch data that a Server Component can fetch.
 
 ## 5. Data access
@@ -339,7 +340,7 @@ Use runtime validation (a Zod schema in `schemas.ts`) when data crosses a bounda
 
 - data comes from `localStorage`, URL params, `postMessage`, or form input
 
-Add `zod` to `apps/web` with the first schema. Do not duplicate types the generator already provides.
+`zod` is not installed yet because no such boundary exists yet. Add it to `apps/web` with the first schema. Do not duplicate types the generator already provides.
 
 ### 5.3 Base URL and request options
 
@@ -453,6 +454,7 @@ export type { Lesson, LessonSummary } from "./model/lesson";
 - Inline `style={{}}` is only for values computed at runtime (such as a progress bar width).
 - Compose conditional classes with a `cn()` helper in `src/lib/cn.ts` rather than string concatenation.
 - Shared primitives expose variants through props (`variant="primary"`), not by accepting arbitrary `className` overrides for their core look. `className` is accepted for layout (margin, width) only.
+- Static accessibility rules (`alt` text, labelled controls, keyboard support for click handlers, valid ARIA) are enforced by `eslint-plugin-jsx-a11y` **(enforced)**. `vitest-axe` checks the rendered DOM (roles, accessible names, landmarks, ARIA) in component tests. It cannot check contrast, because jsdom does not apply styles, so contrast is checked in review.
 - Styling must not remove accessibility affordances: never `outline-none` without a visible `focus-visible:` replacement. Text must meet WCAG AA contrast.
 
 ```tsx
@@ -526,7 +528,7 @@ Tests are **co-located** with the file they test, named `<file>.test.ts` or `<fi
 
 ### 10.2 Component tests cover behavior and accessibility
 
-Component tests use Testing Library and `vitest-axe`. Add `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, and `vitest-axe` to `apps/web` devDependencies with the first component test. They:
+Component tests use Testing Library and `vitest-axe`. `apps/web/vitest.setup.ts` registers the `@testing-library/jest-dom` matchers (`toBeInTheDocument`, `toHaveTextContent`, …) and the `vitest-axe` matcher (`toHaveNoViolations`), and unmounts rendered trees after each test. Vitest globals are off, so import `describe`, `it`, `expect`, and `vi` from `vitest`. `src/features/health/components/ApiHealthCard.test.tsx` is the reference example. Component tests:
 
 - query the way a user perceives the page: `getByRole`, `getByLabelText`, `getByText`. Use `getByTestId` only when no accessible query exists.
 - interact through `userEvent`, not by calling props or setting state
@@ -539,6 +541,7 @@ They do **not** assert on internal state, hook calls, CSS class names, component
 // src/features/lessons/components/LessonCard.test.tsx
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import { LessonCard } from "./LessonCard";
@@ -594,22 +597,32 @@ expect(container).toMatchSnapshot();
 
 ## 11. Enforcement summary
 
-| Convention                                                           | Mechanism                                                   |
-| -------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Strict compiler options                                              | `tsconfig.json` → `pnpm typecheck:web`                      |
-| No `any`, unsafe `any` usage, `!`, object-literal `as`, bare `@ts-*` | `eslint.config.mjs` → `pnpm lint:web`                       |
-| Type-only imports                                                    | `consistent-type-imports` → `pnpm lint:web`                 |
-| No deep imports into other features                                  | `no-restricted-imports` → `pnpm lint:web`                   |
-| Shared folders don't import features                                 | `no-restricted-imports` (scoped override) → `pnpm lint:web` |
-| Generated client matches FastAPI                                     | `pnpm contract:check`                                       |
-| Formatting                                                           | Prettier → `pnpm format:check:web`                          |
-| Page thinness, prop typing, `"use client"` placement, test style     | Code review against this document                           |
+| Convention                                                           | Mechanism                                                      |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Strict compiler options                                              | `tsconfig.json` → `pnpm typecheck:web`                         |
+| No `any`, unsafe `any` usage, `!`, object-literal `as`, bare `@ts-*` | `eslint.config.mjs` → `pnpm lint:web`                          |
+| Type-only imports                                                    | `consistent-type-imports` → `pnpm lint:web`                    |
+| No deep imports into other features                                  | `no-restricted-imports` → `pnpm lint:web`                      |
+| Shared folders don't import features                                 | `no-restricted-imports` (scoped override) → `pnpm lint:web`    |
+| Rules of hooks, React Compiler-safe patterns                         | `eslint-plugin-react-hooks` (recommended) → `pnpm lint:web`    |
+| Static JSX accessibility checks                                      | `eslint-plugin-jsx-a11y` (recommended) → `pnpm lint:web`       |
+| Next.js best practices (`next/link`, `next/image`, `next/script`)    | `@next/eslint-plugin-next` (core-web-vitals) → `pnpm lint:web` |
+| No axe violations in rendered components                             | `vitest-axe` in component tests → `pnpm test:web`              |
+| Generated client matches FastAPI                                     | `pnpm contract:check`                                          |
+| Formatting                                                           | Prettier → `pnpm format:check:web`                             |
+| Page thinness, prop typing, `"use client"` placement, test style     | Code review against this document                              |
 
 ## 12. Current state and known gaps
 
 `src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
 
+Installed and enforced:
+
+- React 19 (`react`, `react-dom`, and their types), matching the React version the App Router runs. See [ADR 0003](adr/0003-react-19.md).
+- Testing Library (`@testing-library/react`, `user-event`, `jest-dom`) and `vitest-axe`, with matchers registered in `vitest.setup.ts`. `ApiHealthCard.test.tsx` is the reference component test.
+- `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
+
 Known gaps to close as real features land:
 
-- Testing Library, `vitest-axe`, `zod`, and the `cn()` helper are documented but not installed yet. Add each one with its first use.
-- No React- or Next-specific ESLint plugins (`eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, `eslint-plugin-jsx-a11y`) are configured yet. Adding them would enforce the rules of hooks and catch many accessibility issues statically.
+- `zod` and the `cn()` helper are documented but not installed yet. Add each one with its first use.
+- Import ordering (§7.2) and naming conventions (§7.1) are enforced only in code review.

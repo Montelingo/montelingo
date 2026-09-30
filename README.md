@@ -17,6 +17,7 @@ Turborepo; root `package.json` scripts wrap each app's commands (see
 - Architecture decision records:
   - [ADR 0001: Monorepo without a heavyweight orchestrator](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
   - [ADR 0002: OpenAPI contract and client generation](docs/adr/0002-openapi-contract-and-client-generation.md)
+  - [ADR 0003: Upgrade the web app to React 19](docs/adr/0003-react-19.md)
 
 All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 `pnpm format:check:docs` to check; CI runs the check).
@@ -54,6 +55,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │       ├── next.config.ts
 │       ├── tailwind.config.ts
 │       ├── vitest.config.ts
+│       ├── vitest.setup.ts # registers jest-dom and vitest-axe matchers
 │       └── package.json
 ├── packages/
 │   └── api-client/         # @app/api-client: generated OpenAPI types + openapi-fetch client
@@ -94,8 +96,8 @@ Copy `.env.example` to `.env` (or export the variables) before running Compose.
 ```bash
 pnpm install
 pnpm dev:web         # next dev
-pnpm test:web        # vitest run
-pnpm lint:web        # eslint .
+pnpm test:web        # vitest run (Testing Library + vitest-axe for components)
+pnpm lint:web        # eslint . --max-warnings 0
 pnpm typecheck:web   # tsc --noEmit
 pnpm build:web       # next build (output: "standalone")
 ```
