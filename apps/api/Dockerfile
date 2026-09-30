@@ -1,27 +1,20 @@
 FROM python:3.12-slim AS base
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_CACHE_DIR=/tmp/.cache/uv
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /workspace
 
-# Apply the latest Debian security patches for OS packages (e.g. gzip, perl,
-# libpcre2, libsqlite3) so the base image does not carry known CVEs.
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir uv
-
-COPY .python-version .python-version
-COPY pyproject.toml pyproject.toml
-COPY uv.lock uv.lock
-COPY apps/api/pyproject.toml apps/api/pyproject.toml
+COPY pyproject.toml uv.lock ./
+COPY apps/api/pyproject.toml apps/api/
 
 FROM base AS dev
-RUN uv sync --project apps/api --all-groups --locked
+RUN uv sync --project apps/api --locked
 COPY apps/api apps/api
-CMD ["uv", "run", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uv", "run", "--no-sync", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8001"]
 
 FROM base AS runtime
 RUN uv sync --project apps/api --no-dev --locked
@@ -34,4 +27,4 @@ RUN addgroup --system --gid 1001 appgroup && \
 
 USER appuser
 
-CMD ["uv", "run", "--project", "apps/api", "fastapi", "run", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uv run --no-sync --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --no-sync --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]

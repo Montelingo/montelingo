@@ -44,9 +44,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
     chown -R nextjs:nodejs /app
 
-COPY --from=build /workspace/apps/web/.next/standalone ./
-COPY --from=build /workspace/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build /workspace/apps/web/public ./apps/web/public
+COPY --from=build --chown=nextjs:nodejs /workspace/apps/web/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /workspace/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=nextjs:nodejs /workspace/apps/web/public ./apps/web/public
 
 USER nextjs
 
