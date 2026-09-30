@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
@@ -16,16 +16,23 @@
   "dependencies": {
     "@app/api-client": "workspace:*",
     "next": "15.5.26",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@eslint/js": "9.14.0",
+    "@next/eslint-plugin-next": "15.5.26",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.7",
     "@types/node": "22.9.0",
-    "@types/react": "18.3.12",
-    "@types/react-dom": "18.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "autoprefixer": "^10.4.0",
     "eslint": "9.14.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
     "globals": "15.12.0",
     "jsdom": "25.0.1",
     "postcss": "^8.5.18",
@@ -33,6 +40,7 @@
     "tailwindcss": "^3.4.0",
     "typescript": "5.6.3",
     "typescript-eslint": "8.13.0",
-    "vitest": "2.1.5"
+    "vitest": "2.1.5",
+    "vitest-axe": "0.1.0"
   }
 }

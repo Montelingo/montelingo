@@ -1,4 +1,7 @@
 import js from "@eslint/js";
+import nextPlugin from "@next/eslint-plugin-next";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
@@ -13,6 +16,21 @@ export default tseslint.config(
     },
   },
   js.configs.recommended,
+  {
+    files: ["**/*.{ts,tsx}"],
+    extends: [
+      reactHooks.configs.flat.recommended,
+      jsxA11y.flatConfigs.recommended,
+    ],
+  },
+  {
+    files: ["**/*.{ts,tsx}"],
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [...tseslint.configs.recommendedTypeChecked],
