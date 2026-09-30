@@ -18,12 +18,20 @@ COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
 
-RUN uv sync --project apps/api --all-groups --locked
-
-COPY apps/api apps/api
-
 FROM base AS dev
+RUN uv sync --project apps/api --all-groups --locked
+COPY apps/api apps/api
 CMD ["uv", "run", "--project", "apps/api", "fastapi", "dev", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8001"]
 
 FROM base AS runtime
-CMD ["sh", "-c", "uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head && uv run --project apps/api fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
+RUN uv sync --project apps/api --no-dev --locked
+
+COPY apps/api apps/api
+
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /workspace
+
+USER appuser
+
+CMD ["uv", "run", "--project", "apps/api", "fastapi", "run", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8000"]
