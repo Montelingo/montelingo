@@ -17,6 +17,10 @@ class ErrorCode(str, Enum):
     UNEXPECTED_ERROR = "internal_server_error"
     BAD_REQUEST = "bad_request"
     SERVICE_UNAVAILABLE = "service_unavailable"
+    INVALID_CREDENTIALS = "invalid_credentials"
+    EMAIL_TAKEN = "email_taken"
+    INVALID_RESET_TOKEN = "invalid_reset_token"
+    NOT_IMPLEMENTED = "not_implemented"
 
 
 @dataclass

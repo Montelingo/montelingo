@@ -19,7 +19,16 @@ def _operations(schema: dict[str, Any]) -> Iterator[tuple[str, str, dict[str, An
 
 
 def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
-    assert set(app.openapi()["paths"]) == {"/api/v1/health/live", "/api/v1/health/ready"}
+    assert set(app.openapi()["paths"]) == {
+        "/api/v1/auth/sign-up",
+        "/api/v1/auth/sign-in",
+        "/api/v1/auth/sign-out",
+        "/api/v1/auth/me",
+        "/api/v1/auth/password-reset",
+        "/api/v1/auth/password-reset/confirm",
+        "/api/v1/health/live",
+        "/api/v1/health/ready",
+    }
 
 
 def test_every_operation_declares_an_explicit_operation_id(app: FastAPI) -> None:

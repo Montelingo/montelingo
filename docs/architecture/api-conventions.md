@@ -41,6 +41,10 @@ All API errors share the same envelope:
 
 Validation errors normalize field-level details and never expose raw framework internals. Endpoints raise `ApiError` (or let the central handlers convert framework errors) instead of building error payloads themselves.
 
+## Authentication
+
+Browser sessions use the `montelingo_session` HttpOnly cookie. A missing or invalid session returns `401 authentication_error`; `403 authorization_error` means the authenticated user is not permitted to perform the action. Protected endpoints depend on `get_current_user` from the auth module.
+
 ## OpenAPI and generated client
 
 ### Operation IDs
