@@ -21,6 +21,7 @@ _HTTP_ERRORS: dict[int, tuple[ErrorCode, str]] = {
     404: (ErrorCode.NOT_FOUND, "Resource not found."),
     405: (ErrorCode.METHOD_NOT_ALLOWED, "Method not allowed."),
     429: (ErrorCode.RATE_LIMITED, "Too many requests."),
+    501: (ErrorCode.NOT_IMPLEMENTED, "This feature is not implemented."),
 }
 
 

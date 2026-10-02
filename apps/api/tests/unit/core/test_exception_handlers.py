@@ -34,6 +34,7 @@ def app(app: FastAPI) -> FastAPI:
         (500, "internal_server_error"),
         (502, "internal_server_error"),
         (503, "internal_server_error"),
+        (501, "not_implemented"),
     ],
 )
 def test_http_exception_maps_to_error_code(client: TestClient, status_code: int, code: str) -> None:
