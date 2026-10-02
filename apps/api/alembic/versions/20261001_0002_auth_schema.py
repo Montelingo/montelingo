@@ -31,8 +31,8 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("email"),
     )
+    op.create_index("uq_users_email_lower", "users", [sa.text("lower(email)")], unique=True)
     op.create_table(
         "auth_sessions",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -70,4 +70,5 @@ def downgrade() -> None:
     op.drop_table("password_reset_tokens")
     op.drop_index("ix_auth_sessions_user_id", table_name="auth_sessions")
     op.drop_table("auth_sessions")
+    op.drop_index("uq_users_email_lower", table_name="users")
     op.drop_table("users")

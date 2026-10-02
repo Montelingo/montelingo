@@ -43,7 +43,7 @@ Validation errors normalize field-level details and never expose raw framework i
 
 ## Authentication
 
-Browser sessions use the `montelingo_session` HttpOnly cookie. A missing or invalid session returns `401 authentication_error`; `403 authorization_error` means the authenticated user is not permitted to perform the action. Protected endpoints depend on `get_current_user` from the auth module.
+Browser sessions use the `montelingo_session` HttpOnly cookie. A missing or invalid session returns `401 authentication_error`; `403 authorization_error` means the authenticated user is not permitted to perform the action or the request failed the Origin allow-list check. Protected endpoints depend on `get_current_user` from the auth module.
 
 ## OpenAPI and generated client
 

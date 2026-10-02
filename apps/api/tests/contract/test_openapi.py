@@ -82,3 +82,16 @@ def test_error_responses_use_error_envelope(app: FastAPI) -> None:
 def test_readiness_failure_is_documented(app: FastAPI) -> None:
     responses = app.openapi()["paths"]["/api/v1/health/ready"]["get"]["responses"]
     assert "503" in responses
+
+
+def test_password_reset_request_operation_id_is_frozen(app: FastAPI) -> None:
+    operation = app.openapi()["paths"]["/api/v1/auth/password-reset"]["post"]
+    assert operation["operationId"] == "auth_password_reset_request"
+
+
+def test_auth_stubs_do_not_document_not_implemented(app: FastAPI) -> None:
+    schema = app.openapi()
+    operations = [
+        operation for path, _, operation in _operations(schema) if path.startswith("/api/v1/auth/")
+    ]
+    assert all("501" not in operation["responses"] for operation in operations)

@@ -14,7 +14,7 @@ class SignUpRequest(ApiSchema):
 
 class SignInRequest(ApiSchema):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class CurrentUser(ApiSchema):
@@ -28,5 +28,5 @@ class PasswordResetRequest(ApiSchema):
 
 
 class PasswordResetConfirm(ApiSchema):
-    token: str = Field(min_length=1)
+    token: str = Field(min_length=1, max_length=256)
     new_password: str = Field(min_length=8, max_length=128)

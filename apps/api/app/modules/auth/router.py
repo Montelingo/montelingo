@@ -31,7 +31,7 @@ def _not_implemented() -> Never:
     operation_id="auth_sign_up",
     response_model=CurrentUser,
     status_code=201,
-    responses=error_responses(403, 409, 422, 429, 501),
+    responses=error_responses(403, 409, 422, 429),
 )
 async def sign_up(payload: SignUpRequest) -> CurrentUser:
     _not_implemented()
@@ -41,7 +41,7 @@ async def sign_up(payload: SignUpRequest) -> CurrentUser:
     "/sign-in",
     operation_id="auth_sign_in",
     response_model=CurrentUser,
-    responses=error_responses(401, 403, 422, 429, 501),
+    responses=error_responses(401, 403, 422, 429),
 )
 async def sign_in(payload: SignInRequest) -> CurrentUser:
     _not_implemented()
@@ -52,7 +52,7 @@ async def sign_in(payload: SignInRequest) -> CurrentUser:
     operation_id="auth_sign_out",
     status_code=204,
     response_class=Response,
-    responses=error_responses(403, 501),
+    responses=error_responses(403),
 )
 async def sign_out() -> Response:
     _not_implemented()
@@ -62,7 +62,7 @@ async def sign_out() -> Response:
     "/me",
     operation_id="auth_me",
     response_model=CurrentUser,
-    responses=error_responses(401, 501),
+    responses=error_responses(401),
 )
 async def me() -> CurrentUser:
     _not_implemented()
@@ -70,10 +70,10 @@ async def me() -> CurrentUser:
 
 @router.post(
     "/password-reset",
-    operation_id="auth_password_reset",
+    operation_id="auth_password_reset_request",
     status_code=204,
     response_class=Response,
-    responses=error_responses(403, 422, 429, 501),
+    responses=error_responses(403, 422, 429),
 )
 async def request_password_reset(payload: PasswordResetRequest) -> Response:
     _not_implemented()
@@ -84,7 +84,7 @@ async def request_password_reset(payload: PasswordResetRequest) -> Response:
     operation_id="auth_password_reset_confirm",
     status_code=204,
     response_class=Response,
-    responses=error_responses(400, 403, 422, 501),
+    responses=error_responses(400, 403, 422),
 )
 async def confirm_password_reset(payload: PasswordResetConfirm) -> Response:
     _not_implemented()

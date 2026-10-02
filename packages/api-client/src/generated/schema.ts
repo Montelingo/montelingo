@@ -31,7 +31,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Request Password Reset */
-        post: operations["auth_password_reset"];
+        post: operations["auth_password_reset_request"];
         delete?: never;
         options?: never;
         head?: never;
@@ -278,18 +278,9 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Error */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
         };
     };
-    auth_password_reset: {
+    auth_password_reset_request: {
         parameters: {
             query?: never;
             header?: never;
@@ -329,15 +320,6 @@ export interface operations {
             };
             /** @description Rate limited */
             429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Error */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -387,15 +369,6 @@ export interface operations {
             };
             /** @description Validation failed */
             422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Error */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -463,15 +436,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Error */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
         };
     };
     auth_sign_out: {
@@ -492,15 +456,6 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Error */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -561,15 +516,6 @@ export interface operations {
             };
             /** @description Rate limited */
             429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Error */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };

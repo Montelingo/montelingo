@@ -133,6 +133,7 @@
             "type": "string"
           },
           "token": {
+            "maxLength": 256,
             "minLength": 1,
             "title": "Token",
             "type": "string"
@@ -183,7 +184,7 @@
           },
           "password": {
             "maxLength": 128,
-            "minLength": 8,
+            "minLength": 1,
             "title": "Password",
             "type": "string"
           }
@@ -247,16 +248,6 @@
               }
             },
             "description": "Unauthorized"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Me",
@@ -267,7 +258,7 @@
     },
     "/api/v1/auth/password-reset": {
       "post": {
-        "operationId": "auth_password_reset",
+        "operationId": "auth_password_reset_request",
         "requestBody": {
           "content": {
             "application/json": {
@@ -311,16 +302,6 @@
               }
             },
             "description": "Rate limited"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Request Password Reset",
@@ -375,16 +356,6 @@
               }
             },
             "description": "Validation failed"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Confirm Password Reset",
@@ -456,16 +427,6 @@
               }
             },
             "description": "Rate limited"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Sign In",
@@ -490,16 +451,6 @@
               }
             },
             "description": "Forbidden"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Sign Out",
@@ -571,16 +522,6 @@
               }
             },
             "description": "Rate limited"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Error"
           }
         },
         "summary": "Sign Up",
