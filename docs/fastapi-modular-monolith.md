@@ -40,6 +40,8 @@ apps/api/
       errors.py              # ErrorCode, ApiError
       exception_handlers.py  # maps every exception to the ErrorEnvelope contract
       request_id.py          # X-Request-Id resolution and middleware
+    infrastructure/
+      email.py               # EmailSender protocol and SMTP/in-memory providers
     db/
       base.py                # SQLAlchemy DeclarativeBase (Alembic target metadata)
       session.py             # async engine, get_db_session()
@@ -63,7 +65,7 @@ apps/api/
         health/              # router and service tests
 ```
 
-`app/core`, `app/db`, `app/schemas`, and `app/api` are shared infrastructure. They contain no business logic and never import from `app/modules`.
+`app/core`, `app/db`, `app/schemas`, `app/api`, and `app/infrastructure` are shared infrastructure. They contain no business logic and never import from `app/modules`.
 
 ### 1.3 Module structure
 
@@ -524,6 +526,13 @@ class Settings(BaseSettings):
 ```
 
 Add new settings as typed fields here. Modules depend on `Settings` (through `Depends(get_settings)` at the API boundary), never on `os.environ`.
+
+Email providers live in `app/infrastructure/email.py`. Application code depends on
+the `EmailSender` protocol and `EmailMessage`; the dependency factory selects
+`SmtpEmailSender` when `MONTELINGO_SMTP_HOST` is configured and otherwise uses
+`InMemoryEmailSender` outside production. Production startup rejects missing
+SMTP configuration. Provider failures raise `EmailSendError`; request-scoped
+logging includes only the request ID and recipient domain.
 
 ### 4.6 Migrations and schema evolution
 
