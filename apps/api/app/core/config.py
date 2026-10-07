@@ -13,11 +13,10 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5433/montelingo"
     )
 
-
     session_cookie_name: str = Field(default="montelingo_session")
     session_ttl: int = Field(default=30 * 24 * 60 * 60)
     session_refresh_threshold: int = Field(default=15 * 24 * 60 * 60)
-    password_reset_ttl: int = Field(default=30 * 60) 
+    password_reset_ttl: int = Field(default=30 * 60)
     web_base_url: str = Field(default="http://localhost:3000")
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 

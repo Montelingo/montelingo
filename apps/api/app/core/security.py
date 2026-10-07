@@ -1,6 +1,6 @@
 import hmac
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 from argon2 import PasswordHasher as Argon2Hasher
@@ -13,7 +13,7 @@ class Clock(Protocol):
 
 class SystemClock:
     def now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 class PasswordHasher(Protocol):
