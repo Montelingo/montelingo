@@ -1,6 +1,6 @@
 # End-to-end tests
 
-[`smoke.sh`](smoke.sh) smoke-tests the full Docker Compose stack (`postgres`, `api`, `web`). It waits for the API liveness endpoint and the web homepage to respond, then asserts that API liveness, API readiness (database connectivity), and the web homepage each return `200`.
+[`smoke.sh`](smoke.sh) smoke-tests the full Docker Compose stack (`postgres`, `api`, `web`). It waits for the API liveness endpoint and the web homepage to respond, then asserts that API liveness, API readiness (database connectivity), and the web homepage each return `200`. It also checks the web's same-origin `/api/*` proxy: API liveness through the web origin returns `200`, and an unknown API route returns the API's `404`.
 
 ```bash
 docker compose up --build -d

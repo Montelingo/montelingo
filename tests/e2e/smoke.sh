@@ -43,5 +43,7 @@ wait_for "Web" "$WEB_URL"
 check_status "API liveness" "$API_URL/api/v1/health/live" 200
 check_status "API readiness (DB connectivity)" "$API_URL/api/v1/health/ready" 200
 check_status "Web homepage" "$WEB_URL" 200
+check_status "API via the web proxy" "$WEB_URL/api/v1/health/live" 200
+check_status "Unknown API route via the web proxy" "$WEB_URL/api/v1/does-not-exist" 404
 
 echo "[e2e] All smoke checks passed."

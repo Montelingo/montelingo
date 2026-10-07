@@ -1,15 +1,34 @@
+import "server-only";
+
 import { type ApiClient, createApiClient } from "@app/api-client";
+import { headers } from "next/headers";
 
-const DEFAULT_INTERNAL_API_BASE_URL = "http://localhost:8000";
+import { getApiInternalBaseUrl } from "@/lib/api-config";
 
-// Server code reaches the API over the internal network; browser code uses
-// the generated client's default (the page origin).
-export function getApiClient(): ApiClient {
-  if (typeof window === "undefined") {
-    return createApiClient({
-      baseUrl:
-        process.env.API_INTERNAL_BASE_URL ?? DEFAULT_INTERNAL_API_BASE_URL,
+type GetApiClientOptions = {
+  /**
+   * Sends the incoming request's cookies (the user's session) to the API.
+   * Only valid while handling a request, never inside a cached scope.
+   */
+  forwardCookies?: boolean;
+};
+
+// Server code reaches the API directly over the internal network. Browser code
+// uses getBrowserApiClient() from @/lib/browser-api, which goes through the proxy.
+export function getApiClient({
+  forwardCookies = false,
+}: GetApiClientOptions = {}): ApiClient {
+  const client = createApiClient({ baseUrl: getApiInternalBaseUrl() });
+  if (forwardCookies) {
+    client.use({
+      async onRequest({ request }) {
+        const cookie = (await headers()).get("cookie");
+        if (cookie !== null) {
+          request.headers.set("cookie", cookie);
+        }
+        return request;
+      },
     });
   }
-  return createApiClient();
+  return client;
 }

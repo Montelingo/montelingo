@@ -5,16 +5,14 @@ import type { components, paths } from "./generated/schema";
 export type Schemas = components["schemas"];
 export type ErrorEnvelope = Schemas["ErrorEnvelope"];
 export type ApiClient = Client<paths>;
-export type ApiClientOptions = ClientOptions;
+export type ApiClientOptions = ClientOptions & { baseUrl: string };
 
-export const DEFAULT_API_BASE_URL =
-  typeof window !== "undefined" && typeof window.location !== "undefined"
-    ? window.location.origin
-    : "http://localhost:8000";
-
-/** Creates a client whose paths, params, and responses are typed from the OpenAPI schema. */
-export function createApiClient(options: ApiClientOptions = {}): ApiClient {
-  return createClient<paths>({ ...options, baseUrl: options.baseUrl ?? DEFAULT_API_BASE_URL });
+/**
+ * Creates a client whose paths, params, and responses are typed from the OpenAPI schema.
+ * The caller supplies the base URL: the consuming app owns where the API lives.
+ */
+export function createApiClient(options: ApiClientOptions): ApiClient {
+  return createClient<paths>(options);
 }
 
 export class ApiClientError extends Error {
