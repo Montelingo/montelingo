@@ -5,8 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 class TransactionManager(Protocol):
     @asynccontextmanager
-    async def transaction(self) -> AsyncGenerator[AsyncSession, None]:
-        ...
+    async def transaction(self) -> AsyncGenerator[AsyncSession, None]: ...
 
 
 class SessionTransactionManager:
