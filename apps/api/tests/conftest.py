@@ -50,8 +50,14 @@ TEST_DB_URL = os.getenv(
 
 @pytest.fixture(scope="session")
 def apply_migrations() -> None:
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("sqlalchemy.url", TEST_DB_URL.replace("+asyncpg", ""))
+    api_dir = Path(__file__).resolve().parents[1]
+    alembic_ini_path = api_dir / "alembic.ini"
+
+    alembic_cfg = Config(str(alembic_ini_path))
+    alembic_cfg.set_main_option("script_location", str(api_dir / "alembic"))
+    alembic_cfg.set_main_option(
+        "sqlalchemy.url", TEST_DB_URL.replace("+asyncpg", "")
+    )
     command.upgrade(alembic_cfg, "head")
 
 
