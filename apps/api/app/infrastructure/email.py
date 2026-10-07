@@ -4,7 +4,8 @@ import logging
 from dataclasses import dataclass
 from email.message import EmailMessage as SmtpMessage
 from email.utils import parseaddr
-from typing import Protocol
+from functools import lru_cache
+from typing import Literal, Protocol
 
 import aiosmtplib
 from fastapi import Depends, Request
@@ -46,6 +47,11 @@ class InMemoryEmailSender:
 
     async def send(self, message: EmailMessage) -> None:
         self.messages.append(message)
+        logger.info(
+            "email_sent_in_memory subject=%s recipient_domain=%s",
+            message.subject,
+            recipient_domain(message.to),
+        )
 
 
 class SmtpEmailSender:
@@ -56,15 +62,17 @@ class SmtpEmailSender:
         port: int,
         username: str | None,
         password: str | None,
-        use_tls: bool,
+        smtp_security: Literal["none", "starttls", "tls"],
         from_address: str,
+        timeout: float = 10.0,
     ) -> None:
         self._host = host
         self._port = port
         self._username = username
         self._password = password
-        self._use_tls = use_tls
+        self._smtp_security = smtp_security
         self._from_address = from_address
+        self._timeout = timeout
 
     async def send(self, message: EmailMessage) -> None:
         smtp_message = SmtpMessage()
@@ -82,8 +90,9 @@ class SmtpEmailSender:
                 port=self._port,
                 username=self._username or None,
                 password=self._password or None,
-                use_tls=self._use_tls,
-                start_tls=False,
+                use_tls=self._smtp_security == "tls",
+                start_tls=self._smtp_security == "starttls",
+                timeout=self._timeout,
             )
         except Exception as exc:
             raise EmailSendError(recipient_domain(message.to), exc) from exc
@@ -99,9 +108,10 @@ class _RequestScopedEmailSender:
             await self._sender.send(message)
         except EmailSendError as exc:
             logger.error(
-                "email_send_failed request_id=%s recipient_domain=%s",
+                "email_send_failed request_id=%s recipient_domain=%s exception_type=%s",
                 self._request_id,
                 exc.recipient_domain,
+                type(exc.__cause__).__name__ if exc.__cause__ else type(exc).__name__,
             )
             raise
 
@@ -109,7 +119,7 @@ class _RequestScopedEmailSender:
 def create_email_sender(settings: Settings) -> EmailSender:
     settings.validate_smtp_for_production()
     if not settings.smtp_host:
-        if settings.env.lower() in {"production", "prod"}:
+        if settings.env.lower() == "production":
             raise ValueError("SMTP email configuration is required in production.")
         return InMemoryEmailSender()
     if not settings.smtp_from:
@@ -119,13 +129,44 @@ def create_email_sender(settings: Settings) -> EmailSender:
         port=settings.smtp_port,
         username=settings.smtp_username,
         password=settings.smtp_password,
-        use_tls=settings.smtp_use_tls,
+        smtp_security=settings.smtp_security,
         from_address=settings.smtp_from,
+    )
+
+
+@lru_cache(maxsize=8)
+def _get_process_email_sender(
+    env: str,
+    smtp_host: str | None,
+    smtp_port: int,
+    smtp_username: str | None,
+    smtp_password: str | None,
+    smtp_security: Literal["none", "starttls", "tls"],
+    smtp_from: str | None,
+) -> EmailSender:
+    return create_email_sender(
+        Settings(
+            env=env,
+            smtp_host=smtp_host,
+            smtp_port=smtp_port,
+            smtp_username=smtp_username,
+            smtp_password=smtp_password,
+            smtp_security=smtp_security,
+            smtp_from=smtp_from,
+        )
     )
 
 
 def get_email_sender(request: Request, settings: Settings = Depends(get_settings)) -> EmailSender:
     return _RequestScopedEmailSender(
-        create_email_sender(settings),
+        _get_process_email_sender(
+            settings.env,
+            settings.smtp_host,
+            settings.smtp_port,
+            settings.smtp_username,
+            settings.smtp_password,
+            settings.smtp_security,
+            settings.smtp_from,
+        ),
         get_request_id(request),
     )

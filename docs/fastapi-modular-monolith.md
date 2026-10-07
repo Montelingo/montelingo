@@ -531,8 +531,10 @@ Email providers live in `app/infrastructure/email.py`. Application code depends 
 the `EmailSender` protocol and `EmailMessage`; the dependency factory selects
 `SmtpEmailSender` when `MONTELINGO_SMTP_HOST` is configured and otherwise uses
 `InMemoryEmailSender` outside production. Production startup rejects missing
-SMTP configuration. Provider failures raise `EmailSendError`; request-scoped
-logging includes only the request ID and recipient domain.
+SMTP configuration. SMTP security is explicit (`none`, `starttls`, or `tls`)
+and defaults to `starttls`; Mailpit uses `none`. Provider failures raise
+`EmailSendError`; request-scoped logging includes only the request ID,
+exception type, and recipient domain.
 
 ### 4.6 Migrations and schema evolution
 

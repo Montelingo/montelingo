@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,11 +13,11 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str | None = None
     smtp_password: str | None = None
-    smtp_use_tls: bool = False
+    smtp_security: Literal["none", "starttls", "tls"] = "starttls"
     smtp_from: str | None = None
 
     def validate_smtp_for_production(self) -> None:
-        if self.env.lower() not in {"production", "prod"}:
+        if self.env.lower() != "production":
             return
         missing = [
             name
@@ -26,8 +27,10 @@ class Settings(BaseSettings):
             )
             if not value
         ]
-        if (self.smtp_username is None) != (self.smtp_password is None):
-            missing.append("MONTELINGO_SMTP_USERNAME and MONTELINGO_SMTP_PASSWORD")
+        if not self.smtp_username:
+            missing.append("MONTELINGO_SMTP_USERNAME")
+        if not self.smtp_password:
+            missing.append("MONTELINGO_SMTP_PASSWORD")
         if missing:
             raise ValueError(
                 "SMTP email configuration is required in production; missing " + ", ".join(missing)

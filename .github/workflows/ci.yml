@@ -61,6 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
+      mailpit:
+        image: axllent/mailpit:v1.21
+        ports:
+          - 1025:1025
+          - 8025:8025
       postgres:
         image: postgres:16-alpine
         env:
@@ -102,6 +107,12 @@ jobs:
         run: uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
 
       - name: Unit and integration tests
+        env:
+          MONTELINGO_SMTP_HOST: localhost
+          MONTELINGO_SMTP_PORT: 1025
+          MONTELINGO_SMTP_SECURITY: none
+          MONTELINGO_SMTP_FROM: no-reply@montelingo.local
+          MAILPIT_API_URL: http://localhost:8025
         run: >-
           uv run --project apps/api pytest apps/api/tests -q
           --junitxml=apps/api/test-results/junit.xml
