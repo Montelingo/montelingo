@@ -26,7 +26,7 @@ from app.main import create_app
 
 TEST_DB_URL = os.getenv(
     "MONTELINGO_TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/montelingo_test",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/montelingo_test",
 )
 
 
