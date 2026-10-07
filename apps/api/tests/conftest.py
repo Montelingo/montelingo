@@ -9,6 +9,7 @@ from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -30,6 +31,20 @@ TEST_DB_URL = os.getenv(
 )
 
 
+def _ensure_test_database_exists() -> None:
+
+    base_url = TEST_DB_URL.replace("+asyncpg", "")
+    db_name = base_url.rsplit("/", 1)[-1]
+    postgres_url = base_url.rsplit("/", 1)[0] + "/postgres"
+
+    engine = create_engine(postgres_url, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname='{db_name}'"))
+        if not result.scalar():
+            conn.execute(text(f'CREATE DATABASE "{db_name}"'))
+    engine.dispose()
+
+
 @pytest.fixture
 def app(monkeypatch: pytest.MonkeyPatch) -> Iterator[FastAPI]:
     monkeypatch.setenv("MONTELINGO_DATABASE_URL", TEST_DB_URL)
@@ -48,6 +63,8 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 @pytest.fixture(scope="session")
 def apply_migrations() -> None:
+    _ensure_test_database_exists()
+
     api_dir = Path(__file__).resolve().parents[1]
     alembic_ini_path = api_dir / "alembic.ini"
 
