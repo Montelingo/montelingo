@@ -28,6 +28,9 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib"
+markers = [
+    "integration: marks tests as integration tests that require PostgreSQL database",
+]
 
 [tool.ruff]
 line-length = 100

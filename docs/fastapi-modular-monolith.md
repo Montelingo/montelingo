@@ -572,8 +572,9 @@ Migration discipline:
 
 ```text
 apps/api/tests/
-  conftest.py            # `app` (fresh create_app(), unreachable DB) and `client` fixtures
+  conftest.py            # `app` (fresh create_app(), unreachable DB), `client`, and integration fixtures
   contract/              # OpenAPI rules and error-envelope behaviour
+  integration/           # Real PostgreSQL integration tests
   unit/
     core/                # exception mapping, request IDs
     modules/<name>/      # per-module router and service tests
