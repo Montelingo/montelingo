@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,6 +15,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+
+from alembic import command
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
