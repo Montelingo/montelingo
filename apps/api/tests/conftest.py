@@ -3,13 +3,13 @@ import sys
 from collections.abc import AsyncGenerator, Iterator
 from pathlib import Path
 
+import asyncpg
 import pytest
 import pytest_asyncio
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -31,18 +31,22 @@ TEST_DB_URL = os.getenv(
 )
 
 
-def _ensure_test_database_exists() -> None:
+async def _ensure_test_database_exists_async() -> None:
+    # Izvlačimo host, port, user, password iz TEST_DB_URL
+    # Koristimo čisti asyncpg bez SQLAlchemy/psycopg2 da kreiramo bazu ako ne postoji
+    clean_url = TEST_DB_URL.replace("postgresql+asyncpg://", "")
+    auth_host, db_name = clean_url.rsplit("/", 1)
 
-    base_url = TEST_DB_URL.replace("+asyncpg", "")
-    db_name = base_url.rsplit("/", 1)[-1]
-    postgres_url = base_url.rsplit("/", 1)[0] + "/postgres"
+    # Konekcija na sistemsku 'postgres' bazu
+    postgres_conn_url = f"postgresql://{auth_host}/postgres"
 
-    engine = create_engine(postgres_url, isolation_level="AUTOCOMMIT")
-    with engine.connect() as conn:
-        result = conn.execute(text(f"SELECT 1 FROM pg_database WHERE datname='{db_name}'"))
-        if not result.scalar():
-            conn.execute(text(f'CREATE DATABASE "{db_name}"'))
-    engine.dispose()
+    conn = await asyncpg.connect(postgres_conn_url)
+    try:
+        db_exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", db_name)
+        if not db_exists:
+            await conn.execute(f'CREATE DATABASE "{db_name}"')
+    finally:
+        await conn.close()
 
 
 @pytest.fixture
@@ -61,9 +65,9 @@ def client(app: FastAPI) -> Iterator[TestClient]:
         yield test_client
 
 
-@pytest.fixture(scope="session")
-def apply_migrations() -> None:
-    _ensure_test_database_exists()
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def prepare_test_db() -> None:
+    await _ensure_test_database_exists_async()
 
     api_dir = Path(__file__).resolve().parents[1]
     alembic_ini_path = api_dir / "alembic.ini"
@@ -75,7 +79,7 @@ def apply_migrations() -> None:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def test_engine(apply_migrations: None) -> AsyncGenerator[AsyncEngine, None]:
+async def test_engine(prepare_test_db: None) -> AsyncGenerator[AsyncEngine, None]:
     engine = create_async_engine(TEST_DB_URL, echo=False)
     yield engine
     await engine.dispose()
