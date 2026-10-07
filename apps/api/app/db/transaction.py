@@ -1,5 +1,7 @@
-from typing import AsyncGenerator, Protocol
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Protocol
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
