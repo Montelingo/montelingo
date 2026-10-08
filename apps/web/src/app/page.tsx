@@ -1,4 +1,5 @@
-import { ApiHealthCard, getApiHealthState } from "@/features/health";
+import { ApiHealthCard } from "@/features/health";
+import { getApiHealthState } from "@/features/health/server";
 
 // The health state must reflect the API at request time, not at build time.
 export const dynamic = "force-dynamic";
