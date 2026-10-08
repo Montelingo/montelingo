@@ -2,7 +2,7 @@
 
 Minimal runnable monorepo where the frontend (`apps/web`) and backend
 (`apps/api`) install, run, test, and build independently, while Docker
-Compose provides shared local infrastructure (PostgreSQL).
+Compose provides shared local infrastructure (PostgreSQL and Mailpit).
 
 The workspace uses pnpm workspaces (`apps/web`, `packages/*`) and a uv
 workspace (`apps/api`) rather than a monorepo orchestrator such as Nx or
@@ -142,6 +142,8 @@ docker compose down
 - PostgreSQL is only reachable from `api` through the Compose network
   (`internal`); a nonproduction host port (`5433:5432`) is exposed only for
   local developer tooling (e.g. running Alembic from the host).
+- Mailpit accepts SMTP traffic from the API on the internal network and exposes
+  its local inbox at http://localhost:8025.
 - `web` and `api` support live-reload only via the `dev` profile
   (`api-dev`, `web-dev` services): `docker compose --profile dev up --build`.
 - All build contexts are project-relative (`context: .` with app-specific
