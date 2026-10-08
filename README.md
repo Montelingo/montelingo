@@ -47,9 +47,10 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │   └── web/                # Next.js frontend (pnpm project)
 │       ├── public/
 │       ├── src/
-│       │   ├── app/        # App Router (layout, page, globals.css)
+│       │   ├── app/        # App Router (layout, page, globals.css, /api/* proxy route)
 │       │   ├── features/   # feature slices (health: API adapter, model, UI, tests)
-│       │   └── lib/        # shared utilities (API request options)
+│       │   ├── components/ # shared, domain-free UI primitives (form fields)
+│       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn)
 │       ├── Dockerfile
 │       ├── eslint.config.mjs
 │       ├── next.config.ts
@@ -144,6 +145,12 @@ docker compose down
   local developer tooling (e.g. running Alembic from the host).
 - Mailpit accepts SMTP traffic from the API on the internal network and exposes
   its local inbox at http://localhost:8025.
+- Browsers reach the API through the web's same-origin `/api/*` proxy, which
+  forwards to `API_INTERNAL_BASE_URL` (read at runtime, so the same `web` image
+  works against any API). It sends the API a client IP only from a trusted
+  edge in front of the web (`TRUSTED_PROXY_HOPS`); locally that is `0`, so the
+  API sees the web container's address. See
+  [frontend architecture §5.3](docs/frontend-architecture.md#53-server-side-and-browser-side-calls).
 - `web` and `api` support live-reload only via the `dev` profile
   (`api-dev`, `web-dev` services): `docker compose --profile dev up --build`.
 - All build contexts are project-relative (`context: .` with app-specific
