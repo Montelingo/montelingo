@@ -1,6 +1,12 @@
+import { isIP } from "node:net";
+
 import type { ErrorEnvelope } from "@app/api-client";
 
-import { type ApiBase, getApiInternalBase } from "@/lib/api-config";
+import {
+  type ApiBase,
+  getApiInternalBase,
+  getTrustedProxyHops,
+} from "@/lib/api-config";
 
 // How long the proxy waits for the API's response headers, counted from when
 // the request body has been read. A response body that is still streaming
@@ -12,6 +18,8 @@ export const API_PROXY_MAX_BODY_BYTES = 1_048_576;
 type ProxyApiRequestOptions = {
   /** Resolves the API base, and throws when it is misconfigured. */
   getBase?: () => ApiBase;
+  /** Resolves TRUSTED_PROXY_HOPS, and throws when it is misconfigured. */
+  getTrustedProxyHops?: () => number;
   fetch?: typeof fetch;
   timeoutMs?: number;
 };
@@ -24,10 +32,11 @@ type ProxyErrorCode =
   | "internal_server_error"
   | "service_unavailable";
 
-// The only request headers the API receives. Referer backs up Origin in the
-// API's CSRF check. The If-* headers let the API answer 304. X-Forwarded-* is
-// dropped because clients can spoof it. Authorization is dropped because auth
-// is the session cookie only (ADR 0004).
+// The only request headers the API receives, besides the X-Forwarded-For the
+// proxy sets itself. Referer backs up Origin in the API's CSRF check. The If-*
+// headers let the API answer 304. The client's X-Forwarded-* is dropped
+// because clients can spoof it. Authorization is dropped because auth is the
+// session cookie only (ADR 0004).
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
   "accept-language",
@@ -59,6 +68,7 @@ const STRIPPED_RESPONSE_HEADERS = new Set([
 
 const NULL_BODY_STATUSES = new Set([204, 205, 304]);
 
+const FORWARDED_FOR_HEADER = "x-forwarded-for";
 const REQUEST_ID_HEADER = "x-request-id";
 // Same rule as apps/api/app/core/request_id.py.
 const SAFE_REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -72,6 +82,7 @@ export async function proxyApiRequest(
   request: Request,
   {
     getBase = getApiInternalBase,
+    getTrustedProxyHops: getHops = getTrustedProxyHops,
     fetch: fetchUpstream = fetch,
     timeoutMs = API_PROXY_TIMEOUT_MS,
   }: ProxyApiRequestOptions = {},
@@ -85,11 +96,14 @@ export async function proxyApiRequest(
     fail(502, "service_unavailable", "The request was cancelled.");
 
   let base: ApiBase;
+  let trustedProxyHops: number;
   try {
     base = getBase();
+    trustedProxyHops = getHops();
   } catch (error) {
-    // A bad API_INTERNAL_BASE_URL is a deployment fault. Log the details and
-    // answer with the error envelope instead of Next's HTML error page.
+    // A bad API_INTERNAL_BASE_URL or TRUSTED_PROXY_HOPS is a deployment fault.
+    // Log the details and answer with the error envelope instead of Next's
+    // HTML error page.
     console.error(
       "api_proxy_config_error method=%s path=%s request_id=%s",
       request.method,
@@ -128,7 +142,14 @@ export async function proxyApiRequest(
   try {
     upstream = await fetchUpstream(target, {
       method: request.method,
-      headers: buildUpstreamHeaders(request.headers, requestId),
+      headers: buildUpstreamHeaders(
+        request.headers,
+        requestId,
+        resolveClientIp(
+          request.headers.get(FORWARDED_FOR_HEADER),
+          trustedProxyHops,
+        ),
+      ),
       body,
       redirect: "manual",
       cache: "no-store",
@@ -210,13 +231,75 @@ function hasSafeSegments(pathname: string): boolean {
   });
 }
 
-function buildUpstreamHeaders(incoming: Headers, requestId: string): Headers {
+/**
+ * Returns the client IP that the trusted proxies in front of the web recorded
+ * in X-Forwarded-For, or null when there is none to trust. Each trusted proxy
+ * appends its peer's address, so the client's address is `hops` entries from
+ * the right, and everything left of it is whatever the client sent.
+ */
+function resolveClientIp(
+  forwardedFor: string | null,
+  hops: number,
+): string | null {
+  // With no trusted proxy the header is the client's own, or the socket
+  // address Next fills in only when the client sent none.
+  if (hops === 0 || forwardedFor === null) {
+    return null;
+  }
+  const entries = forwardedFor.split(",");
+  // Fewer entries than trusted proxies means the request skipped the chain.
+  if (entries.length < hops) {
+    return null;
+  }
+  const entry = entries[entries.length - hops];
+  return entry === undefined ? null : normalizeIp(entry.trim());
+}
+
+// Proxies write `[v6]`, `[v6]:port`, or `v4:port` as well as bare addresses,
+// and IPv4 clients of a dual-stack socket as `::ffff:a.b.c.d`. Every spelling
+// of one address becomes the same string, so one client is one rate-limit key.
+function normalizeIp(value: string): string | null {
+  const bracketed = /^\[([^\]]*)\](?::\d+)?$/.exec(value);
+  const address = bracketed?.[1] ?? value.replace(/^([\d.]+):\d+$/, "$1");
+  const version = isIP(address);
+  if (version === 4) {
+    return address;
+  }
+  if (version !== 6) {
+    return null;
+  }
+  // URL parsing gives the canonical IPv6 text (lowercase, zeros compressed,
+  // embedded IPv4 in hex). It rejects zone IDs (`fe80::1%eth0`).
+  const hostname = URL.parse(`http://[${address}]`)?.hostname;
+  if (hostname === undefined) {
+    return null;
+  }
+  const canonical = hostname.slice(1, -1);
+  const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(canonical);
+  if (mapped === null) {
+    return canonical;
+  }
+  const high = Number.parseInt(mapped[1] ?? "", 16);
+  const low = Number.parseInt(mapped[2] ?? "", 16);
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+}
+
+// The client's X-Forwarded-For never passes through. The API gets exactly the
+// resolved client IP, or no header at all.
+function buildUpstreamHeaders(
+  incoming: Headers,
+  requestId: string,
+  clientIp: string | null,
+): Headers {
   const headers = new Headers();
   for (const name of FORWARDED_REQUEST_HEADERS) {
     const value = incoming.get(name);
     if (value !== null) {
       headers.set(name, value);
     }
+  }
+  if (clientIp !== null) {
+    headers.set(FORWARDED_FOR_HEADER, clientIp);
   }
   headers.set(REQUEST_ID_HEADER, requestId);
   return headers;

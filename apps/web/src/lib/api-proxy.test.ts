@@ -14,11 +14,17 @@ const fetchMock = vi.fn<typeof fetch>();
 function proxy(
   input: string,
   init: RequestInit = {},
-  options: { base?: ApiBase; timeoutMs?: number } = {},
+  options: {
+    base?: ApiBase;
+    trustedProxyHops?: number;
+    timeoutMs?: number;
+  } = {},
 ): Promise<Response> {
   const base = options.base ?? BASE;
+  const trustedProxyHops = options.trustedProxyHops ?? 0;
   return proxyApiRequest(new Request(new URL(input, "http://web.test"), init), {
     getBase: () => base,
+    getTrustedProxyHops: () => trustedProxyHops,
     fetch: fetchMock,
     timeoutMs: options.timeoutMs,
   });
@@ -185,6 +191,141 @@ describe("proxyApiRequest", () => {
         "x-request-id": "req-123",
       });
     });
+  });
+
+  describe("client IP", () => {
+    it("sends no X-Forwarded-For when no proxy is trusted", async () => {
+      await proxy(
+        "/api/v1/auth/sign-in",
+        { headers: { "x-forwarded-for": "6.6.6.6, 203.0.113.7" } },
+        { trustedProxyHops: 0 },
+      );
+
+      expect(upstreamHeaders().has("x-forwarded-for")).toBe(false);
+    });
+
+    it.each([
+      // Each trusted proxy appends its peer, so the client is `hops` from the right.
+      [1, "203.0.113.7", "203.0.113.7"],
+      [1, "6.6.6.6, 203.0.113.7", "203.0.113.7"],
+      [2, "6.6.6.6, 203.0.113.7, 198.51.100.2", "203.0.113.7"],
+      [2, "203.0.113.7,198.51.100.2", "203.0.113.7"],
+      [1, "  6.6.6.6 ,  203.0.113.7  ", "203.0.113.7"],
+      // Spellings some proxies use become the bare canonical address.
+      [1, "203.0.113.7:51234", "203.0.113.7"],
+      [1, "[2001:db8::7]", "2001:db8::7"],
+      [1, "[2001:db8::7]:443", "2001:db8::7"],
+      [1, "2001:DB8:0:0:0:0:0:7", "2001:db8::7"],
+      [1, "::ffff:203.0.113.7", "203.0.113.7"],
+      [1, "::FFFF:cb00:7107", "203.0.113.7"],
+      [1, "[::ffff:203.0.113.7]:443", "203.0.113.7"],
+    ])(
+      "with %i trusted proxies resolves %j to %s",
+      async (trustedProxyHops, forwardedFor, expected) => {
+        await proxy(
+          "/api/v1/auth/sign-in",
+          { headers: { "x-forwarded-for": forwardedFor } },
+          { trustedProxyHops },
+        );
+
+        expect(upstreamHeaders().get("x-forwarded-for")).toBe(expected);
+      },
+    );
+
+    it.each([
+      // Fewer entries than trusted proxies: the request skipped the chain.
+      [2, "203.0.113.7"],
+      [3, "6.6.6.6, 203.0.113.7"],
+      // The trusted entry is not an IP address.
+      [1, "6.6.6.6, unknown"],
+      [1, "6.6.6.6, _hidden"],
+      [1, "6.6.6.6, "],
+      [1, "203.0.113.256"],
+      [1, "203.0.113.7:port"],
+      [1, "203.0.113.7 6.6.6.6"],
+      [1, "[2001:db8::7"],
+      [1, "fe80::1%eth0"],
+      [2, "203.0.113.7, garbage, 198.51.100.2"],
+    ])(
+      "with %i trusted proxies sends no X-Forwarded-For for %j",
+      async (trustedProxyHops, forwardedFor) => {
+        await proxy(
+          "/api/v1/auth/sign-in",
+          { headers: { "x-forwarded-for": forwardedFor } },
+          { trustedProxyHops },
+        );
+
+        expect(upstreamHeaders().has("x-forwarded-for")).toBe(false);
+      },
+    );
+
+    it("sends no X-Forwarded-For when the request has none", async () => {
+      await proxy("/api/v1/auth/sign-in", {}, { trustedProxyHops: 1 });
+
+      expect(upstreamHeaders().has("x-forwarded-for")).toBe(false);
+    });
+
+    it("overwrites the client's X-Forwarded-For instead of appending to it", async () => {
+      await proxy(
+        "/api/v1/auth/sign-in",
+        {
+          headers: {
+            "x-forwarded-for": "6.6.6.6, 7.7.7.7, 203.0.113.7",
+            "x-forwarded-host": "evil.test",
+            "x-forwarded-proto": "http",
+          },
+        },
+        { trustedProxyHops: 1 },
+      );
+
+      const headers = upstreamHeaders();
+      expect(headers.get("x-forwarded-for")).toBe("203.0.113.7");
+      expect(headers.has("x-forwarded-host")).toBe(false);
+      expect(headers.has("x-forwarded-proto")).toBe(false);
+    });
+
+    it("reads TRUSTED_PROXY_HOPS when no resolver is passed", async () => {
+      vi.stubEnv("TRUSTED_PROXY_HOPS", "2");
+
+      await proxyApiRequest(
+        new Request("http://web.test/api/v1/auth/sign-in", {
+          headers: { "x-forwarded-for": "203.0.113.7, 198.51.100.2" },
+        }),
+        { getBase: () => BASE, fetch: fetchMock },
+      );
+
+      expect(upstreamHeaders().get("x-forwarded-for")).toBe("203.0.113.7");
+    });
+
+    it.each(["-1", "1.5", "two", "11", "0x1"])(
+      "answers a 500 envelope when TRUSTED_PROXY_HOPS is %s",
+      async (hops) => {
+        const consoleError = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => undefined);
+        vi.stubEnv("TRUSTED_PROXY_HOPS", hops);
+
+        const response = await proxyApiRequest(
+          new Request("http://web.test/api/v1/lessons", {
+            headers: { "x-request-id": "req-config" },
+          }),
+          { getBase: () => BASE, fetch: fetchMock },
+        );
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toEqual({
+          error: {
+            code: "internal_server_error",
+            message: "An unexpected error occurred.",
+            request_id: "req-config",
+            details: null,
+          },
+        });
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(consoleError.mock.calls[0]?.at(-1)).toBeInstanceOf(Error);
+      },
+    );
   });
 
   describe("request body limit", () => {

@@ -4,6 +4,7 @@ import {
   DEFAULT_API_INTERNAL_BASE_URL,
   getApiInternalBase,
   getApiInternalBaseUrl,
+  getTrustedProxyHops,
 } from "./api-config";
 
 describe("getApiInternalBase", () => {
@@ -97,5 +98,62 @@ describe("getApiInternalBaseUrl", () => {
     vi.stubEnv("API_INTERNAL_BASE_URL", value);
 
     expect(() => getApiInternalBaseUrl()).toThrow(message);
+  });
+});
+
+describe("getTrustedProxyHops", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([undefined, "", "   "])(
+    "trusts no proxy when the variable is %j",
+    (value) => {
+      vi.stubEnv("TRUSTED_PROXY_HOPS", value);
+
+      expect(getTrustedProxyHops()).toBe(0);
+    },
+  );
+
+  it.each([
+    ["0", 0],
+    ["1", 1],
+    [" 2 ", 2],
+    ["10", 10],
+  ])("parses %j as %i", (value, expected) => {
+    vi.stubEnv("TRUSTED_PROXY_HOPS", value);
+
+    expect(getTrustedProxyHops()).toBe(expected);
+  });
+
+  it("reads the variable on every call", () => {
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "1");
+    expect(getTrustedProxyHops()).toBe(1);
+
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "2");
+    expect(getTrustedProxyHops()).toBe(2);
+  });
+
+  it.each(["-1", "11", "1.5", "1e1", "0x1", "+1", "one", "1 2"])(
+    "rejects %j",
+    (value) => {
+      vi.stubEnv("TRUSTED_PROXY_HOPS", value);
+
+      expect(() => getTrustedProxyHops()).toThrow(
+        `TRUSTED_PROXY_HOPS must be an integer from 0 to 10, got "${value}".`,
+      );
+    },
+  );
+
+  it("throws on every call while the value is invalid, and recovers once it is fixed", () => {
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "1");
+    getTrustedProxyHops();
+
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "-1");
+    expect(() => getTrustedProxyHops()).toThrow(/must be an integer/);
+    expect(() => getTrustedProxyHops()).toThrow(/must be an integer/);
+
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "1");
+    expect(getTrustedProxyHops()).toBe(1);
   });
 });
