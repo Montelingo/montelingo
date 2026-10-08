@@ -45,6 +45,7 @@ apps/web/src/
       schemas.ts                    # runtime validation of API data and form input
       errors.ts                     # feature-specific error → message mapping
       index.ts                      # the feature's public API
+      server.ts                     # the feature's server-only public API (only if it has server-only code)
   components/
     ui/                             # shared, domain-free primitives (TextField, SubmitButton, Dialog)
   hooks/                            # shared, domain-free hooks (use-media-query)
@@ -85,11 +86,11 @@ app/  ──▶  features/<x>/index.ts  ──▶  components/ui, hooks, lib, @a
 ```
 
 - `app/` may import from features and shared folders.
-- A feature may import shared folders and **another feature's public API only** (`@/features/progress`, never `@/features/progress/model/streak`).
+- A feature may import shared folders and **another feature's public API only** (`@/features/progress` or `@/features/progress/server`, never `@/features/progress/model/streak`).
 - Shared folders (`components/`, `hooks/`, `lib/`) must never import from `features/` or `app/`.
 - Inside a feature, use relative imports (`../model/scoring`).
 
-ESLint (`no-restricted-imports`) rejects deep imports into another feature and any import from `@/features` in shared folders.
+ESLint (`no-restricted-imports`) rejects deep imports into another feature (anything under `@/features/<name>/` except `server`) and any import from `@/features` in shared folders.
 
 ## 2. Routes and pages orchestrate, features decide
 
@@ -345,7 +346,7 @@ Use runtime validation (a Zod schema in `schemas.ts`) when data crosses a bounda
 
 - data comes from `localStorage`, URL params, `postMessage`, or form input
 
-`zod` is not installed yet because no such boundary exists yet. Add it to `apps/web` with the first schema. Do not duplicate types the generator already provides.
+`src/features/auth/schemas.ts` (the sign-in, sign-up, and password-reset forms) is the reference. The schema mirrors the API's request rules so most mistakes are caught before a round trip. A pure function in `model/` runs it and returns `{ ok: true, data }` or `{ ok: false, fieldErrors }`. The API stays authoritative, and `errors.ts` maps its `validation_error` details onto the same fields. Do not duplicate types the generator already provides.
 
 ### 5.3 Server-side and browser-side calls
 
@@ -365,6 +366,7 @@ Rules:
 - Server-side calls (`getApiClient()`) are reads only (`GET`, `HEAD`). They send no `Origin` or `Referer`, so the API's Origin check (#37) rejects any `POST`, `PUT`, `PATCH`, or `DELETE` from server code, and a `Set-Cookie` the API returns to server code never reaches the browser. They also send no `X-Forwarded-For`, so the API sees the web container's address, not the user's (see [Client IP](#client-ip)).
 - Never call `getApiClient({ forwardCookies: true })` inside a cached scope (`unstable_cache`, `"use cache"`). The response depends on the user's cookies, so caching it would serve one user's data to another.
 - `src/lib/api.ts` is server-only, so a Client Component cannot import it (the build fails). An adapter that runs in the browser takes its client from `getBrowserApiClient()`.
+- A feature exports its server-side adapters (the ones built on `getApiClient()`) from `server.ts`, never from `index.ts` (§7.3).
 
 #### Base URL
 
@@ -485,7 +487,9 @@ import { scoreLesson } from "../model/scoring";
 ### 7.3 Exports
 
 - Use **named exports** everywhere. Default exports are used only where Next.js requires them (`page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default`) and in config files (`next.config.ts`, `vitest.config.ts`, `tailwind.config.ts`).
-- Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` is private to the feature.
+- Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` (or `server.ts`, below) is private to the feature.
+- `index.ts` must be safe to import from a Client Component. Anything that is server-only (it imports `server-only`, `next/headers`, or `@/lib/api`) is exported from the feature's `server.ts` instead, which starts with `import "server-only"`. Routes import it as `@/features/<name>/server`. Next.js fails the client build as soon as `server-only` is anywhere in a Client Component's import graph. Tree-shaking runs too late to remove it, so a single server-only re-export in `index.ts` would break every Client Component that imports the feature.
+- `apps/web/package.json` declares `"sideEffects": ["*.css"]`, so the bundler drops whatever a Client Component does not use from a feature's `index.ts`. A button that imports only `signOut` from `@/features/auth` does not ship `zod` or the form schemas. As a result, a module must never rely on being imported for its side effects, except stylesheets and packages such as `server-only`. Because a re-export can be skipped, every module that is server-only starts with `import "server-only"` itself, not only the `server.ts` that re-exports it.
 - Do not add `index.ts` barrels inside a feature's subfolders or in `components/ui`. Import primitives by file path.
 
 ```ts
@@ -552,7 +556,7 @@ export default function LessonError({ reset }: ErrorPageProps) {
 }
 ```
 
-`ApiClientError.error.code` (from the shared error envelope) is mapped to user-facing copy in the feature's `errors.ts`. Components switch on `code`, never on `message`.
+`ApiClientError.error.code` (from the shared error envelope) is mapped to user-facing copy in the feature's `errors.ts`. Components switch on `code`, never on `message`. `ApiClientError.headers` holds the error response's headers, for protocol details such as `Retry-After`; read it with `parseRetryAfter()` from `src/lib/retry-after.ts`. When `fetch` itself fails (the API or network is unreachable), the client throws `ApiNetworkError` instead, with the original error as `cause`. Any other error, such as a `TypeError` while mapping a response, is a bug and is not reported to the user as a connection problem. An abort is rethrown unchanged. `src/features/auth/errors.ts` is the reference: `toAuthFormError()` returns a serializable `{ code, formError, fieldErrors, retryAfterSeconds, requestId }`, and the API's `validation_error` details become field errors written in our own copy, never the API's `message`.
 
 ### 9.2 Loading states
 
@@ -667,6 +671,14 @@ expect(container).toMatchSnapshot();
 
 `src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
 
+`src/features/auth` is the reference for the rest:
+
+- browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
+- a server-only `getCurrentUser()`, wrapped in React `cache()` and exported from `server.ts`. It skips the API call when the request has no `montelingo_session` cookie;
+- form validation with `zod` (`schemas.ts`);
+- the open-redirect guard `safeRedirectPath()`;
+- error-code mapping in `errors.ts`.
+
 Installed and enforced:
 
 - React 19 (`react`, `react-dom`, and their types), matching the React version the App Router runs. See [ADR 0003](adr/0003-react-19.md).
@@ -676,7 +688,8 @@ Installed and enforced:
 - The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3).
 - Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`), `PasswordField` (a "Show password" toggle button with `aria-pressed`), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), and `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message).
 
+- `zod` (v4) for runtime validation of form input (§5.2).
+
 Known gaps to close as real features land:
 
-- `zod` is documented but not installed yet. Add it with its first schema.
 - Import ordering (§7.2) and naming conventions (§7.1) are enforced only in code review.

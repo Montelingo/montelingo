@@ -27,7 +27,7 @@ We standardize on:
 - **Maintained generator tooling instead of a custom generator:**
   - [`openapi-typescript`](https://openapi-ts.dev/) generates `packages/api-client/src/generated/schema.ts` (`paths`, `components`, `operations`) from the committed `openapi.json`.
   - [`openapi-fetch`](https://openapi-ts.dev/openapi-fetch/) provides the runtime client. Its path, parameters, request body, and success/error bodies are all inferred from `paths`.
-  - A small hand-written layer (`packages/api-client/src/client.ts`) adds `createApiClient` (the caller supplies the base URL; see [frontend architecture §5.3](../frontend-architecture.md#53-server-side-and-browser-side-calls)), `unwrap` (returns the typed body or throws `ApiClientError` with the error envelope), and `Schemas` / `ErrorEnvelope` type aliases.
+  - A small hand-written layer (`packages/api-client/src/client.ts`) adds `createApiClient` (the caller supplies the base URL; see [frontend architecture §5.3](../frontend-architecture.md#53-server-side-and-browser-side-calls)), `unwrap` (returns the typed body or throws `ApiClientError` with the status, the error envelope, and the response headers), and `Schemas` / `ErrorEnvelope` type aliases.
 - `pnpm contract:check` regenerates `openapi.json` from FastAPI and `schema.ts` from `openapi.json`. It fails on any difference from the committed files, and the `contract` CI job runs it.
 
 The frontend calls endpoints by path (`client.GET("/api/v1/health/live")`) rather than by generated function name. Operation IDs remain the stable, typed handles in `operations["health_live"]` and in the published schema.
