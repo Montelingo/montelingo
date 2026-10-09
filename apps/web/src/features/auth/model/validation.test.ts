@@ -6,9 +6,9 @@ import {
   validationMessages,
 } from "./messages";
 import {
-  type PasswordResetConfirmForm,
-  type SignInForm,
-  type SignUpForm,
+  type PasswordResetConfirmValues,
+  type SignInValues,
+  type SignUpValues,
   validatePasswordResetConfirm,
   validatePasswordResetRequest,
   validateSignIn,
@@ -20,11 +20,11 @@ const VALID_PASSWORD = "correct horse";
 // One code point, two UTF-16 units.
 const EMOJI = "😀";
 
-function makeSignInForm(overrides: Partial<SignInForm> = {}): SignInForm {
+function makeSignInForm(overrides: Partial<SignInValues> = {}): SignInValues {
   return { email: VALID_EMAIL, password: VALID_PASSWORD, ...overrides };
 }
 
-function makeSignUpForm(overrides: Partial<SignUpForm> = {}): SignUpForm {
+function makeSignUpForm(overrides: Partial<SignUpValues> = {}): SignUpValues {
   const password = overrides.password ?? VALID_PASSWORD;
   return {
     email: VALID_EMAIL,
@@ -35,8 +35,8 @@ function makeSignUpForm(overrides: Partial<SignUpForm> = {}): SignUpForm {
 }
 
 function makeResetConfirmForm(
-  overrides: Partial<PasswordResetConfirmForm> = {},
-): PasswordResetConfirmForm {
+  overrides: Partial<PasswordResetConfirmValues> = {},
+): PasswordResetConfirmValues {
   const newPassword = overrides.newPassword ?? VALID_PASSWORD;
   return { newPassword, confirmPassword: newPassword, ...overrides };
 }

@@ -676,8 +676,9 @@ expect(container).toMatchSnapshot();
 - browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
 - a server-only `getCurrentUser()`, wrapped in React `cache()` and exported from `server.ts`. It skips the API call when the request has no `montelingo_session` cookie;
 - form validation with `zod` (`schemas.ts`);
-- the open-redirect guard `safeRedirectPath()`;
-- error-code mapping in `errors.ts`.
+- the open-redirect guard `safeRedirectPath()`, and `postAuthRedirectPath()`, which also sends a destination that is an auth page (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, in any case or encoding, with or without a trailing slash) to `/`. Pages and forms use the latter for where to go after signing in;
+- error-code mapping in `errors.ts`;
+- the sign-in and sign-up pages (`src/app/(auth)/`): thin routes that redirect a signed-in user and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. The forms use `method="post"`, so a submit before hydration never puts credentials in the URL.
 
 Installed and enforced:
 
@@ -686,7 +687,7 @@ Installed and enforced:
 - `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
 - The same-origin API proxy (including the trusted client IP), the server and browser API clients, and the single base-URL source (§5.3). `server-only` marks the server modules. Vitest aliases it to its no-op entry so those modules can be unit-tested.
 - The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3).
-- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`), `PasswordField` (a "Show password" toggle button with `aria-pressed`), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), and `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message).
+- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), and `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message).
 
 - `zod` (v4) for runtime validation of form input (§5.2).
 

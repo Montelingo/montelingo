@@ -58,6 +58,26 @@ describe("TextField", () => {
     );
   });
 
+  it("announces an error that contains a link", () => {
+    render(
+      <TextField
+        label="Email"
+        error={
+          <>
+            This email is taken. <a href="/sign-in">Sign in instead</a>
+          </>
+        }
+      />,
+    );
+
+    expect(screen.getByLabelText("Email")).toHaveAccessibleDescription(
+      "This email is taken. Sign in instead",
+    );
+    expect(
+      screen.getByRole("link", { name: "Sign in instead" }),
+    ).toHaveAttribute("href", "/sign-in");
+  });
+
   it("treats an empty error as no error", () => {
     render(<TextField label="Email" error="" />);
 
