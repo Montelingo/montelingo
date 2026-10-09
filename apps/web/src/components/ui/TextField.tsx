@@ -8,7 +8,8 @@ export type TextFieldProps = Omit<
 > & {
   label: string;
   description?: string;
-  error?: string;
+  /** Shown below the input and announced with it. May contain a link to a way out. */
+  error?: ReactNode;
   /** A control rendered inside the right edge of the input, such as a toggle. */
   endAdornment?: ReactNode;
 };

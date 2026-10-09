@@ -13,6 +13,26 @@ describe("FormAlert", () => {
     );
   });
 
+  it("announces a message that contains a link", () => {
+    render(
+      <FormAlert
+        message={
+          <>
+            Your account was created. <a href="/sign-in">Go to sign in</a>
+          </>
+        }
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Your account was created. Go to sign in",
+    );
+    expect(screen.getByRole("link", { name: "Go to sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+  });
+
   it.each([undefined, null, ""])(
     "renders nothing when the message is %j",
     (message) => {

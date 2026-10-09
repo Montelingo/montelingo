@@ -73,6 +73,25 @@ describe("PasswordField", () => {
     expect(submitCount).toBe(0);
   });
 
+  it("names each toggle after its field", () => {
+    render(
+      <>
+        <PasswordField label="Password" />
+        <PasswordField label="Confirm password" />
+      </>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Show password" }),
+    ).toHaveAttribute("aria-controls", screen.getByLabelText("Password").id);
+    expect(
+      screen.getByRole("button", { name: "Show confirm password" }),
+    ).toHaveAttribute(
+      "aria-controls",
+      screen.getByLabelText("Confirm password").id,
+    );
+  });
+
   it("controls the input it toggles", () => {
     render(<PasswordField label="Password" id="sign-in-password" />);
 

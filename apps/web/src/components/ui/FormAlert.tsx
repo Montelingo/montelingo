@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/cn";
 
 type FormAlertProps = {
-  message?: string | null;
+  /** Text, or text with a link to a way out. Nothing renders when it is empty. */
+  message?: ReactNode;
   className?: string;
 };
 

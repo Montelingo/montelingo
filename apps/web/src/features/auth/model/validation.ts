@@ -13,19 +13,19 @@ export type ValidationResult<Data, Field extends string> =
   | { ok: true; data: Data }
   | { ok: false; fieldErrors: FieldErrors<Field> };
 
-export type SignInForm = z.input<typeof signInSchema>;
-export type SignUpForm = z.input<typeof signUpSchema>;
-export type PasswordResetRequestForm = z.input<
+export type SignInValues = z.input<typeof signInSchema>;
+export type SignUpValues = z.input<typeof signUpSchema>;
+export type PasswordResetRequestValues = z.input<
   typeof passwordResetRequestSchema
 >;
-export type PasswordResetConfirmForm = z.input<
+export type PasswordResetConfirmValues = z.input<
   typeof passwordResetConfirmSchema
 >;
 
-export type SignInField = keyof SignInForm;
-export type SignUpField = keyof SignUpForm;
-export type PasswordResetRequestField = keyof PasswordResetRequestForm;
-export type PasswordResetConfirmField = keyof PasswordResetConfirmForm;
+export type SignInField = keyof SignInValues;
+export type SignUpField = keyof SignUpValues;
+export type PasswordResetRequestField = keyof PasswordResetRequestValues;
+export type PasswordResetConfirmField = keyof PasswordResetConfirmValues;
 
 // Returns the parsed form, or the first message for each invalid field.
 function validate<Form extends Record<string, string>>(
@@ -48,28 +48,28 @@ function validate<Form extends Record<string, string>>(
 
 /** Validates the sign-in form. On success the email is trimmed. */
 export function validateSignIn(
-  form: SignInForm,
-): ValidationResult<SignInForm, SignInField> {
+  form: SignInValues,
+): ValidationResult<SignInValues, SignInField> {
   return validate(signInSchema, form);
 }
 
 /** Validates the sign-up form. On success the email is trimmed. */
 export function validateSignUp(
-  form: SignUpForm,
-): ValidationResult<SignUpForm, SignUpField> {
+  form: SignUpValues,
+): ValidationResult<SignUpValues, SignUpField> {
   return validate(signUpSchema, form);
 }
 
 /** Validates the "forgot password" form. On success the email is trimmed. */
 export function validatePasswordResetRequest(
-  form: PasswordResetRequestForm,
-): ValidationResult<PasswordResetRequestForm, PasswordResetRequestField> {
+  form: PasswordResetRequestValues,
+): ValidationResult<PasswordResetRequestValues, PasswordResetRequestField> {
   return validate(passwordResetRequestSchema, form);
 }
 
 /** Validates the "choose a new password" form. */
 export function validatePasswordResetConfirm(
-  form: PasswordResetConfirmForm,
-): ValidationResult<PasswordResetConfirmForm, PasswordResetConfirmField> {
+  form: PasswordResetConfirmValues,
+): ValidationResult<PasswordResetConfirmValues, PasswordResetConfirmField> {
   return validate(passwordResetConfirmSchema, form);
 }
