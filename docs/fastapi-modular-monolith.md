@@ -123,7 +123,9 @@ Routers must not:
 Example, from `app/modules/health/router.py`:
 
 ```python
-def get_health_service(session: AsyncSession = Depends(get_db_session)) -> HealthService:
+def get_health_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> HealthService:
     return HealthService(database=SqlAlchemyDatabaseProbe(session))
 
 
@@ -136,7 +138,9 @@ def get_health_service(session: AsyncSession = Depends(get_db_session)) -> Healt
 )
 async def ready(service: HealthService = Depends(get_health_service)) -> ReadyHealth:
     if not await service.is_ready():
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "Service is not ready.", status_code=503)
+        raise ApiError(
+            ErrorCode.SERVICE_UNAVAILABLE, "Service is not ready.", status_code=503
+        )
     return ReadyHealth()
 ```
 
@@ -318,7 +322,9 @@ Rules:
 Each module's router defines a `get_<name>_service` function that builds the service from its dependencies, as `get_health_service` does in §2.1. A module with more collaborators wires them the same way (illustrative):
 
 ```python
-def get_account_service(session: AsyncSession = Depends(get_db_session)) -> AccountService:
+def get_account_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> AccountService:
     return AccountService(
         repo=SqlAlchemyAccountRepository(session),
         tx=SessionTransactionManager(session),
