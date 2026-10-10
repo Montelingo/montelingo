@@ -87,10 +87,29 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 
 - Node.js 22+, `pnpm` (pinned via `packageManager` in [package.json](package.json))
 - Python 3.12 (pinned in [.python-version](.python-version); `uv` downloads it if
-  missing), [`uv`](https://docs.astral.sh/uv/)
+  missing), [`uv`](https://docs.astral.sh/uv/) 0.12.1 (pinned via `required-version`
+  in [pyproject.toml](pyproject.toml); install it with `uv self update 0.12.1`)
 - Docker + Docker Compose
 
 Copy `.env.example` to `.env` (or export the variables) before running Compose.
+
+## Development workflow
+
+```bash
+uvx pre-commit install   # once per clone: checks staged files on every commit
+pnpm check               # everything CI runs except the Docker and E2E jobs
+```
+
+The [pre-commit hooks](.pre-commit-config.yaml) block merge-conflict markers,
+run ruff on `apps/api`, Prettier on Markdown and `apps/web`, and
+`uv lock --check` when `pyproject.toml` or `uv.lock` change. They use the
+repo's own tool versions, so they agree with CI. Run `pnpm check` before
+opening a pull request; the [PR template](.github/pull_request_template.md)
+lists the rest.
+
+The uv version is pinned in three places that must change together: the root
+`pyproject.toml` (`required-version`), `UV_VERSION` in
+[ci.yml](.github/workflows/ci.yml), and [apps/api/Dockerfile](apps/api/Dockerfile).
 
 ## Frontend (`apps/web`)
 

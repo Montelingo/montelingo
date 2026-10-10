@@ -16,6 +16,8 @@ permissions:
 env:
   PNPM_VERSION: '9.12.0'
   NODE_VERSION: '24'
+  # Keep in sync with required-version in pyproject.toml and apps/api/Dockerfile.
+  UV_VERSION: '0.12.1'
 
 jobs:
   frontend:
@@ -88,6 +90,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: 'uv.lock'
 
@@ -146,6 +149,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: 'uv.lock'
 
@@ -169,6 +173,7 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
+          version: ${{ env.UV_VERSION }}
           enable-cache: true
           cache-dependency-glob: 'uv.lock'
 

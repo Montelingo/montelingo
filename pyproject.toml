@@ -1,2 +1,7 @@
 [tool.uv.workspace]
 members = ["apps/api"]
+
+[tool.uv]
+# One uv version locally, in CI (.github/workflows/ci.yml) and in apps/api/Dockerfile,
+# so uv.lock is always written in the same format. Bump all three together.
+required-version = "==0.12.1"
