@@ -1,0 +1,44 @@
+# Fast checks on staged files before each commit. CI still runs the full suite.
+# Install once per clone: `uvx pre-commit install`. Run on everything: `uvx pre-commit run --all-files`.
+# Local hooks use the repo's own ruff, uv, and Prettier, so results match CI.
+exclude: ^(packages/api-client/src/generated/|packages/api-client/openapi\.json$|pnpm-lock\.yaml$|apps/web/next-env\.d\.ts$)
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (apps/api)
+        entry: uv run --project apps/api ruff check --fix
+        language: system
+        types: [python]
+        files: ^apps/api/
+      - id: ruff-format
+        name: ruff format (apps/api)
+        entry: uv run --project apps/api ruff format
+        language: system
+        types: [python]
+        files: ^apps/api/
+      - id: uv-lock-check
+        name: uv.lock matches pyproject.toml
+        entry: uv lock --check
+        language: system
+        files: (^|/)(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+      - id: prettier
+        name: prettier
+        entry: pnpm exec prettier --write --ignore-unknown
+        language: system
+        types: [text]
+        # One Node process instead of one per CPU; parallel Prettier runs exhaust memory.
+        require_serial: true
+        # Same scope as CI: Markdown everywhere (format:check:docs) and apps/web (format:check:web).
+        files: (\.md$|^apps/web/)
+        exclude: ^apps/web/(public|\.next)/
