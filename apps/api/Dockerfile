@@ -9,7 +9,8 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /bin/
+# Keep in sync with required-version in the root pyproject.toml.
+COPY --from=ghcr.io/astral-sh/uv:0.12.1 /uv /uvx /bin/
 
 WORKDIR /workspace
 
