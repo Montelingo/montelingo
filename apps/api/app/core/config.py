@@ -33,6 +33,7 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v.startswith("["):
                 import json
+
                 try:
                     res = json.loads(v)
                     if isinstance(res, list):
@@ -54,8 +55,7 @@ class Settings(BaseSettings):
                 raise ValueError("SMTP email configuration required in production")
             if self.smtp_username and not self.smtp_password:
                 raise ValueError(
-                    "MONTELINGO_SMTP_PASSWORD must be provided "
-                    "when smtp_username is set"
+                    "MONTELINGO_SMTP_PASSWORD must be provided when smtp_username is set"
                 )
 
     def __repr__(self) -> str:

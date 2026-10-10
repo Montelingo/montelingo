@@ -30,7 +30,7 @@ class Argon2PasswordHasher:
     def hash(self, password: str) -> str:
         return self._ph.hash(password)
 
-    def verify(self, *, password: str, password_hash: str) -> bool:
+    def verify(self, password: str, password_hash: str) -> bool:
         try:
             return self._ph.verify(password_hash, password)
         except (VerifyMismatchError, VerificationError):
@@ -60,7 +60,7 @@ class SecureToken:
         return hmac.compare_digest(val1, val2)
 
     @staticmethod
-    def verify(*, token: str, expected_hash: bytes) -> bool:
+    def verify(token: str, expected_hash: bytes) -> bool:
         try:
             token_bytes = SecureToken.hash(token)
             return SecureToken.compare_digest(token_bytes, expected_hash)

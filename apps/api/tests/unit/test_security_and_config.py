@@ -1,4 +1,3 @@
-import pytest
 from app.core.config import Settings
 from app.core.security import Argon2PasswordHasher, SecureToken
 
