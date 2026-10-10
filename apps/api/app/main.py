@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 
 from app.api.v1.router import router as v1_router
+from app.core.config import get_settings
 from app.core.exception_handlers import register_exception_handlers
 from app.core.request_id import request_id_middleware
 
 
 def create_app() -> FastAPI:
+    get_settings().validate_smtp_for_production()
     app = FastAPI(title="Montelingo API", version="1.0.0")
     app.middleware("http")(request_id_middleware)
     register_exception_handlers(app)

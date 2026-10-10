@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     web_base_url: str = Field(default="http://localhost:3000")
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_security: Literal["none", "starttls", "tls"] = "starttls"
+    smtp_from: str | None = None
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:

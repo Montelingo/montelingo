@@ -15,6 +15,9 @@ apps/web/src/
     globals.css
     error.tsx
     not-found.tsx
+    api/
+      [...path]/
+        route.ts                    # same-origin proxy to the API (§5.3); the only route under app/api
     lessons/
       page.tsx
       loading.tsx
@@ -42,11 +45,14 @@ apps/web/src/
       schemas.ts                    # runtime validation of API data and form input
       errors.ts                     # feature-specific error → message mapping
       index.ts                      # the feature's public API
+      server.ts                     # the feature's server-only public API (only if it has server-only code)
   components/
-    ui/                             # shared, domain-free primitives (Button, Dialog, Spinner)
+    ui/                             # shared, domain-free primitives (TextField, SubmitButton, Dialog)
   hooks/                            # shared, domain-free hooks (use-media-query)
-  lib/                              # framework-agnostic utilities (api config, env, cn)
+  lib/                              # shared utilities: API clients and proxy (§5.3), cn
 ```
+
+`lib/` holds domain-free utilities. Most are framework-agnostic, but the API modules are tied to where they run: `api.ts` and `api-config.ts` are server-only (`import "server-only"`, which fails the build if a Client Component imports them), and `browser-api.ts` is browser-only.
 
 ### 1.2 Feature folders own their vertical slice
 
@@ -80,11 +86,11 @@ app/  ──▶  features/<x>/index.ts  ──▶  components/ui, hooks, lib, @a
 ```
 
 - `app/` may import from features and shared folders.
-- A feature may import shared folders and **another feature's public API only** (`@/features/progress`, never `@/features/progress/model/streak`).
+- A feature may import shared folders and **another feature's public API only** (`@/features/progress` or `@/features/progress/server`, never `@/features/progress/model/streak`).
 - Shared folders (`components/`, `hooks/`, `lib/`) must never import from `features/` or `app/`.
 - Inside a feature, use relative imports (`../model/scoring`).
 
-ESLint (`no-restricted-imports`) rejects deep imports into another feature and any import from `@/features` in shared folders.
+ESLint (`no-restricted-imports`) rejects deep imports into another feature (anything under `@/features/<name>/` except `server`) and any import from `@/features` in shared folders.
 
 ## 2. Routes and pages orchestrate, features decide
 
@@ -227,7 +233,7 @@ Rules:
 
 - Never put `"use client"` on `page.tsx` or `layout.tsx`. If a page needs interactivity, extract a client component. The one exception is `error.tsx`, which Next.js requires to be a client component.
 - Props that cross from server to client must be serializable: plain objects, arrays, strings, numbers, booleans, `null`. No class instances, functions, or `Date` objects (pass ISO strings).
-- Server-only values (`API_INTERNAL_BASE_URL`, secrets) are read only in server code. Client-visible configuration must use the `NEXT_PUBLIC_` prefix.
+- Server-only values (`API_INTERNAL_BASE_URL`, secrets) are read only in server code. Modules that read them start with `import "server-only"`. Client-visible configuration must use the `NEXT_PUBLIC_` prefix.
 
 ## 4. Hooks and state
 
@@ -340,11 +346,57 @@ Use runtime validation (a Zod schema in `schemas.ts`) when data crosses a bounda
 
 - data comes from `localStorage`, URL params, `postMessage`, or form input
 
-`zod` is not installed yet because no such boundary exists yet. Add it to `apps/web` with the first schema. Do not duplicate types the generator already provides.
+`src/features/auth/schemas.ts` (the sign-in, sign-up, and password-reset forms) is the reference. The schema mirrors the API's request rules so most mistakes are caught before a round trip. A pure function in `model/` runs it and returns `{ ok: true, data }` or `{ ok: false, fieldErrors }`. The API stays authoritative, and `errors.ts` maps its `validation_error` details onto the same fields. Do not duplicate types the generator already provides.
 
-### 5.3 Base URL and request options
+### 5.3 Server-side and browser-side calls
 
-Base URL selection lives in one place, `src/lib/api.ts` (`getApiClient()`). It uses `API_INTERNAL_BASE_URL` on the server and the browser origin on the client. Adapters never read `process.env` themselves.
+There are two clients, one per runtime. Adapters take the client from one of them and never read `process.env` or build URLs themselves.
+
+| Where the code runs                                          | Client                                                        | How it reaches the API                                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Server Components, route handlers (`src/lib/api.ts`)         | `getApiClient()`, or `getApiClient({ forwardCookies: true })` | Directly over the internal network, at `API_INTERNAL_BASE_URL`               |
+| Client Components, event handlers (`src/lib/browser-api.ts`) | `getBrowserApiClient()`                                       | The same-origin proxy: `/api/*` on the web origin, which forwards to the API |
+
+Use a **server-side call** to read data while rendering. It is the default (§4.1), and it keeps the round trip on the internal network. Server-side calls are reads only. Pass `forwardCookies: true` when the API must see the signed-in user. The client then sends the incoming request's `Cookie` header to the API.
+
+Use a **browser-side call** for mutations and anything else triggered by the user (sign-in, sign-out, submitting an answer). The browser sends the session cookie itself, the API sees the real `Origin` for its CSRF check ([ADR 0004](adr/0004-session-based-authentication.md)), and every `Set-Cookie` the API returns reaches the browser.
+
+Rules:
+
+- Server-side calls (`getApiClient()`) are reads only (`GET`, `HEAD`). They send no `Origin` or `Referer`, so the API's Origin check (#37) rejects any `POST`, `PUT`, `PATCH`, or `DELETE` from server code, and a `Set-Cookie` the API returns to server code never reaches the browser. They also send no `X-Forwarded-For`, so the API sees the web container's address, not the user's (see [Client IP](#client-ip)).
+- Never call `getApiClient({ forwardCookies: true })` inside a cached scope (`unstable_cache`, `"use cache"`). The response depends on the user's cookies, so caching it would serve one user's data to another.
+- `src/lib/api.ts` is server-only, so a Client Component cannot import it (the build fails). An adapter that runs in the browser takes its client from `getBrowserApiClient()`.
+- A feature exports its server-side adapters (the ones built on `getApiClient()`) from `server.ts`, never from `index.ts` (§7.3).
+
+#### Base URL
+
+`src/lib/api-config.ts` is the only place that knows the API's internal address and the only place that parses it. `getApiInternalBase()` returns its origin and path prefix (used by the proxy), and `getApiInternalBaseUrl()` returns the same value as one URL string (used by `getApiClient()`). Both read `API_INTERNAL_BASE_URL` on every call, so one built image can target any API, and fall back to `http://localhost:8000` for local `pnpm dev`. The parsed value is reused until the variable changes. They throw on a value that is not an absolute `http(s)` URL, or that contains credentials, a query string, or a fragment. `@app/api-client` has no default: `createApiClient()` requires a `baseUrl`, and the browser client passes `window.location.origin`.
+
+#### The same-origin proxy
+
+`src/app/api/[...path]/route.ts` forwards every `/api/*` request on the web origin to `API_INTERNAL_BASE_URL`. The forwarding logic is a pure function, `proxyApiRequest()` in `src/lib/api-proxy.ts`, with unit tests over a mocked `fetch`. `/api/*` on the web origin belongs to the proxy. Do not add other route handlers under `src/app/api/`.
+
+- **Target:** the raw request path and query string are appended to the base URL, so a base path prefix (`http://api:8000/backend`) is kept. Paths that leave `/api/` after decoding (`/api/%2e%2e/…`, `..%2f`, `%5c`) get a local `404 not_found` envelope and never reach the API.
+- **Request:** the method, body, query string, and only these headers are forwarded: `Accept`, `Accept-Language`, `Content-Type`, `Cookie`, `Origin`, `Referer` (the API's CSRF fallback when `Origin` is absent), `If-None-Match` and `If-Modified-Since` (so the API can answer `304`), `User-Agent`, and `X-Request-Id`. The proxy sets `X-Forwarded-For` itself, to the one client IP it resolved, or sends none (see [Client IP](#client-ip)). Everything else is dropped, including hop-by-hop headers, `Host`, the client's `X-Forwarded-*` (clients can spoof it), and `Authorization`, because authentication is the session cookie only ([ADR 0004](adr/0004-session-based-authentication.md)). An `X-Request-Id` that does not match the API's format (`^[A-Za-z0-9._:-]{1,128}$`) is replaced with a new UUID.
+- **Request body:** bodies are buffered, which suits the API's small JSON payloads, up to 1 MiB (`API_PROXY_MAX_BODY_BYTES`). A larger `Content-Length` gets `413 bad_request` (the code the API uses for `413`) before anything is read. Bodies without one (chunked) are counted as they arrive, and the proxy stops reading and answers `413` as soon as they cross the limit. In both cases the API is never called. A body stream that fails gets `400 bad_request`.
+- **Response:** the status, body, every `Set-Cookie` header (one header per cookie), `X-Request-Id`, and the other API headers are returned. Hop-by-hop headers, headers named in `Connection`, and `Content-Encoding`/`Content-Length` are stripped, because `fetch` has already decompressed the body. A `304` is returned with no body, like `204`, `205`, and any `HEAD` response. Redirects are passed through, not followed. A `Location` is resolved against the upstream URL, as the browser would resolve it. If it lands on the API origin, it becomes a web-origin path (with query and fragment), and a path into the API (`<base path>/api/…`) also loses the base path, so the internal host never reaches the browser and the browser stays on the proxy. A `Location` on any other origin, or one that does not parse, is passed through unchanged.
+- **Failures:** when the API is unreachable the proxy answers `502`, and when the API's response headers do not arrive within 30 seconds (`API_PROXY_TIMEOUT_MS`) it answers `504`. Both use code `service_unavailable`. The timeout starts after the request body has been read and ends once the headers arrive, so a slow upload is not counted and a response body still streaming back is never cut off. An invalid `API_INTERNAL_BASE_URL` or `TRUSTED_PROXY_HOPS` makes the proxy answer `500 internal_server_error` instead of Next's HTML error page. Every proxy failure uses the shared error envelope and the request's `X-Request-Id`, so `unwrap()` throws `ApiClientError` exactly as it does for API errors. The unreachable, timeout, and misconfiguration failures are logged on the server. A client that disconnects, during the upload or while the response streams, cancels the API call and is not logged.
+- Next.js redirects `/api/...` paths with a trailing slash (`308`) before the proxy runs. API routes never end in a slash, so this has no effect.
+
+A route handler is used instead of `rewrites` or middleware because it reads the base URL at runtime, controls which headers cross in each direction, returns the error envelope when the API is down, and can be unit-tested. A middleware rewrite exposes the internal URL in its `x-middleware-rewrite` response header.
+
+#### Client IP
+
+The API's per-IP rate limits (#37) need the user's address, but the API's TCP peer is the web container. The proxy therefore sends the client IP in `X-Forwarded-For`, as exactly one address that replaces whatever the client sent, never appended to it. When it cannot resolve a trustworthy address, it sends no `X-Forwarded-For` at all.
+
+- **Source:** in production, a TLS-terminating edge or load balancer sits in front of the web container and appends the address of its peer to `X-Forwarded-For`. `TRUSTED_PROXY_HOPS` is the number of such proxies: `1` for a single load balancer, `2` for a CDN in front of a load balancer. Each one appends one entry, so the proxy takes the entry `TRUSTED_PROXY_HOPS` positions from the right. Everything to its left was written by the client and is ignored.
+- **Parsing:** IPv6 brackets and an IPv4 `:port` are stripped, an IPv4-mapped IPv6 address (`::ffff:203.0.113.7`) becomes IPv4, and IPv6 is written in canonical form, so one client is one rate-limit key. If the header has fewer entries than `TRUSTED_PROXY_HOPS`, or the entry is not a valid IP address, no `X-Forwarded-For` is sent.
+- **Configuration:** `getTrustedProxyHops()` in `src/lib/api-config.ts` reads `TRUSTED_PROXY_HOPS` on every call and defaults to `0` when it is unset or blank. Any value other than an integer from 0 to 10 throws, and the proxy answers `500 internal_server_error` as it does for an invalid `API_INTERNAL_BASE_URL`.
+- **Deployment requirements:** every trusted proxy must append its peer's address to `X-Forwarded-For`, not pass the client's value through unchanged. nginx's `$proxy_add_x_forwarded_for` appends, and so does AWS ALB in its default `append` mode (not `preserve`). The web container must be reachable only through that edge. A request that reaches it directly can plant any address at the trusted position.
+- **API side:** the API (#37) trusts `X-Forwarded-For` only on connections from the web container's address, so a client that reaches the API directly cannot set it either.
+- **Local development:** `pnpm dev` and Docker Compose have no edge and use `0`. The proxy sends no `X-Forwarded-For`, the API sees the web server's address, and all local requests share one rate-limit bucket. That is expected.
+
+The proxy cannot use the socket address instead. Before a route handler runs, Next.js fills in a missing `X-Forwarded-For` with the TCP peer's address (`req.headers['x-forwarded-for'] ??= socket.remoteAddress`), and the handler only sees the resulting header. It cannot tell that value from one the client sent, so with no trusted proxy in front there is no address the proxy can vouch for.
 
 ## 6. TypeScript
 
@@ -435,7 +487,9 @@ import { scoreLesson } from "../model/scoring";
 ### 7.3 Exports
 
 - Use **named exports** everywhere. Default exports are used only where Next.js requires them (`page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default`) and in config files (`next.config.ts`, `vitest.config.ts`, `tailwind.config.ts`).
-- Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` is private to the feature.
+- Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` (or `server.ts`, below) is private to the feature.
+- `index.ts` must be safe to import from a Client Component. Anything that is server-only (it imports `server-only`, `next/headers`, or `@/lib/api`) is exported from the feature's `server.ts` instead, which starts with `import "server-only"`. Routes import it as `@/features/<name>/server`. Next.js fails the client build as soon as `server-only` is anywhere in a Client Component's import graph. Tree-shaking runs too late to remove it, so a single server-only re-export in `index.ts` would break every Client Component that imports the feature.
+- `apps/web/package.json` declares `"sideEffects": ["*.css"]`, so the bundler drops whatever a Client Component does not use from a feature's `index.ts`. A button that imports only `signOut` from `@/features/auth` does not ship `zod` or the form schemas. As a result, a module must never rely on being imported for its side effects, except stylesheets and packages such as `server-only`. Because a re-export can be skipped, every module that is server-only starts with `import "server-only"` itself, not only the `server.ts` that re-exports it.
 - Do not add `index.ts` barrels inside a feature's subfolders or in `components/ui`. Import primitives by file path.
 
 ```ts
@@ -502,7 +556,7 @@ export default function LessonError({ reset }: ErrorPageProps) {
 }
 ```
 
-`ApiClientError.error.code` (from the shared error envelope) is mapped to user-facing copy in the feature's `errors.ts`. Components switch on `code`, never on `message`.
+`ApiClientError.error.code` (from the shared error envelope) is mapped to user-facing copy in the feature's `errors.ts`. Components switch on `code`, never on `message`. `ApiClientError.headers` holds the error response's headers, for protocol details such as `Retry-After`; read it with `parseRetryAfter()` from `src/lib/retry-after.ts`. When `fetch` itself fails (the API or network is unreachable), the client throws `ApiNetworkError` instead, with the original error as `cause`. Any other error, such as a `TypeError` while mapping a response, is a bug and is not reported to the user as a connection problem. An abort is rethrown unchanged. `src/features/auth/errors.ts` is the reference: `toAuthFormError()` returns a serializable `{ code, formError, fieldErrors, retryAfterSeconds, requestId }`, and the API's `validation_error` details become field errors written in our own copy, never the API's `message`.
 
 ### 9.2 Loading states
 
@@ -518,13 +572,14 @@ export default function LessonError({ reset }: ErrorPageProps) {
 
 Tests are **co-located** with the file they test, named `<file>.test.ts` or `<file>.test.tsx`. Vitest picks up `src/**/*.test.{ts,tsx}`. `.tsx` tests run in `jsdom`. `.ts` tests run in `node`.
 
-| What                                | Kind of test                                                                             | Example                      |
-| ----------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- |
-| `model/` pure functions, reducers   | Unit (node), exhaustive edge cases                                                       | `scoring.test.ts`            |
-| `api/` adapters                     | Unit, with `@/lib/api` mocked to return `createApiClient({ fetch })` over a fake `fetch` | `lessons-api.test.ts`        |
-| Hooks with logic                    | `renderHook` (jsdom)                                                                     | `use-lesson-session.test.ts` |
-| Components                          | Behavior + accessibility (jsdom)                                                         | `LessonCard.test.tsx`        |
-| Full user journeys across the stack | End-to-end in `tests/e2e/`                                                               | `tests/e2e/smoke.sh`         |
+| What                                | Kind of test                                                                                      | Example                      |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `model/` pure functions, reducers   | Unit (node), exhaustive edge cases                                                                | `scoring.test.ts`            |
+| `api/` adapters                     | Unit, with `@/lib/api` mocked to return `createApiClient({ baseUrl, fetch })` over a fake `fetch` | `lessons-api.test.ts`        |
+| Shared `lib/` utilities             | Unit (node), with `fetch` and `next/headers` injected or mocked                                   | `api-proxy.test.ts`          |
+| Hooks with logic                    | `renderHook` (jsdom)                                                                              | `use-lesson-session.test.ts` |
+| Components                          | Behavior + accessibility (jsdom)                                                                  | `LessonCard.test.tsx`        |
+| Full user journeys across the stack | End-to-end in `tests/e2e/`                                                                        | `tests/e2e/smoke.sh`         |
 
 ### 10.2 Component tests cover behavior and accessibility
 
@@ -616,13 +671,26 @@ expect(container).toMatchSnapshot();
 
 `src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
 
+`src/features/auth` is the reference for the rest:
+
+- browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
+- a server-only `getCurrentUser()`, wrapped in React `cache()` and exported from `server.ts`. It skips the API call when the request has no `montelingo_session` cookie;
+- form validation with `zod` (`schemas.ts`);
+- the open-redirect guard `safeRedirectPath()`, and `postAuthRedirectPath()`, which also sends a destination that is an auth page (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, in any case or encoding, with or without a trailing slash) to `/`. Pages and forms use the latter for where to go after signing in;
+- error-code mapping in `errors.ts`;
+- the sign-in and sign-up pages (`src/app/(auth)/`): thin routes that redirect a signed-in user and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. The forms use `method="post"`, so a submit before hydration never puts credentials in the URL.
+
 Installed and enforced:
 
 - React 19 (`react`, `react-dom`, and their types), matching the React version the App Router runs. See [ADR 0003](adr/0003-react-19.md).
 - Testing Library (`@testing-library/react`, `user-event`, `jest-dom`) and `vitest-axe`, with matchers registered in `vitest.setup.ts`. `ApiHealthCard.test.tsx` is the reference component test.
 - `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
+- The same-origin API proxy (including the trusted client IP), the server and browser API clients, and the single base-URL source (§5.3). `server-only` marks the server modules. Vitest aliases it to its no-op entry so those modules can be unit-tested.
+- The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3).
+- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), and `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message).
+
+- `zod` (v4) for runtime validation of form input (§5.2).
 
 Known gaps to close as real features land:
 
-- `zod` and the `cn()` helper are documented but not installed yet. Add each one with its first use.
 - Import ordering (§7.2) and naming conventions (§7.1) are enforced only in code review.

@@ -19,6 +19,14 @@ services:
     networks:
       - internal
 
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - internal
+
   migrate:
     build:
       context: .
@@ -47,12 +55,18 @@ services:
         required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
+      MONTELINGO_SMTP_HOST: mailpit
+      MONTELINGO_SMTP_PORT: 1025
+      MONTELINGO_SMTP_SECURITY: none
+      MONTELINGO_SMTP_FROM: no-reply@montelingo.local
       UV_CACHE_DIR: /tmp/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     healthcheck:
       test:
         [
@@ -101,6 +115,10 @@ services:
         required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
+      MONTELINGO_SMTP_HOST: mailpit
+      MONTELINGO_SMTP_PORT: 1025
+      MONTELINGO_SMTP_SECURITY: none
+      MONTELINGO_SMTP_FROM: no-reply@montelingo.local
       UV_CACHE_DIR: /tmp/.cache/uv
     command: uv run --project apps/api fastapi dev apps/api/app/main.py --host 0.0.0.0 --port 8001
     depends_on:
@@ -108,6 +126,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     ports:
       - "8001:8001"
     networks:
