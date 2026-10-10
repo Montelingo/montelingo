@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,9 +20,18 @@ class Settings(BaseSettings):
     web_base_url: str = Field(default="http://localhost:3000")
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
     @property
     def cookie_secure(self) -> bool:
-        return self.env != "development"
+        return self.env == "production"
 
 
 @lru_cache

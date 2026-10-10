@@ -1,3 +1,4 @@
+import hashlib
 import hmac
 import secrets
 from datetime import UTC, datetime
@@ -29,7 +30,7 @@ class Argon2PasswordHasher:
     def hash(self, password: str) -> str:
         return self._ph.hash(password)
 
-    def verify(self, password: str, password_hash: str) -> bool:
+    def verify(self, *, password: str, password_hash: str) -> bool:
         try:
             return self._ph.verify(password_hash, password)
         except (VerifyMismatchError, VerificationError):
@@ -51,5 +52,17 @@ class SecureToken:
         return secrets.token_urlsafe(length)
 
     @staticmethod
-    def compare_digest(val1: str, val2: str) -> bool:
-        return hmac.compare_digest(val1.encode("utf-8"), val2.encode("utf-8"))
+    def hash(token: str) -> bytes:
+        return hashlib.sha256(token.encode("utf-8")).digest()
+
+    @staticmethod
+    def compare_digest(val1: bytes, val2: bytes) -> bool:
+        return hmac.compare_digest(val1, val2)
+
+    @staticmethod
+    def verify(*, token: str, expected_hash: bytes) -> bool:
+        try:
+            token_bytes = SecureToken.hash(token)
+            return SecureToken.compare_digest(token_bytes, expected_hash)
+        except (ValueError, TypeError):
+            return False
