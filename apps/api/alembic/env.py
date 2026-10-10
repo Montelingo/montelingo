@@ -15,7 +15,8 @@ from app.modules.users import models as user_models  # noqa: F401
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers created before migrations (the app's, when tests run migrations) working.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 settings = get_settings()

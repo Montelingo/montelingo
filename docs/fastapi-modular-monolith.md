@@ -572,8 +572,9 @@ Migration discipline:
 
 ```text
 apps/api/tests/
-  conftest.py            # `app` (fresh create_app(), unreachable DB) and `client` fixtures
+  conftest.py            # `app`/`client` (unreachable DB) and `db_session`/`integration_client` (real DB)
   contract/              # OpenAPI rules and error-envelope behaviour
+  integration/           # real PostgreSQL tests, marked `integration`
   unit/
     core/                # exception mapping, request IDs
     modules/<name>/      # per-module router and service tests
@@ -613,7 +614,24 @@ async def test_not_ready_when_database_fails() -> None:
 
 ### 5.3 PostgreSQL integration tests
 
-Integration tests run against PostgreSQL and cover persistence behavior, not a mocked repository. They go in `apps/api/tests/integration/postgres/`, created alongside the first persistence module. The CI `backend` job already provides a migrated PostgreSQL service through `MONTELINGO_DATABASE_URL`.
+Integration tests run against PostgreSQL and cover persistence behavior, not a mocked repository. They go in `apps/api/tests/integration/` and are marked `integration`:
+
+```python
+pytestmark = pytest.mark.integration
+
+
+async def test_user_email_is_unique(db_session: AsyncSession) -> None:
+    repo = SqlAlchemyUserRepository(db_session)
+    await repo.create(email="a@example.com", password_hash="x")
+    with pytest.raises(IntegrityError):
+        await repo.create(email="a@example.com", password_hash="y")
+```
+
+- `db_session` is an `AsyncSession` inside a transaction that is rolled back after each test, so tests never see each other's data. Commits made by the code under test become savepoints (`join_transaction_mode="create_savepoint"`), so they are rolled back too.
+- `integration_client` is an `httpx.AsyncClient` for an app whose `get_db_session` is overridden to yield that same `db_session`, so endpoint tests can assert on what they wrote.
+- The test database is `MONTELINGO_TEST_DATABASE_URL` (default: the Compose Postgres on `localhost:5433`, database `montelingo_test`; create it once with `docker compose exec postgres createdb -U postgres montelingo_test`). Migrations run once per test session.
+- Async tests need no decorator: pytest-asyncio runs in `auto` mode with one event loop for the whole session.
+- `pnpm test:api` runs everything. Without PostgreSQL, run `uv run --project apps/api pytest apps/api/tests -m "not integration"`. The CI `backend` job sets `MONTELINGO_TEST_DATABASE_URL` to its Postgres service.
 
 Required coverage includes:
 
