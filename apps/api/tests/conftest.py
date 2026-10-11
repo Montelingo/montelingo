@@ -48,7 +48,6 @@ def app(monkeypatch: pytest.MonkeyPatch) -> Iterator[FastAPI]:
     returned app. Integration tests use `integration_app` instead.
     """
     monkeypatch.setenv("MONTELINGO_DATABASE_URL", UNREACHABLE_DB_URL)
-    monkeypatch.setenv("MONTELINGO_ENV", "test")
     _clear_db_caches()
     yield create_app()
     _clear_db_caches()

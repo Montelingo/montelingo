@@ -10,6 +10,7 @@ from app.core.errors import ApiError, ErrorCode
 
 from .dependencies import get_auth_service, get_current_user
 from .rate_limit import (
+    SignInRateLimitContext,
     rate_limit_password_reset,
     rate_limit_sign_in,
     rate_limit_sign_up,
@@ -64,20 +65,26 @@ async def sign_up(payload: SignUpRequest) -> CurrentUser:
     operation_id="auth_sign_in",
     response_model=CurrentUser,
     responses=error_responses(401, 403, 422, 429),
-    dependencies=[Depends(require_trusted_origin), Depends(rate_limit_sign_in)],
+    dependencies=[Depends(require_trusted_origin)],
 )
 async def sign_in(
     payload: SignInRequest,
     request: Request,
     response: Response,
+    rate_limit: SignInRateLimitContext = Depends(rate_limit_sign_in),
     service: AuthService = Depends(get_auth_service),
     settings: Settings = Depends(get_settings),
 ) -> CurrentUser:
-    result = await service.sign_in(
-        email=str(payload.email),
-        password=payload.password,
-        current_cookie=request.cookies.get(settings.session_cookie_name),
-    )
+    try:
+        result = await service.sign_in(
+            email=str(payload.email),
+            password=payload.password,
+            current_cookie=request.cookies.get(settings.session_cookie_name),
+        )
+    except ApiError as exc:
+        if exc.stable_code == ErrorCode.INVALID_CREDENTIALS.value:
+            rate_limit.record_failure()
+        raise
     _set_session_cookie(response, result.token, settings)
     return CurrentUser(
         id=str(result.user.id),

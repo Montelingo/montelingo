@@ -55,6 +55,7 @@ services:
         required: false
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
+      MONTELINGO_TRUSTED_PROXIES: 172.28.0.0/16
       MONTELINGO_SMTP_HOST: mailpit
       MONTELINGO_SMTP_PORT: 1025
       MONTELINGO_SMTP_SECURITY: none
@@ -119,6 +120,7 @@ services:
       MONTELINGO_SMTP_PORT: 1025
       MONTELINGO_SMTP_SECURITY: none
       MONTELINGO_SMTP_FROM: no-reply@montelingo.local
+      MONTELINGO_TRUSTED_PROXIES: 172.28.0.0/16
       UV_CACHE_DIR: /tmp/.cache/uv
     command: uv run --project apps/api fastapi dev apps/api/app/main.py --host 0.0.0.0 --port 8001
     depends_on:
@@ -159,3 +161,6 @@ volumes:
 networks:
   internal:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
