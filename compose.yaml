@@ -42,6 +42,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
 
   api:
     build:
