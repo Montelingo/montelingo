@@ -19,7 +19,7 @@ export default defineConfig({
   test: {
     environment: "node",
     environmentMatchGlobs: [["src/**/*.test.tsx", "jsdom"]],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "next.config.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
   },
 });

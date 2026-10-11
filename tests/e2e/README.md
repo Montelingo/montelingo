@@ -1,6 +1,6 @@
 # End-to-end tests
 
-[`smoke.sh`](smoke.sh) smoke-tests the full Docker Compose stack (`postgres`, `api`, `web`). It waits for the API liveness endpoint and the web homepage to respond, then asserts that API liveness, API readiness (database connectivity), and the web homepage each return `200`. It also checks the web's same-origin `/api/*` proxy: API liveness through the web origin returns `200`, and an unknown API route returns the API's `404`.
+[`smoke.sh`](smoke.sh) smoke-tests the full Docker Compose stack (`postgres`, `api`, `web`). It waits for the API liveness endpoint and the web homepage to respond, then asserts that API liveness, API readiness (database connectivity), and the web homepage each return `200`. It also checks the web's same-origin `/api/*` proxy: API liveness through the web origin returns `200`, and an unknown API route returns the API's `404`. Finally, it checks the password-reset pages: `/forgot-password` returns `200`, and `/reset-password?token=…` returns `200` with a `Referrer-Policy: no-referrer` header and a `<meta name="referrer" content="no-referrer">` tag, so the token in its URL never leaves in a `Referer` header.
 
 ```bash
 docker compose up --build -d

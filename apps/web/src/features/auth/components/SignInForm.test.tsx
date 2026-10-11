@@ -7,6 +7,7 @@ import { axe } from "vitest-axe";
 import type { Credentials } from "../api/auth-api";
 import { authErrorMessages } from "../errors";
 import { validationMessages } from "../model/messages";
+import type { SignInNotice } from "../model/routes";
 import type { CurrentUser } from "../model/user";
 import { SignInForm } from "./SignInForm";
 
@@ -72,8 +73,8 @@ function flushPromises() {
   });
 }
 
-function renderForm(redirectTo = "/") {
-  const view = render(<SignInForm redirectTo={redirectTo} />);
+function renderForm(redirectTo = "/", notice: SignInNotice | null = null) {
+  const view = render(<SignInForm redirectTo={redirectTo} notice={notice} />);
   return { ...view, user: userEvent.setup() };
 }
 
@@ -162,6 +163,48 @@ describe("SignInForm", () => {
       );
     },
   );
+
+  describe("notice", () => {
+    it("shows no notice by default", () => {
+      renderForm();
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("shows the notice inside the form, above the fields", () => {
+      renderForm("/", "password-updated");
+
+      const notice = screen.getByRole("status");
+      expect(notice).toHaveTextContent("Password updated — please sign in.");
+      expect(screen.getByRole("form", { name: "Sign in" })).toContainElement(
+        notice,
+      );
+      expect(
+        notice.compareDocumentPosition(emailInput()) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("hides the notice once the user submits, so it never sits beside an error", async () => {
+      signIn.mockRejectedValue(makeApiError(401, "invalid_credentials"));
+      const { user: actor } = renderForm("/", "password-updated");
+
+      await fillAndSubmit(actor);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        authErrorMessages.invalidCredentials,
+      );
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("hides the notice after a submit that fails client validation", async () => {
+      const { user: actor } = renderForm("/", "password-updated");
+
+      await actor.click(screen.getByRole("button", { name: "Sign in" }));
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
 
   describe("validation", () => {
     it("shows a field's error when the user leaves it, and only that field's", async () => {
@@ -578,6 +621,12 @@ describe("SignInForm", () => {
   describe("accessibility", () => {
     it("has no violations when idle", async () => {
       const { container } = renderForm();
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
+
+    it("has no violations with a notice", async () => {
+      const { container } = renderForm("/", "password-updated");
 
       expect(await axe(container)).toHaveNoViolations();
     });

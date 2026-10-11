@@ -152,6 +152,42 @@ export function toAuthFormError<Field extends string = never>(
   }
 }
 
+/**
+ * Whether the forgot-password form shows an error from `requestPasswordReset()`
+ * instead of its usual "check your email" confirmation.
+ *
+ * The API answers `204` whether or not the account exists, so the form adds no
+ * protection against email enumeration of its own. It must still never turn an
+ * account-dependent outcome into a message: only errors that say nothing about
+ * the account are shown. That is a request that never reached the API (network,
+ * `service_unavailable`), one the API refused before looking anything up
+ * (`rate_limited`, `not_implemented`), and an email whose format the API's
+ * stricter validator rejected, which the user can fix. Anything else gets the
+ * confirmation.
+ */
+export function isPasswordResetRequestErrorShown(error: unknown): boolean {
+  if (error instanceof ApiNetworkError) {
+    return true;
+  }
+  if (!(error instanceof ApiClientError)) {
+    return false;
+  }
+  const { code, details } = error.error.error;
+  switch (code) {
+    case "rate_limited":
+    case "service_unavailable":
+    case "not_implemented":
+      return true;
+    case "validation_error":
+      return (details ?? []).some(
+        ({ field }) =>
+          field !== null && Object.hasOwn(passwordResetRequestFields, field),
+      );
+    default:
+      return false;
+  }
+}
+
 function formLevel<Field extends string>(
   code: string,
   formError: string | null,

@@ -27,7 +27,12 @@ const signedInUser: CurrentUser = {
   createdAt: "2026-09-01T10:00:00Z",
 };
 
-function renderPage(searchParams: { next?: string | string[] } = {}) {
+type SearchParams = {
+  next?: string | string[];
+  notice?: string | string[];
+};
+
+function renderPage(searchParams: SearchParams = {}) {
   return SignInPage({ searchParams: Promise.resolve(searchParams) });
 }
 
@@ -67,6 +72,41 @@ describe("SignInPage", () => {
     },
   );
 
+  it("shows the password-updated notice", async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    render(await renderPage({ notice: "password-updated" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Password updated — please sign in.",
+    );
+  });
+
+  it.each<[string, string | string[]]>([
+    ["an unknown notice", "account-deleted"],
+    ["free text", "Your account is locked"],
+    ["a repeated parameter", ["password-updated", "password-updated"]],
+  ])("shows no notice for %s", async (_case, notice) => {
+    getCurrentUser.mockResolvedValue(null);
+
+    render(await renderPage({ notice }));
+
+    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps the destination alongside a notice", async () => {
+    getCurrentUser.mockResolvedValue(null);
+
+    render(await renderPage({ next: "/lessons", notice: "password-updated" }));
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+      "href",
+      "/sign-up?next=%2Flessons",
+    );
+  });
+
   it("sends a signed-in user to the destination", async () => {
     getCurrentUser.mockResolvedValue(signedInUser);
 
@@ -77,7 +117,7 @@ describe("SignInPage", () => {
     expect(redirect).toHaveBeenCalledWith("/lessons/42");
   });
 
-  it.each<[string, { next?: string | string[] }]>([
+  it.each<[string, SearchParams]>([
     ["no destination", {}],
     ["an absolute URL", { next: "https://evil.com" }],
     ["a protocol-relative URL", { next: "//evil.com" }],

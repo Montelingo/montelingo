@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   type ApiFieldMap,
   authErrorMessages,
+  isPasswordResetRequestErrorShown,
   passwordResetConfirmFields,
   passwordResetRequestFields,
   SignInAfterSignUpError,
@@ -501,5 +502,57 @@ describe("toAuthFormError", () => {
       expect(error.name).toBe("SignInAfterSignUpError");
       expect(error.cause).toBe(cause);
     });
+  });
+});
+
+describe("isPasswordResetRequestErrorShown", () => {
+  it.each<[string, unknown]>([
+    [
+      "a network failure",
+      new ApiNetworkError({ cause: new TypeError("Failed to fetch") }),
+    ],
+    ["rate_limited", rateLimitedError("30")],
+    ["rate_limited without Retry-After", rateLimitedError()],
+    [
+      "service_unavailable from the proxy",
+      makeApiError(502, "service_unavailable"),
+    ],
+    ["a proxy timeout", makeApiError(504, "service_unavailable")],
+    ["not_implemented", makeApiError(501, "not_implemented")],
+    ["a validation_error on the email", validationError("email")],
+    [
+      "a validation_error on the email and another field",
+      validationError(null, "email"),
+    ],
+  ])("shows %s", (_case, error) => {
+    expect(isPasswordResetRequestErrorShown(error)).toBe(true);
+  });
+
+  it.each<[string, unknown]>([
+    [
+      "authorization_error (Origin check)",
+      makeApiError(403, "authorization_error"),
+    ],
+    ["internal_server_error", makeApiError(500, "internal_server_error")],
+    [
+      "a response without the error envelope",
+      makeApiError(502, "request_failed"),
+    ],
+    ["an unknown code", makeApiError(404, "user_not_found")],
+    ["invalid_credentials", makeApiError(401, "invalid_credentials")],
+    ["a validation_error on no field", validationError(null)],
+    ["a validation_error on another field", validationError("token")],
+    [
+      "a validation_error without details",
+      makeApiError(422, "validation_error", { details: null }),
+    ],
+    [
+      "an unexpected error",
+      new TypeError("Cannot read properties of undefined"),
+    ],
+    ["a string", "boom"],
+    ["undefined", undefined],
+  ])("hides %s behind the confirmation", (_case, error) => {
+    expect(isPasswordResetRequestErrorShown(error)).toBe(false);
   });
 });

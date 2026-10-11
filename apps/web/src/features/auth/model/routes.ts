@@ -8,7 +8,7 @@ export const RESET_PASSWORD_PATH = "/reset-password";
 const DEFAULT_REDIRECT_PATH = "/";
 const PLACEHOLDER_ORIGIN = "https://montelingo.invalid";
 
-// The pages a signed-in user is sent away from, compared lowercased.
+// The auth pages, compared lowercased: never a destination after signing in.
 const AUTH_PAGE_PATHS: ReadonlySet<string> = new Set(
   [SIGN_IN_PATH, SIGN_UP_PATH, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH].map(
     (path) => path.toLowerCase(),
@@ -24,6 +24,27 @@ const AUTH_PAGE_PATHS: ReadonlySet<string> = new Set(
 export function postAuthRedirectPath(next: unknown): string {
   const path = safeRedirectPath(next, DEFAULT_REDIRECT_PATH);
   return isAuthPagePath(path) ? DEFAULT_REDIRECT_PATH : path;
+}
+
+// Messages the sign-in page shows from its `?notice=`. Only these keys are
+// accepted, so a link can never put its own text on the page.
+export const SIGN_IN_NOTICES = {
+  "password-updated": "Password updated — please sign in.",
+} as const;
+
+export type SignInNotice = keyof typeof SIGN_IN_NOTICES;
+
+/** Reads the sign-in page's `?notice=`: a known notice, or `null`. */
+export function parseSignInNotice(value: unknown): SignInNotice | null {
+  if (typeof value !== "string" || !Object.hasOwn(SIGN_IN_NOTICES, value)) {
+    return null;
+  }
+  return value as SignInNotice;
+}
+
+/** Links to the sign-in page showing `notice` above the form. */
+export function signInNoticeHref(notice: SignInNotice): string {
+  return `${SIGN_IN_PATH}?${new URLSearchParams({ notice }).toString()}`;
 }
 
 /**

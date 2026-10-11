@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   authPageHref,
+  parseSignInNotice,
   postAuthRedirectPath,
   SIGN_IN_PATH,
   SIGN_UP_PATH,
+  signInNoticeHref,
 } from "./routes";
 
 describe("postAuthRedirectPath", () => {
@@ -66,5 +68,32 @@ describe("authPageHref", () => {
     ["an encoded auth page", "/%73ign-up/"],
   ])("links to the bare page when the destination is %s", (_case, next) => {
     expect(authPageHref(SIGN_IN_PATH, next)).toBe("/sign-in");
+  });
+});
+
+describe("parseSignInNotice", () => {
+  it("accepts a known notice", () => {
+    expect(parseSignInNotice("password-updated")).toBe("password-updated");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["unknown", "account-deleted"],
+    ["in another case", "Password-Updated"],
+    ["free text", "Your account is locked. Call +1 555 0100."],
+    ["an inherited property", "constructor"],
+    ["a prototype key", "__proto__"],
+    ["a repeated parameter", ["password-updated", "password-updated"]],
+  ])("ignores a notice that is %s", (_case, value) => {
+    expect(parseSignInNotice(value)).toBeNull();
+  });
+});
+
+describe("signInNoticeHref", () => {
+  it("links to the sign-in page with the notice", () => {
+    expect(signInNoticeHref("password-updated")).toBe(
+      "/sign-in?notice=password-updated",
+    );
   });
 });
