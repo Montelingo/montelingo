@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -59,24 +60,32 @@ class SqlAlchemyUserRepository:
         email: str,
         password_hash: str,
     ) -> UserAccount:
-        raise NotImplementedError
+        user = User(
+            email=email,
+            password_hash=password_hash,
+        )
+
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+
+        return _account(user)
 
     async def get_by_email(
         self,
         email: str,
     ) -> UserAccount | None:
-        user = await self.session.scalar(select(User).where(func.lower(User.email) == email))
-        return _account(user) if user else None
+        user = await self.session.scalar(
+            select(User).where(func.lower(User.email) == email.lower())
+        )
+        return _account(user) if user is not None else None
 
     async def get_by_id(
         self,
         user_id: UUID,
     ) -> UserAccount | None:
-        user = await self.session.get(
-            User,
-            user_id,
-        )
-        return _account(user) if user else None
+        user = await self.session.get(User, user_id)
+        return _account(user) if user is not None else None
 
     async def update_password(
         self,
@@ -85,11 +94,15 @@ class SqlAlchemyUserRepository:
         *,
         password_changed_at: datetime | None = None,
     ) -> None:
-        values = {
+        values: dict[str, str | datetime] = {
             "password_hash": password_hash,
         }
 
         if password_changed_at is not None:
             values["password_changed_at"] = password_changed_at
 
-        await self.session.execute(update(User).where(User.id == user_id).values(**values))
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(**values)
+        )
