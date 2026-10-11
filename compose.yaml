@@ -34,16 +34,13 @@ services:
       target: runtime
     command: alembic -c apps/api/alembic.ini upgrade head
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       MONTELINGO_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/montelingo
       UV_CACHE_DIR: /tmp/.cache/uv
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - internal
 
   api:
     build:

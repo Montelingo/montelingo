@@ -42,6 +42,23 @@ class AuthService:
         self.transaction_manager = transaction_manager
         self.session_ttl = session_ttl
 
+    async def sign_up(self, *, email: str, password: str) -> UserAccount:
+        normalized_email = email.strip().lower()
+        async with self.transaction_manager.transaction():
+            existing = await self.repository.get_user_by_email(normalized_email)
+            if existing is not None:
+                raise ApiError(
+                    code=ErrorCode.EMAIL_TAKEN,
+                    message="Email is already registered.",
+                    status_code=409,
+                )
+            password_hash = self.password_hasher.hash(password)
+            user = await self.repository.create_user(
+                email=normalized_email,
+                password_hash=password_hash,
+            )
+            return user
+
     async def sign_in(
         self, *, email: str, password: str, current_cookie: str | None = None
     ) -> SignInResult:

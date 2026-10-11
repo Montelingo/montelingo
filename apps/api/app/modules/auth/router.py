@@ -22,11 +22,11 @@ router = APIRouter()
 
 
 def _not_implemented() -> Never:
-    raise ApiError(
-        ErrorCode.NOT_IMPLEMENTED,
-        "Authentication endpoint is not implemented.",
-        status_code=501,
-    )
+  raise ApiError(
+    code=ErrorCode.EMAIL_TAKEN,
+    message="Email is already registered.",
+    status_code=409,
+)
 
 
 def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
@@ -48,10 +48,19 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
     status_code=201,
     responses=error_responses(403, 409, 422, 429),
 )
-async def sign_up(payload: SignUpRequest) -> CurrentUser:
-    _not_implemented()
-
-
+async def sign_up(
+    payload: SignUpRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> CurrentUser:
+    user = await service.sign_up(
+        email=str(payload.email),
+        password=payload.password,
+    )
+    return CurrentUser(
+        id=str(user.id),  # <--- Osigurava string umesto UUID-a
+        email=user.email,
+        created_at=user.created_at,
+    )
 @router.post(
     "/sign-in",
     operation_id="auth_sign_in",

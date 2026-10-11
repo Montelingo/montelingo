@@ -4,13 +4,13 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.users.domain import UserAccount
 from app.modules.users.repository import SqlAlchemyUserRepository, UserRepository
 
-from .models import AuthSession
+from .models import AuthSession, PasswordResetToken
 
 
 class AuthRepository(Protocol):
@@ -22,6 +22,11 @@ class AuthRepository(Protocol):
         self, *, user_id: UUID, token_hash: bytes, expires_at: datetime, last_seen_at: datetime
     ) -> None: ...
     async def delete_session(self, token_hash: bytes) -> None: ...
+    async def invalidate_user_reset_tokens(self, user_id: UUID) -> None: ...
+    async def create_reset_token(self, user_id: UUID, token_hash: bytes, expires_at: datetime) -> None: ...
+    async def get_valid_reset_token(self, token_hash: bytes) -> PasswordResetToken | None: ...
+    async def mark_reset_token_used(self, token_id: UUID) -> None: ...
+    async def delete_all_user_sessions(self, user_id: UUID) -> None: ...
 
 
 class SqlAlchemyAuthRepository:
@@ -57,3 +62,40 @@ class SqlAlchemyAuthRepository:
 
     async def delete_session(self, token_hash: bytes) -> None:
         await self.session.execute(delete(AuthSession).where(AuthSession.token_hash == token_hash))
+
+    async def invalidate_user_reset_tokens(self, user_id: UUID) -> None:
+        stmt = (
+            update(PasswordResetToken)
+            .where(PasswordResetToken.user_id == user_id, PasswordResetToken.used_at.is_(None))
+            .values(used_at=datetime.utcnow())
+        )
+        await self.session.execute(stmt)
+
+    async def create_reset_token(self, user_id: UUID, token_hash: bytes, expires_at: datetime) -> None:
+        self.session.add(
+            PasswordResetToken(
+                user_id=user_id,
+                token_hash=token_hash,
+                expires_at=expires_at,
+                created_at=datetime.utcnow(),
+            )
+        )
+
+    async def get_valid_reset_token(self, token_hash: bytes) -> PasswordResetToken | None:
+        stmt = select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == token_hash,
+            PasswordResetToken.used_at.is_(None),
+        )
+        return await self.session.scalar(stmt)
+
+    async def mark_reset_token_used(self, token_id: UUID) -> None:
+        stmt = (
+            update(PasswordResetToken)
+            .where(PasswordResetToken.id == token_id)
+            .values(used_at=datetime.utcnow())
+        )
+        await self.session.execute(stmt)
+
+    async def delete_all_user_sessions(self, user_id: UUID) -> None:
+        stmt = delete(AuthSession).where(AuthSession.user_id == user_id)
+        await self.session.execute(stmt)
