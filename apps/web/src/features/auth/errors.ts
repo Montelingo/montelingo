@@ -87,6 +87,7 @@ export const authErrorMessages = {
   signInAfterSignUp:
     "Your account was created, but we couldn’t sign you in. Sign in to continue.",
   generic: "Something went wrong. Try again.",
+  signOutFailed: "We couldn’t confirm you were signed out. Try again.",
 };
 
 type ToAuthFormErrorOptions<Field extends string> = {

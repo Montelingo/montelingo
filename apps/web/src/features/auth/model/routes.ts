@@ -1,11 +1,13 @@
 import { safeRedirectPath } from "./redirect";
 
+export const HOME_PATH = "/";
+export const ACCOUNT_PATH = "/account";
 export const SIGN_IN_PATH = "/sign-in";
 export const SIGN_UP_PATH = "/sign-up";
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const RESET_PASSWORD_PATH = "/reset-password";
 
-const DEFAULT_REDIRECT_PATH = "/";
+const DEFAULT_REDIRECT_PATH = HOME_PATH;
 const PLACEHOLDER_ORIGIN = "https://montelingo.invalid";
 
 // The auth pages, compared lowercased: never a destination after signing in.
@@ -58,6 +60,14 @@ export function authPageHref(page: string, next: unknown): string {
     return page;
   }
   return `${page}?${new URLSearchParams({ next: redirectTo }).toString()}`;
+}
+
+/**
+ * The sign-in page, returning to `next` afterwards. Protected pages and the
+ * middleware use it to send a signed-out visitor to sign in.
+ */
+export function signInHref(next: unknown): string {
+  return authPageHref(SIGN_IN_PATH, next);
 }
 
 // Matches the way a request could still reach an auth page: percent-encoded

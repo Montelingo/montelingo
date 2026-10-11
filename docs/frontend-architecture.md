@@ -10,6 +10,7 @@ Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:w
 
 ```text
 apps/web/src/
+  middleware.ts                     # runs before matched requests; protected-route fast path (§5.4)
   app/                              # routing only: pages, layouts, loading/error/not-found files
     layout.tsx
     globals.css
@@ -46,6 +47,7 @@ apps/web/src/
       errors.ts                     # feature-specific error → message mapping
       index.ts                      # the feature's public API
       server.ts                     # the feature's server-only public API (only if it has server-only code)
+      edge.ts                       # the feature's middleware API (only if the middleware needs it)
   components/
     ui/                             # shared, domain-free primitives (TextField, SubmitButton, Dialog)
   hooks/                            # shared, domain-free hooks (use-media-query)
@@ -86,11 +88,13 @@ app/  ──▶  features/<x>/index.ts  ──▶  components/ui, hooks, lib, @a
 ```
 
 - `app/` may import from features and shared folders.
-- A feature may import shared folders and **another feature's public API only** (`@/features/progress` or `@/features/progress/server`, never `@/features/progress/model/streak`).
+- A feature may import shared folders and **another feature's public API only** (`@/features/progress`, `@/features/progress/server`, or `@/features/progress/edge`, never `@/features/progress/model/streak`).
 - Shared folders (`components/`, `hooks/`, `lib/`) must never import from `features/` or `app/`.
 - Inside a feature, use relative imports (`../model/scoring`).
 
-ESLint (`no-restricted-imports`) rejects deep imports into another feature (anything under `@/features/<name>/` except `server`) and any import from `@/features` in shared folders.
+- `src/middleware.ts` follows the rules for `app/`.
+
+ESLint (`no-restricted-imports`) rejects deep imports into another feature (anything under `@/features/<name>/` except `server` and `edge`) and any import from `@/features` in shared folders.
 
 ## 2. Routes and pages orchestrate, features decide
 
@@ -398,6 +402,83 @@ The API's per-IP rate limits (#37) need the user's address, but the API's TCP pe
 
 The proxy cannot use the socket address instead. Before a route handler runs, Next.js fills in a missing `X-Forwarded-For` with the TCP peer's address (`req.headers['x-forwarded-for'] ??= socket.remoteAddress`), and the handler only sees the resulting header. It cannot tell that value from one the client sent, so with no trusted proxy in front there is no address the proxy can vouch for.
 
+### 5.4 Authentication
+
+Authentication is the API's session cookie, `montelingo_session` by default ([ADR 0004](adr/0004-session-based-authentication.md)). It is HttpOnly, so only the API sets and clears it. The web app never reads its value: it checks that the browser sent it and forwards it to `GET /api/v1/auth/me` to learn who is signed in. `src/features/auth` owns all of it.
+
+#### The cookie name
+
+The API lets `MONTELINGO_SESSION_COOKIE_NAME` rename the cookie (`session_cookie_name` in `apps/api/app/core/config.py`). The web app reads the same variable, with the same default, through `getSessionCookieName()`, at runtime on every call. It is not a `NEXT_PUBLIC_` variable, so the build does not inline it, and the middleware sees the running server's environment. Set it for both apps or for neither: in Docker Compose both read the shared `.env`. If only the API had it, the middleware would never find the session and every protected page would loop back to sign-in. `session-cookie.test.ts` checks that the web default matches the API's default and variable name.
+
+#### Reading the current user on the server
+
+Two server-only functions from `@/features/auth/server` answer "who is signed in?". Both are wrapped in React `cache()` and share one `/auth/me` call per request, so the header and a page can each ask. The call skips the API when there is no session cookie and gives up after `CURRENT_USER_TIMEOUT_MS` (3 seconds).
+
+| Function           | Signed in     | Signed out (no cookie, or `401`) | Lookup failed (API error, unreachable, timeout) | Use it for                                                                               |
+| ------------------ | ------------- | -------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `getCurrentUser()` | `CurrentUser` | `null`                           | throws to the route's `error.tsx`               | Protected pages: a failure must not look like "signed out"                               |
+| `getAuthState()`   | `signed-in`   | `signed-out`                     | `{ status: "unavailable" }`, logged once        | UI that must render anyway (the site header), and pages where unknown means "signed out" |
+
+A lookup only happens when the browser sent a session cookie, so `unavailable` always means "there is a cookie the API could not check".
+
+- **The site header** (`SiteHeader`, in the root layout) renders its shell and brand at once. Only the account controls wait for `getAuthState()`, inside their own `<Suspense>` boundary with a same-size placeholder, so a slow API never holds the page and nothing shifts when they arrive. Signed out, the controls are "Sign in" and "Sign up". Signed in, they are the email (linking to `/account`) and "Sign out". When the lookup fails they are "Sign out" alone: "Sign in" would tell a signed-in user they are signed out (and could leave a live session behind on a shared device), and the email is not verified.
+- **Sign-in and sign-up** use `getAuthState()` and treat `unavailable` as signed out, so a visitor with a stale cookie still gets the form. If the API is down, submitting the form says so.
+- **Protected pages** use `getCurrentUser()`. A failed lookup reaches the error boundary, which offers a retry. Treating it as signed out would send a signed-in user to sign in.
+
+`getAuthState()` logs a failure with `console.error("auth_current_user_unavailable reason=… request_id=…")`, where the reason is `status_<code>`, `unreachable`, `timeout`, or `unexpected`. It lets Next.js's own control-flow errors through (`unstable_rethrow`), such as the one `cookies()` throws to mark a route dynamic.
+
+#### Every page is rendered per request
+
+The header is in the root layout and reads the request's cookies, so **every route is dynamic**. Do not use `export const dynamic = "force-static"`, `revalidate` (ISR), or other static rendering on a page: the header would be rendered once, for nobody, and served to everyone. The cost is one `/auth/me` call per page view from a browser with a session cookie (none without one), shared by the header and the page.
+
+#### Reading the current user on the client
+
+Client Components do not fetch the user. A Server Component reads it and passes `CurrentUser` (or the fields needed) down as props. It is serializable, with `createdAt` as an ISO string. There is no client-side user context (§4.1). After a mutation that changes who is signed in, the page must render again on the server: `SignInForm` calls `router.replace()` then `router.refresh()`, and `SignOutButton` loads the home page afresh (see below). The root layout does not re-render on client navigation, so the header changes only on a refresh or a full load.
+
+#### Protecting a page
+
+Protection has two layers, and a protected page needs both:
+
+1. **Middleware (fast path).** `src/middleware.ts` sends a request without a session cookie to `/sign-in?next=<path and query>` with a `307`. Its decision is the pure function `signInRedirectFor()` in `src/features/auth/model/protected-routes.ts`, with unit tests. It only checks that the cookie is there, because the middleware cannot afford an API call per request, so a stale (expired or revoked) cookie gets through.
+2. **The page (authoritative).** The page calls `getCurrentUser()` and redirects on `null`, using `signInHref()` so the destination is checked like every other `next`. Because the page streams (it has a `loading.tsx`), this redirect is not a `307`: the response is a `200` whose HTML carries a `<meta http-equiv="refresh">` to the sign-in page, and client-side navigations follow the redirect in the RSC payload.
+
+To protect a new section:
+
+1. Add its path to `PROTECTED_PATH_PREFIXES` in `src/features/auth/model/protected-routes.ts`. A prefix covers the path and everything under it (`/account`, `/account/email`), not lookalikes (`/accounting`). This list is the single source of truth.
+2. Add the same path as `<path>/:path*` to `config.matcher` in `src/middleware.ts`. Next.js reads the matcher at build time, so it must be a literal. `middleware.test.ts` fails when it and the list disagree.
+3. In each page, check the session itself. `src/app/account/page.tsx` is the reference:
+
+```tsx
+import { redirect } from "next/navigation";
+
+import { ACCOUNT_PATH, AccountOverview, signInHref } from "@/features/auth";
+import { getCurrentUser } from "@/features/auth/server";
+
+export default async function AccountPage() {
+  const user = await getCurrentUser();
+
+  if (user === null) {
+    redirect(signInHref(ACCOUNT_PATH));
+  }
+
+  return <AccountOverview user={user} />;
+}
+```
+
+4. Give the segment an `error.tsx` (with a retry) and a `loading.tsx` (§9), and its `<main>` the `id="main-content"` the skip link targets (§8).
+
+The middleware imports from `@/features/auth/edge`, never `@/features/auth`. It runs in the Edge runtime before every matched request, and the main entry would pull the API client and the forms into its bundle. `edge.ts` exports only pure functions and constants. `edge.test.ts` follows its imports and fails if any of them reaches `server-only`, `next/headers`, `@/lib/api`, `@/lib/api-config`, `@/lib/browser-api`, or `@app/api-client`.
+
+#### Signing out
+
+`SignOutButton` calls `signOut()` from the browser. A session that has already expired (`401`) counts as signed out. On success it loads the home page as a new document with `location.replace("/")` (`replaceDocument()` in `src/lib/navigation.ts`) rather than `router.replace()` and `router.refresh()`:
+
+- it drops all of the signed-in user's client state, including the router cache, which would otherwise serve protected pages on Back, and the replaced history entry keeps Back off the page the user signed out from;
+- the button cannot be left stuck on "Signing out…" by a soft refresh that fails;
+- focus starts over at the top of the new page, where the first Tab reaches "Skip to content", instead of falling to `<body>` when the button disappears.
+
+Any other failure (`403`, `5xx`, network) leaves it unknown whether the session ended: the API may have revoked it and the response got lost. The button says "We couldn’t confirm you were signed out. Try again." and stays put. A retry on a session that did end gets `401`, which succeeds. While the call is in flight the button is `aria-disabled` (still focusable) and ignores further clicks.
+
 ## 6. TypeScript
 
 ### 6.1 Compiler settings **(enforced)**
@@ -488,6 +569,7 @@ import { scoreLesson } from "../model/scoring";
 
 - Use **named exports** everywhere. Default exports are used only where Next.js requires them (`page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default`) and in config files (`next.config.ts`, `vitest.config.ts`, `tailwind.config.ts`).
 - Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` (or `server.ts`, below) is private to the feature.
+- `src/middleware.ts` imports a feature through its `edge.ts`: pure functions and constants that are safe in the Edge runtime, with no API client, React components, or `server-only` code. Add one only when the middleware needs something from the feature (§5.4).
 - `index.ts` must be safe to import from a Client Component. Anything that is server-only (it imports `server-only`, `next/headers`, or `@/lib/api`) is exported from the feature's `server.ts` instead, which starts with `import "server-only"`. Routes import it as `@/features/<name>/server`. Next.js fails the client build as soon as `server-only` is anywhere in a Client Component's import graph. Tree-shaking runs too late to remove it, so a single server-only re-export in `index.ts` would break every Client Component that imports the feature.
 - `apps/web/package.json` declares `"sideEffects": ["*.css"]`, so the bundler drops whatever a Client Component does not use from a feature's `index.ts`. A button that imports only `signOut` from `@/features/auth` does not ship `zod` or the form schemas. As a result, a module must never rely on being imported for its side effects, except stylesheets and packages such as `server-only`. Because a re-export can be skipped, every module that is server-only starts with `import "server-only"` itself, not only the `server.ts` that re-exports it.
 - Do not add `index.ts` barrels inside a feature's subfolders or in `components/ui`. Import primitives by file path.
@@ -509,6 +591,7 @@ export type { Lesson, LessonSummary } from "./model/lesson";
 - Compose conditional classes with a `cn()` helper in `src/lib/cn.ts` rather than string concatenation.
 - Shared primitives expose variants through props (`variant="primary"`), not by accepting arbitrary `className` overrides for their core look. `className` is accepted for layout (margin, width) only.
 - Static accessibility rules (`alt` text, labelled controls, keyboard support for click handlers, valid ARIA) are enforced by `eslint-plugin-jsx-a11y` **(enforced)**. `vitest-axe` checks the rendered DOM (roles, accessible names, landmarks, ARIA) in component tests. It cannot check contrast, because jsdom does not apply styles, so contrast is checked in review.
+- Every page's `<main>` has `id="main-content"`, the target of the root layout's "Skip to content" link. Route groups with a shared layout set it there (`(auth)/layout.tsx`, `account/layout.tsx`).
 - Styling must not remove accessibility affordances: never `outline-none` without a visible `focus-visible:` replacement. Text must meet WCAG AA contrast.
 
 ```tsx
@@ -674,11 +757,13 @@ expect(container).toMatchSnapshot();
 `src/features/auth` is the reference for the rest:
 
 - browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
-- a server-only `getCurrentUser()`, wrapped in React `cache()` and exported from `server.ts`. It skips the API call when the request has no `montelingo_session` cookie;
+- the server-only session lookups `getCurrentUser()` and `getAuthState()`, wrapped in React `cache()` and exported from `server.ts` (§5.4). They skip the API call when the request has no `montelingo_session` cookie;
+- the site header (`SiteHeader`, in the root layout) with its account controls and `SignOutButton` (§5.4);
+- route protection: the middleware fast path (`edge.ts`, `signInRedirectFor()`) and the reference protected page, `/account` (§5.4);
 - form validation with `zod` (`schemas.ts`);
 - the open-redirect guard `safeRedirectPath()`, and `postAuthRedirectPath()`, which also sends a destination that is an auth page (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, in any case or encoding, with or without a trailing slash) to `/`. Pages and forms use the latter for where to go after signing in;
 - error-code mapping in `errors.ts`;
-- the sign-in and sign-up pages (`src/app/(auth)/`): thin routes that redirect a signed-in user and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. The forms use `method="post"`, so a submit before hydration never puts credentials in the URL.
+- the sign-in and sign-up pages (`src/app/(auth)/`): thin routes that redirect a signed-in user (and treat a failed session lookup as signed out) and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. The forms use `method="post"`, so a submit before hydration never puts credentials in the URL.
 - the forgot-password and reset-password pages (`src/app/(auth)/forgot-password/`, `src/app/(auth)/reset-password/`), which, unlike sign-in and sign-up, never redirect a signed-in user and never call `/auth/me`: with no change-password page, a signed-in user may need a reset link too, and a link must work whoever is signed in.
   - `ForgotPasswordForm` shows the same "Check your email" confirmation whatever the API answers, except for errors that say nothing about the account, chosen by `isPasswordResetRequestErrorShown()` in `errors.ts`: a network failure, `service_unavailable`, `rate_limited`, `not_implemented`, and a `validation_error` on the email (the API's validator is stricter than ours, and the user can fix it). The API answers `204` whether or not the account exists, so enumeration protection is the API's; the form must just never turn an account-dependent outcome into a message. "Send another link" returns to the form with the email filled in.
   - `/reset-password?token=…` reads the token with `parseResetToken()` (one value of 1 to 256 characters, passed on byte for byte). A missing or unusable token shows `InvalidResetLink`, with a link to request a new one; so does `invalid_reset_token` (or a `validation_error` on `token`) after submitting `ResetPasswordForm`. On success the form replaces the history entry with `/sign-in?notice=password-updated` and refreshes, since the reset revoked every session. The sign-in page shows a notice only for a known key in `SIGN_IN_NOTICES` (`parseSignInNotice()`), so a link can never put its own text on the page; `FormNotice` shows it until the first submit.
@@ -691,7 +776,7 @@ Installed and enforced:
 - `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
 - The same-origin API proxy (including the trusted client IP), the server and browser API clients, and the single base-URL source (§5.3). `server-only` marks the server modules. Vitest aliases it to its no-op entry so those modules can be unit-tested.
 - The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3).
-- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message), and `FormNotice` (a polite `role="status"` message for good news, such as "Password updated — please sign in.").
+- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message), `FormNotice` (a polite `role="status"` message for good news, such as "Password updated — please sign in."), and `ErrorFallback` (the body of an `error.tsx`: a message and a "Try again" button that refreshes the route and resets the boundary).
 
 - `zod` (v4) for runtime validation of form input (§5.2).
 

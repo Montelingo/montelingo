@@ -5,6 +5,7 @@ import {
   parseSignInNotice,
   postAuthRedirectPath,
   SIGN_IN_PATH,
+  signInHref,
   SIGN_UP_PATH,
   signInNoticeHref,
 } from "./routes";
@@ -68,6 +69,22 @@ describe("authPageHref", () => {
     ["an encoded auth page", "/%73ign-up/"],
   ])("links to the bare page when the destination is %s", (_case, next) => {
     expect(authPageHref(SIGN_IN_PATH, next)).toBe("/sign-in");
+  });
+});
+
+describe("signInHref", () => {
+  it("links to sign-in, returning to the destination", () => {
+    expect(signInHref("/account?tab=email")).toBe(
+      "/sign-in?next=%2Faccount%3Ftab%3Demail",
+    );
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["an absolute URL", "https://evil.com"],
+    ["an auth page", "/sign-up"],
+  ])("links to the bare page when the destination is %s", (_case, next) => {
+    expect(signInHref(next)).toBe("/sign-in");
   });
 });
 
