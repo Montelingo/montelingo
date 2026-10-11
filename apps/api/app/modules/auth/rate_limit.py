@@ -128,9 +128,7 @@ def _origin_from_request(request: Request) -> str | None:
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
-def require_trusted_origin(
-    request: Request, settings: Settings = Depends(get_settings)
-) -> None:
+def require_trusted_origin(request: Request, settings: Settings = Depends(get_settings)) -> None:
     origin = _origin_from_request(request)
     if origin is None and settings.env == "test":
         return

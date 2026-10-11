@@ -39,9 +39,7 @@ def _request(client_host: str, forwarded_for: str | None = None) -> Request:
         "type": "http",
         "method": "POST",
         "path": "/",
-        "headers": (
-            [(b"x-forwarded-for", forwarded_for.encode())] if forwarded_for else []
-        ),
+        "headers": ([(b"x-forwarded-for", forwarded_for.encode())] if forwarded_for else []),
         "client": (client_host, 1234),
         "scheme": "http",
         "server": ("test", 80),
