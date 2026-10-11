@@ -2,7 +2,7 @@
 name = "montelingo-api"
 version = "0.1.0"
 description = "Montelingo API contract and OpenAPI scaffold"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
   "fastapi[standard]>=0.115.0",
   "pydantic>=2.11.0",

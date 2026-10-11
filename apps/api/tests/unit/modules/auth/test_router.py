@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 @pytest.mark.parametrize(
     ("method", "path", "payload"),
     [
-        ("POST", "/api/v1/auth/sign-up", {"email": "user@example.com", "password": "password123"}),
         ("POST", "/api/v1/auth/sign-in", {"email": "user@example.com", "password": "x"}),
         ("POST", "/api/v1/auth/sign-out", None),
         ("GET", "/api/v1/auth/me", None),

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Never
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_db  # type: ignore
 from app.api.responses import error_responses
 from app.core.errors import ApiError, ErrorCode
+from app.modules.auth.service import sign_up as auth_service_sign_up
 
 from .schemas import (
     CurrentUser,
@@ -33,8 +36,13 @@ def _not_implemented() -> Never:
     status_code=201,
     responses=error_responses(403, 409, 422, 429),
 )
-async def sign_up(payload: SignUpRequest) -> CurrentUser:
-    _not_implemented()
+async def sign_up(
+    payload: SignUpRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser:
+    return await auth_service_sign_up(db=db, data=payload)
+
+
 
 
 @router.post(

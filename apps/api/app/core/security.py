@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import hmac
 import secrets
@@ -44,6 +46,20 @@ class Argon2PasswordHasher:
 
 
 DUMMY_PASSWORD_HASH = Argon2PasswordHasher().hash("montelingo_dummy_password")
+
+
+
+_hasher = Argon2PasswordHasher()
+
+
+def hash_password(password: str) -> str:
+    """Hash a plaintext password using Argon2id."""
+    return _hasher.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against a hash."""
+    return _hasher.verify(plain_password, hashed_password)
 
 
 class SecureToken:
