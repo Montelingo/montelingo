@@ -18,6 +18,8 @@ Montelingo needs browser authentication that supports immediate sign-out, sessio
 - Reset links carry a cryptographically random, single-use token. Store only its SHA-256 hash; enforce an expiry; replace prior unused tokens when issuing another; reject missing, expired, or used tokens uniformly; and consume the token, change the password, and revoke all sessions atomically. A reset does not sign the user in.
 - Sign-up does not create a session. The client signs in after successful account creation. This keeps account creation independent of session lifecycle and allows email verification to be introduced later without changing sign-up's session behavior.
 - The in-memory rate limiter is single-process only. Multiple API replicas require a shared Redis or Postgres-backed limiter before scaling out.
+- Credential limits are enforced with a sliding window: sign-in allows 5 attempts per 15 minutes per normalized, hashed email and 30 per 15 minutes per IP; sign-up allows 10 per hour per IP; password-reset requests allow 3 per hour per normalized, hashed email and 10 per hour per IP. The in-memory implementation stores no raw email addresses.
+- Client IP forwarding is trusted only when the immediate peer is in the configured `trusted_proxies` list. This is required because the web container from the same-origin API proxy sits in front of the API; direct clients cannot select their rate-limit IP with `X-Forwarded-For`.
 
 ## Consequences
 

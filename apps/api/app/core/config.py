@@ -19,6 +19,16 @@ class Settings(BaseSettings):
     password_reset_ttl: int = Field(default=30 * 60)
     web_base_url: str = Field(default="http://localhost:3000")
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    trusted_proxies: list[str] = Field(default_factory=list)
+
+    sign_in_email_limit: int = 5
+    sign_in_ip_limit: int = 30
+    sign_in_window: int = 15 * 60
+    sign_up_ip_limit: int = 10
+    sign_up_window: int = 60 * 60
+    password_reset_email_limit: int = 3
+    password_reset_ip_limit: int = 10
+    password_reset_window: int = 60 * 60
 
     smtp_host: str | None = None
     smtp_port: int = 587
