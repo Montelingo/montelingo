@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -84,9 +83,7 @@ class AuthService:
 
         try:
             async with self.transaction_manager.transaction():
-                existing = await self.users_service.get_by_email(
-                    normalized_email
-                )
+                existing = await self.users_service.get_by_email(normalized_email)
 
                 if existing is not None:
                     raise ApiError(
@@ -106,20 +103,13 @@ class AuthService:
             original = exc.orig
             cause = getattr(original, "__cause__", None)
 
-            sqlstate = (
-                getattr(original, "sqlstate", None)
-                or getattr(cause, "sqlstate", None)
+            sqlstate = getattr(original, "sqlstate", None) or getattr(cause, "sqlstate", None)
+
+            constraint_name = getattr(original, "constraint_name", None) or getattr(
+                cause, "constraint_name", None
             )
 
-            constraint_name = (
-                getattr(original, "constraint_name", None)
-                or getattr(cause, "constraint_name", None)
-            )
-
-            if (
-                sqlstate == "23505"
-                and constraint_name == "uq_users_email_lower"
-            ):
+            if sqlstate == "23505" and constraint_name == "uq_users_email_lower":
                 raise ApiError(
                     ErrorCode.EMAIL_TAKEN,
                     "Email is already registered.",
@@ -136,18 +126,11 @@ class AuthService:
         current_cookie: str | None = None,
     ) -> SignInResult:
         async with self.transaction_manager.transaction():
-            user = await self.repository.get_user_by_email(
-                email.strip().lower()
-            )
+            user = await self.repository.get_user_by_email(email.strip().lower())
 
-            password_hash = (
-                user.password_hash if user else DUMMY_PASSWORD_HASH
-            )
+            password_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
 
-            if (
-                not self.password_hasher.verify(password, password_hash)
-                or user is None
-            ):
+            if not self.password_hasher.verify(password, password_hash) or user is None:
                 raise ApiError(
                     ErrorCode.INVALID_CREDENTIALS,
                     INVALID_CREDENTIALS,
@@ -164,9 +147,7 @@ class AuthService:
             raw_token = self.token.generate()
 
             if current_cookie is not None:
-                await self.repository.delete_session(
-                    self.token.hash(current_cookie)
-                )
+                await self.repository.delete_session(self.token.hash(current_cookie))
 
             await self.repository.create_session(
                 user_id=user.id,
@@ -185,9 +166,7 @@ class AuthService:
             return
 
         async with self.transaction_manager.transaction():
-            await self.repository.delete_session(
-                self.token.hash(cookie)
-            )
+            await self.repository.delete_session(self.token.hash(cookie))
 
     async def resolve_session(
         self,
@@ -196,9 +175,7 @@ class AuthService:
         if cookie is None:
             return None
 
-        session = await self.repository.get_session(
-            self.token.hash(cookie)
-        )
+        session = await self.repository.get_session(self.token.hash(cookie))
 
         if session is None:
             return None
@@ -207,9 +184,7 @@ class AuthService:
 
         if session.expires_at <= now:
             async with self.transaction_manager.transaction():
-                await self.repository.delete_session(
-                    self.token.hash(cookie)
-                )
+                await self.repository.delete_session(self.token.hash(cookie))
             return None
 
         user = await self.repository.get_user_by_id(session.user_id)
@@ -226,16 +201,12 @@ class AuthService:
         normalized_email = email.strip().lower()
 
         async with self.transaction_manager.transaction():
-            user = await self.repository.get_user_by_email(
-                normalized_email
-            )
+            user = await self.repository.get_user_by_email(normalized_email)
 
             if user is None:
                 return None
 
-            await self.repository.invalidate_user_reset_tokens(
-                user.id
-            )
+            await self.repository.invalidate_user_reset_tokens(user.id)
 
             raw_token = self.token.generate()
             token_hash = self.token.hash(raw_token)
@@ -244,9 +215,7 @@ class AuthService:
             await self.repository.create_reset_token(
                 user_id=user.id,
                 token_hash=token_hash,
-                expires_at=now + timedelta(
-                    seconds=self.reset_token_ttl
-                ),
+                expires_at=now + timedelta(seconds=self.reset_token_ttl),
             )
 
             return raw_token
@@ -261,25 +230,16 @@ class AuthService:
         now = self.clock.now()
 
         async with self.transaction_manager.transaction():
-            reset_record = (
-                await self.repository.get_valid_reset_token(
-                    token_hash
-                )
-            )
+            reset_record = await self.repository.get_valid_reset_token(token_hash)
 
-            if (
-                reset_record is None
-                or reset_record.expires_at <= now
-            ):
+            if reset_record is None or reset_record.expires_at <= now:
                 raise ApiError(
                     ErrorCode.INVALID_RESET_TOKEN,
                     "Invalid or expired reset token.",
                     status_code=400,
                 )
 
-            password_hash = self.password_hasher.hash(
-                new_password
-            )
+            password_hash = self.password_hasher.hash(new_password)
 
             await self.repository.update_password(
                 reset_record.user_id,
@@ -287,10 +247,6 @@ class AuthService:
                 password_changed_at=now,
             )
 
-            await self.repository.mark_reset_token_used(
-                reset_record.id
-            )
+            await self.repository.mark_reset_token_used(reset_record.id)
 
-            await self.repository.delete_all_user_sessions(
-                reset_record.user_id
-            )
+            await self.repository.delete_all_user_sessions(reset_record.user_id)

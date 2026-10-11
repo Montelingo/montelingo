@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -65,10 +64,7 @@ class MockUserRepository:
         self,
         email: str,
     ) -> UserAccount | None:
-        if (
-            self.existing_user is not None
-            and self.existing_user.email == email
-        ):
+        if self.existing_user is not None and self.existing_user.email == email:
             return self.existing_user
 
         return None
@@ -77,10 +73,7 @@ class MockUserRepository:
         self,
         user_id: UUID,
     ) -> UserAccount | None:
-        if (
-            self.existing_user is not None
-            and self.existing_user.id == user_id
-        ):
+        if self.existing_user is not None and self.existing_user.id == user_id:
             return self.existing_user
 
         return None

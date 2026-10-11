@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from functools import lru_cache
@@ -75,11 +74,7 @@ async def get_optional_user(
     cookie = request.cookies.get(settings.session_cookie_name)
     resolved = await service.resolve_session(cookie)
 
-    return (
-        _current_user(resolved.user)
-        if resolved is not None
-        else None
-    )
+    return _current_user(resolved.user) if resolved is not None else None
 
 
 async def get_current_user(

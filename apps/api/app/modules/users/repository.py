@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -101,8 +100,4 @@ class SqlAlchemyUserRepository:
         if password_changed_at is not None:
             values["password_changed_at"] = password_changed_at
 
-        await self.session.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(**values)
-        )
+        await self.session.execute(update(User).where(User.id == user_id).values(**values))
