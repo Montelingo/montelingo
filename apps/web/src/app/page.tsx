@@ -8,7 +8,7 @@ export default async function HomePage() {
   const apiState = await getApiHealthState();
 
   return (
-    <main className="grid min-h-screen place-items-center p-8">
+    <main id="main-content" className="grid flex-1 place-items-center p-8">
       <ApiHealthCard state={apiState} />
     </main>
   );
