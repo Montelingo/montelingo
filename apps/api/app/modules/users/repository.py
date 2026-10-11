@@ -16,6 +16,7 @@ class UserRepository(Protocol):
     async def get_by_email(self, email: str) -> UserAccount | None: ...
 
     async def get_by_id(self, user_id: UUID) -> UserAccount | None: ...
+
     async def update_password(self, user_id: UUID, password_hash: str) -> None: ...
 
 
@@ -35,7 +36,16 @@ class SqlAlchemyUserRepository:
         self.session = session
 
     async def create(self, *, email: str, password_hash: str) -> UserAccount:
-        raise NotImplementedError
+        user = User(
+            email=email,
+            password_hash=password_hash,
+        )
+
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+
+        return _account(user)
 
     async def get_by_email(self, email: str) -> UserAccount | None:
         user = await self.session.scalar(select(User).where(func.lower(User.email) == email))

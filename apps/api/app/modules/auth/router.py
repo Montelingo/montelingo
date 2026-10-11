@@ -48,8 +48,12 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
     status_code=201,
     responses=error_responses(403, 409, 422, 429),
 )
-async def sign_up(payload: SignUpRequest) -> CurrentUser:
-    _not_implemented()
+async def sign_up(
+    payload: SignUpRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> CurrentUser:
+    user = await service.sign_up(email=str(payload.email), password=payload.password)
+    return CurrentUser(id=str(user.id), email=user.email, created_at=user.created_at)
 
 
 @router.post(
