@@ -22,11 +22,10 @@ function isLogged(url: string): boolean {
 
 describe("next.config", () => {
   describe("/reset-password headers", () => {
-    it("keeps the token out of Referer, search indexes, and caches", async () => {
+    it("keeps the token out of Referer headers and search indexes", async () => {
       expect(await headersFor("/reset-password")).toEqual([
         { key: "Referrer-Policy", value: "no-referrer" },
         { key: "X-Robots-Tag", value: "noindex, nofollow" },
-        { key: "Cache-Control", value: "no-store" },
       ]);
     });
 

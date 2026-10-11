@@ -1,6 +1,7 @@
 import { ApiClientError, ApiNetworkError, type Schemas } from "@app/api-client";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -99,7 +100,22 @@ describe("ForgotPasswordForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("posts if submitted before hydration, so the email never reaches the URL", () => {
+  it("keeps the submit button disabled in the server HTML, until hydration", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<ForgotPasswordForm />);
+
+    expect(
+      within(container).getByRole("button", { name: "Send reset link" }),
+    ).toBeDisabled();
+  });
+
+  it("enables the submit button once running in the browser", () => {
+    renderForm();
+
+    expect(submitButton()).toBeEnabled();
+  });
+
+  it("posts, so the email never reaches the URL", () => {
     renderForm();
 
     expect(
@@ -200,37 +216,10 @@ describe("ForgotPasswordForm", () => {
     });
   });
 
-  // The API answers 204 whether or not the account exists. Whatever else
-  // comes back, the form must not hint at the account either.
-  describe("errors that end in the same confirmation", () => {
-    it.each<[string, unknown]>([
-      [
-        "authorization_error (Origin check)",
-        makeApiError(403, "authorization_error"),
-      ],
-      ["internal_server_error", makeApiError(500, "internal_server_error")],
-      [
-        "a response without the error envelope",
-        makeApiError(502, "request_failed"),
-      ],
-      ["an unknown code", makeApiError(404, "user_not_found")],
-      ["a validation_error on no field", validationError(null)],
-      ["an unexpected error", new TypeError("Cannot read properties")],
-    ])("shows the confirmation on %s", async (_case, error) => {
-      requestPasswordReset.mockRejectedValue(error);
-      const { user } = renderForm();
-
-      await fillAndSubmit(user);
-
-      expect(await confirmationHeading()).toHaveFocus();
-      expect(screen.getByText(/If an account exists for/)).toHaveTextContent(
-        "ana@example.com",
-      );
-      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("errors that are shown", () => {
+  // The API answers 204 whether or not the account exists, so an error never
+  // reveals one. Every failure is shown, so nobody waits for an email that was
+  // never sent.
+  describe("errors", () => {
     it.each<[string, unknown, string]>([
       [
         "a network failure",
@@ -253,24 +242,58 @@ describe("ForgotPasswordForm", () => {
         authErrorMessages.rateLimited,
       ],
       [
+        "authorization_error (Origin check)",
+        makeApiError(403, "authorization_error"),
+        authErrorMessages.generic,
+      ],
+      [
+        "internal_server_error",
+        makeApiError(500, "internal_server_error"),
+        authErrorMessages.generic,
+      ],
+      [
+        "a response without the error envelope",
+        makeApiError(502, "request_failed"),
+        authErrorMessages.generic,
+      ],
+      [
+        "an unknown code",
+        makeApiError(404, "user_not_found"),
+        authErrorMessages.generic,
+      ],
+      [
         "not_implemented",
         makeApiError(501, "not_implemented"),
         authErrorMessages.generic,
       ],
-    ])("shows %s in the alert", async (_case, error, message) => {
-      requestPasswordReset.mockRejectedValue(error);
-      const { user } = renderForm();
+      [
+        "an unexpected error",
+        new TypeError("Cannot read properties of undefined"),
+        authErrorMessages.generic,
+      ],
+      [
+        "a validation_error on no field",
+        validationError(null),
+        authErrorMessages.invalidInput,
+      ],
+    ])(
+      "shows %s in the alert and keeps the form, without the confirmation",
+      async (_case, error, message) => {
+        requestPasswordReset.mockRejectedValue(error);
+        const { user } = renderForm();
 
-      await fillAndSubmit(user);
+        await fillAndSubmit(user);
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(message);
-      expect(
-        screen.getByRole("form", { name: "Forgot your password?" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: "Check your email" }),
-      ).not.toBeInTheDocument();
-    });
+        expect(await screen.findByRole("alert")).toHaveTextContent(message);
+        expect(
+          screen.getByRole("form", { name: "Forgot your password?" }),
+        ).toBeInTheDocument();
+        expect(emailInput()).toHaveValue("ana@example.com");
+        expect(
+          screen.queryByRole("heading", { name: "Check your email" }),
+        ).not.toBeInTheDocument();
+      },
+    );
 
     it("shows the API's email validation_error on the field and focuses it", async () => {
       requestPasswordReset.mockRejectedValue(validationError("email"));

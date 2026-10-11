@@ -1,6 +1,7 @@
 import { ApiClientError, ApiNetworkError, type Schemas } from "@app/api-client";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -15,8 +16,10 @@ const { confirmPasswordReset } = vi.hoisted(() => ({
 }));
 vi.mock("../api/auth-api", () => ({ confirmPasswordReset }));
 
-const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+const { replaceDocument } = vi.hoisted(() => ({
+  replaceDocument: vi.fn<(path: string) => void>(),
+}));
+vi.mock("@/lib/navigation", () => ({ replaceDocument }));
 
 // Shaped like a real token, with characters that change under URL encoding.
 const TOKEN = "Zx3-k9_Qp0aLm2VtR8wYb4+/=";
@@ -128,7 +131,22 @@ describe("ResetPasswordForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("posts if submitted before hydration, so passwords never reach the URL", () => {
+  it("keeps the submit button disabled in the server HTML, until hydration", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<ResetPasswordForm token={TOKEN} />);
+
+    expect(
+      within(container).getByRole("button", { name: "Update password" }),
+    ).toBeDisabled();
+  });
+
+  it("enables the submit button once running in the browser", () => {
+    renderForm();
+
+    expect(submitButton()).toBeEnabled();
+  });
+
+  it("posts, so passwords never reach the URL", () => {
     renderForm();
 
     expect(
@@ -227,7 +245,7 @@ describe("ResetPasswordForm", () => {
   });
 
   describe("on success", () => {
-    it("sends the token exactly as given with the untrimmed password, then goes to sign in and refreshes", async () => {
+    it("sends the token exactly as given with the untrimmed password, then loads sign in afresh", async () => {
       confirmPasswordReset.mockResolvedValue(undefined);
       const { user } = renderForm();
 
@@ -239,13 +257,10 @@ describe("ResetPasswordForm", () => {
         newPassword: " correct horse ",
       });
       await waitFor(() => {
-        expect(router.replace).toHaveBeenCalledWith(
-          "/sign-in?notice=password-updated",
-        );
+        expect(replaceDocument).toHaveBeenCalledTimes(1);
       });
-      expect(router.refresh).toHaveBeenCalledTimes(1);
-      expect(router.replace.mock.invocationCallOrder[0]).toBeLessThan(
-        router.refresh.mock.invocationCallOrder[0] ?? 0,
+      expect(replaceDocument).toHaveBeenCalledWith(
+        "/sign-in?notice=password-updated",
       );
     });
 
@@ -256,7 +271,7 @@ describe("ResetPasswordForm", () => {
       await fillAndSubmit(user);
 
       await waitFor(() => {
-        expect(router.replace).toHaveBeenCalled();
+        expect(replaceDocument).toHaveBeenCalled();
       });
       expect(screen.getByRole("button", { name: "Updating…" })).toHaveAttribute(
         "aria-disabled",
@@ -298,8 +313,7 @@ describe("ResetPasswordForm", () => {
       response.resolve(undefined);
       await flushPromises();
 
-      expect(router.replace).not.toHaveBeenCalled();
-      expect(router.refresh).not.toHaveBeenCalled();
+      expect(replaceDocument).not.toHaveBeenCalled();
     });
   });
 
@@ -322,7 +336,7 @@ describe("ResetPasswordForm", () => {
         expect(
           screen.getByRole("link", { name: "Request a new link" }),
         ).toHaveAttribute("href", "/forgot-password");
-        expect(router.replace).not.toHaveBeenCalled();
+        expect(replaceDocument).not.toHaveBeenCalled();
       },
     );
 
@@ -396,7 +410,7 @@ describe("ResetPasswordForm", () => {
             name: "This reset link doesn’t work",
           }),
         ).not.toBeInTheDocument();
-        expect(router.replace).not.toHaveBeenCalled();
+        expect(replaceDocument).not.toHaveBeenCalled();
       },
     );
 

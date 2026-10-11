@@ -6,10 +6,6 @@ import ResetPasswordPage, { metadata } from "./page";
 const { getCurrentUser } = vi.hoisted(() => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/features/auth/server", () => ({ getCurrentUser }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
-}));
-
 function renderPage(searchParams: { token?: string | string[] } = {}) {
   return ResetPasswordPage({ searchParams: Promise.resolve(searchParams) });
 }

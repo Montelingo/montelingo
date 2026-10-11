@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId } from "react";
 
 import { FormAlert } from "@/components/ui/FormAlert";
 import { PasswordField } from "@/components/ui/PasswordField";
+import { replaceDocument } from "@/lib/navigation";
 
 import { confirmPasswordReset } from "../api/auth-api";
 import { passwordResetConfirmFields } from "../errors";
@@ -21,7 +21,6 @@ type ResetPasswordFormProps = {
 };
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
-  const router = useRouter();
   const titleId = useId();
   const {
     fieldProps,
@@ -39,10 +38,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       await confirmPasswordReset({ token, newPassword });
     },
     onSuccess: () => {
-      // Replaces this history entry, so Back does not return to the used link.
-      router.replace(signInNoticeHref("password-updated"));
-      // The reset revoked every session: Server Components re-render signed out.
-      router.refresh();
+      // The reset revoked every session, so a new document drops all client
+      // state and the router cache in one request. Replacing this history
+      // entry keeps the used link out of Back.
+      replaceDocument(signInNoticeHref("password-updated"));
     },
   });
 
@@ -62,8 +61,8 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           Once it’s updated, you’ll need to sign in again on every device.
         </p>
       </div>
-      {/* method="post": submitted natively before hydration, the
-          passwords go in the request body, never in the URL. */}
+      {/* The submit button stays disabled until hydration. method="post" only
+          guarantees the passwords never land in a URL. */}
       <form
         ref={formRef}
         method="post"

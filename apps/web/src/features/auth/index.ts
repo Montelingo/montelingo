@@ -22,7 +22,6 @@ export { SignUpForm } from "./components/SignUpForm";
 export { SignUpFormSkeleton } from "./components/SignUpFormSkeleton";
 export {
   authErrorMessages,
-  isPasswordResetRequestErrorShown,
   passwordResetConfirmFields,
   passwordResetRequestFields,
   SignInAfterSignUpError,

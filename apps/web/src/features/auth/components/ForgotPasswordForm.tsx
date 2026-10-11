@@ -7,10 +7,7 @@ import { FormAlert } from "@/components/ui/FormAlert";
 import { TextField } from "@/components/ui/TextField";
 
 import { requestPasswordReset } from "../api/auth-api";
-import {
-  isPasswordResetRequestErrorShown,
-  passwordResetRequestFields,
-} from "../errors";
+import { passwordResetRequestFields } from "../errors";
 import { useAuthForm } from "../hooks/use-auth-form";
 import { SIGN_IN_PATH } from "../model/routes";
 import { validatePasswordResetRequest } from "../model/validation";
@@ -24,8 +21,9 @@ type SentState = {
   isShown: boolean;
 };
 
-// Asks for a reset link, then shows the same confirmation whatever the API
-// answered, except for the errors isPasswordResetRequestErrorShown() lets through.
+// Asks for a reset link, then confirms it once the API has accepted the
+// request. A failed request shows its error, so nobody waits for an email
+// that was never sent.
 export function ForgotPasswordForm() {
   const [sent, setSent] = useState<SentState | null>(null);
 
@@ -77,14 +75,7 @@ function RequestResetLinkForm({
     apiFields: passwordResetRequestFields,
     submit: async ({ email }) => {
       submittedEmailRef.current = email;
-      try {
-        await requestPasswordReset({ email });
-      } catch (error) {
-        // Errors that could depend on the account end in the confirmation.
-        if (isPasswordResetRequestErrorShown(error)) {
-          throw error;
-        }
-      }
+      await requestPasswordReset({ email });
     },
     onSuccess: () => {
       onSent(submittedEmailRef.current);
@@ -112,8 +103,8 @@ function RequestResetLinkForm({
           choose a new password.
         </p>
       </div>
-      {/* method="post": submitted natively before hydration, the
-          email goes in the request body, never in the URL. */}
+      {/* The submit button stays disabled until hydration. method="post" only
+          guarantees the email never lands in a URL. */}
       <form
         ref={formRef}
         method="post"
@@ -155,8 +146,8 @@ type ResetLinkSentProps = {
   onSendAnother: () => void;
 };
 
-// The same copy whatever happened to the request, so it never tells whether
-// the account exists.
+// The API accepts the request (204) whether or not the account exists, so the
+// copy never says whether it does.
 function ResetLinkSent({ email, onSendAnother }: ResetLinkSentProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 

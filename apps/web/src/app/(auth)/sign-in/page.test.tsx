@@ -133,6 +133,38 @@ describe("SignInPage", () => {
     expect(redirect).toHaveBeenCalledWith("/");
   });
 
+  // Someone who reset another account's password while signed in here.
+  it("shows a signed-in user the form with a notice, without redirecting", async () => {
+    getAuthState.mockResolvedValue({ status: "signed-in", user: signedInUser });
+
+    render(await renderPage({ next: "/lessons", notice: "password-updated" }));
+
+    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Password updated — please sign in.",
+    );
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it.each<[string, string | string[]]>([
+    ["an unknown notice", "account-deleted"],
+    ["a repeated parameter", ["password-updated", "password-updated"]],
+  ])(
+    "still sends a signed-in user to the destination with %s",
+    async (_case, notice) => {
+      getAuthState.mockResolvedValue({
+        status: "signed-in",
+        user: signedInUser,
+      });
+
+      await expect(renderPage({ next: "/lessons/42", notice })).rejects.toThrow(
+        "NEXT_REDIRECT",
+      );
+
+      expect(redirect).toHaveBeenCalledWith("/lessons/42");
+    },
+  );
+
   it("shows the form when the session check fails, keeping the destination", async () => {
     getAuthState.mockResolvedValue({ status: "unavailable" });
 

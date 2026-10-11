@@ -71,8 +71,8 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
         </h1>
         <p className="text-slate-700">Start learning with Montelingo.</p>
       </div>
-      {/* method="post": submitted natively before hydration, the
-          credentials go in the request body, never in the URL. */}
+      {/* The submit button stays disabled until hydration. method="post" only
+          guarantees the credentials never land in a URL. */}
       <form
         ref={formRef}
         method="post"

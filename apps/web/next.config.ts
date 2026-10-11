@@ -20,9 +20,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
-          // Next.js already sends no-store for this dynamic page; this keeps a
-          // page rendered for a token out of every cache even if that changes.
-          { key: "Cache-Control", value: "no-store" },
+          // No Cache-Control: Next.js already sends no-store for this dynamic
+          // page (every route is, since the root layout reads cookies).
         ],
       },
     ]);
