@@ -40,9 +40,7 @@ async def test_sign_in_cookie_attributes_and_sign_out_revokes_session(
     assert "Path=/" in cookie
     assert "Max-Age=2592000" in cookie
 
-    session = await db_session.scalar(
-        select(AuthSession).where(AuthSession.user_id == user.id)
-    )
+    session = await db_session.scalar(select(AuthSession).where(AuthSession.user_id == user.id))
     assert session is not None
     assert session.token_hash != integration_client.cookies.get("montelingo_session")
     assert SecureToken.hash(integration_client.cookies["montelingo_session"]) == session.token_hash

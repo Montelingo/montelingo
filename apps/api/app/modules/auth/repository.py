@@ -25,9 +25,7 @@ class AuthRepository(Protocol):
 
 
 class SqlAlchemyAuthRepository:
-    def __init__(
-        self, session: AsyncSession, users: UserRepository | None = None
-    ) -> None:
+    def __init__(self, session: AsyncSession, users: UserRepository | None = None) -> None:
         self.session = session
         self.users = users or SqlAlchemyUserRepository(session)
 
