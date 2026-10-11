@@ -1,39 +1,71 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.anyio
-async def test_sign_up_integration_success(client: AsyncClient):
-    response = await client.post(
-        "/auth/sign-up",
-        json={"email": "new.user@example.com", "password": "SecurePassword123!"},
+@pytest.mark.asyncio
+async def test_sign_up_integration_success(
+    integration_client: AsyncClient,
+) -> None:
+    email = f"new-user-{uuid4().hex}@example.com"
+
+    response = await integration_client.post(
+        "/api/v1/auth/sign-up",
+        json={
+            "email": email,
+            "password": "SecurePassword123!",
+        },
     )
+
     assert response.status_code == 201
     data = response.json()
-    assert data["email"] == "new.user@example.com"
+
+    assert data["email"] == email
     assert "id" in data
     assert isinstance(data["id"], str)
 
 
-@pytest.mark.anyio
-async def test_sign_up_integration_duplicate_email(client: AsyncClient):
-    payload = {"email": "duplicate@example.com", "password": "SecurePassword123!"}
+@pytest.mark.asyncio
+async def test_sign_up_integration_duplicate_email(
+    integration_client: AsyncClient,
+) -> None:
+    email = f"duplicate-{uuid4().hex}@example.com"
 
-    res1 = await client.post("/auth/sign-up", json=payload)
-    assert res1.status_code == 201
+    payload = {
+        "email": email,
+        "password": "SecurePassword123!",
+    }
 
-    res2 = await client.post("/auth/sign-up", json=payload)
-    assert res2.status_code == 409
-    error_data = res2.json()
-    assert error_data["error"]["code"] == "email_taken"
-
-
-@pytest.mark.anyio
-async def test_sign_up_integration_validation_error(client: AsyncClient):
-    response = await client.post(
-        "/auth/sign-up",
-        json={"email": "not-an-email", "password": "short"},
+    first_response = await integration_client.post(
+        "/api/v1/auth/sign-up",
+        json=payload,
     )
+
+    assert first_response.status_code == 201
+
+    second_response = await integration_client.post(
+        "/api/v1/auth/sign-up",
+        json=payload,
+    )
+
+    assert second_response.status_code == 409
+    assert second_response.json()["error"]["code"] == "email_taken"
+
+
+@pytest.mark.asyncio
+async def test_sign_up_integration_validation_error(
+    integration_client: AsyncClient,
+) -> None:
+    response = await integration_client.post(
+        "/api/v1/auth/sign-up",
+        json={
+            "email": "not-an-email",
+            "password": "short",
+        },
+    )
+
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
