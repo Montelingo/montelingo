@@ -1,5 +1,6 @@
 // The auth feature's public API for routes, Client Components, and other
-// features. Server-only parts (getCurrentUser) are exported from ./server.
+// features. Server-only parts (getCurrentUser, getAuthState, SiteHeader) are
+// exported from ./server, and what the middleware needs from ./edge.
 export {
   confirmPasswordReset,
   requestPasswordReset,
@@ -10,6 +11,8 @@ export {
   type Credentials,
   type PasswordResetConfirmation,
 } from "./api/auth-api";
+export { AccountOverview } from "./components/AccountOverview";
+export { AccountOverviewSkeleton } from "./components/AccountOverviewSkeleton";
 export { SignInForm } from "./components/SignInForm";
 export { SignInFormSkeleton } from "./components/SignInFormSkeleton";
 export { SignUpForm } from "./components/SignUpForm";
@@ -26,8 +29,8 @@ export {
   type AuthFormError,
 } from "./errors";
 export { safeRedirectPath } from "./model/redirect";
-export { postAuthRedirectPath } from "./model/routes";
-export type { CurrentUser } from "./model/user";
+export { ACCOUNT_PATH, postAuthRedirectPath, signInHref } from "./model/routes";
+export type { AuthState, CurrentUser } from "./model/user";
 export {
   validatePasswordResetConfirm,
   validatePasswordResetRequest,
