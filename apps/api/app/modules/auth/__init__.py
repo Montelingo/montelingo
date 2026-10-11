@@ -1,1 +1,5 @@
-"""Authentication module."""
+"""Authentication module public interface."""
+
+from .router import get_current_user, get_optional_user
+
+__all__ = ["get_current_user", "get_optional_user"]
