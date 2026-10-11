@@ -14,7 +14,15 @@ export function middleware(request: NextRequest) {
   if (target === null) {
     return NextResponse.next();
   }
-  return NextResponse.redirect(new URL(target, request.url));
+  // Built on nextUrl, the router's parsed view of this request, rather than
+  // request.url. Behind a proxy the server's own origin (such as 0.0.0.0:3000)
+  // is the same in both; Next.js turns a redirect to that origin into a
+  // relative Location, so the browser stays on the public host.
+  const url = request.nextUrl.clone();
+  const destination = new URL(target, url);
+  url.pathname = destination.pathname;
+  url.search = destination.search;
+  return NextResponse.redirect(url);
 }
 
 // Next.js reads the matcher at build time, so it must be a literal. List each
