@@ -10,6 +10,7 @@ Montelingo needs browser authentication that supports immediate sign-out, sessio
 ## Decisions
 
 - Use opaque, cryptographically random bearer tokens in a server-side session store rather than JWTs. Persist only a SHA-256 token hash; this allows sessions to be revoked and avoids exposing claims that remain valid until a JWT expires.
+- Sessions have a fixed 30-day lifetime. Sliding refresh is intentionally deferred until SSR can forward refreshed `Set-Cookie` headers from `/auth/me` to the browser.
 - Send the token only in the `montelingo_session` cookie, with `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` enabled outside development according to settings. Set `Max-Age` from the session TTL. Never return or log the raw token.
 - Protect cookie-authenticated state-changing requests with an Origin check. Accept `Origin`, or `Referer` when Origin is absent, only when it matches a configured allowed origin. Reject requests without either header outside tests. SameSite is defense in depth, not the CSRF control.
 - Hash passwords with Argon2id. Sign-in accepts passwords from 1 to 128 characters so short incorrect attempts reach credential verification and return `401 invalid_credentials`, not a transport-level `422`; sign-up and reset enforce the 8–128 character password policy. For an unknown sign-in email, verify against a precomputed dummy hash so unknown-account and wrong-password failures have comparable work and the same response.

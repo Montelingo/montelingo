@@ -10,9 +10,6 @@ from fastapi.testclient import TestClient
     ("method", "path", "payload"),
     [
         ("POST", "/api/v1/auth/sign-up", {"email": "user@example.com", "password": "password123"}),
-        ("POST", "/api/v1/auth/sign-in", {"email": "user@example.com", "password": "x"}),
-        ("POST", "/api/v1/auth/sign-out", None),
-        ("GET", "/api/v1/auth/me", None),
         ("POST", "/api/v1/auth/password-reset", {"email": "user@example.com"}),
         (
             "POST",
@@ -21,13 +18,26 @@ from fastapi.testclient import TestClient
         ),
     ],
 )
-def test_auth_routes_reach_not_implemented_stub(
+def test_unimplemented_auth_routes_reach_stub(
     client: TestClient, method: str, path: str, payload: dict[str, Any] | None
 ) -> None:
     response = client.request(method, path, json=payload)
 
     assert response.status_code == 501
     assert response.json()["error"]["code"] == "not_implemented"
+
+
+def test_sign_out_without_cookie_is_idempotent(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/sign-out")
+
+    assert response.status_code == 204
+
+
+def test_me_without_cookie_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/v1/auth/me")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "authentication_error"
 
 
 def test_auth_routes_validate_input_before_stub(client: TestClient) -> None:
