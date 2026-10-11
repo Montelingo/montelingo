@@ -3,17 +3,12 @@ from __future__ import annotations
 from typing import Never
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import error_responses
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, ErrorCode
-from app.core.security import Argon2PasswordHasher, SecureToken, SystemClock
-from app.db.session import get_db_session
-from app.db.transaction import SessionTransactionManager
-from app.modules.users.domain import UserAccount
 
-from .repository import SqlAlchemyAuthRepository
+from .dependencies import get_auth_service, get_current_user
 from .schemas import (
     CurrentUser,
     PasswordResetConfirm,
@@ -34,21 +29,6 @@ def _not_implemented() -> Never:
     )
 
 
-def get_auth_service(
-    session: AsyncSession = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
-) -> AuthService:
-    return AuthService(
-        repository=SqlAlchemyAuthRepository(session),
-        password_hasher=Argon2PasswordHasher(),
-        token=SecureToken,
-        clock=SystemClock(),
-        transaction_manager=SessionTransactionManager(session),
-        session_ttl=settings.session_ttl,
-        session_refresh_threshold=settings.session_refresh_threshold,
-    )
-
-
 def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
     response.set_cookie(
         key=settings.session_cookie_name,
@@ -59,41 +39,6 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
         secure=settings.cookie_secure,
         path="/",
     )
-
-
-def _current_user(account: UserAccount) -> CurrentUser:
-    return CurrentUser(
-        id=str(account.id),
-        email=account.email,
-        created_at=account.created_at,
-    )
-
-
-async def get_optional_user(
-    request: Request,
-    response: Response,
-    service: AuthService = Depends(get_auth_service),
-    settings: Settings = Depends(get_settings),
-) -> CurrentUser | None:
-    cookie = request.cookies.get(settings.session_cookie_name)
-    resolved = await service.resolve_session(cookie)
-    if resolved is None:
-        return None
-    if resolved.refresh and cookie is not None:
-        _set_session_cookie(response, cookie, settings)
-    return _current_user(resolved.user)
-
-
-async def get_current_user(
-    request: Request,
-    response: Response,
-    service: AuthService = Depends(get_auth_service),
-    settings: Settings = Depends(get_settings),
-) -> CurrentUser:
-    user = await get_optional_user(request, response, service, settings)
-    if user is None:
-        raise ApiError(ErrorCode.AUTHENTICATION_ERROR, "Authentication required.", status_code=401)
-    return user
 
 
 @router.post(
@@ -115,13 +60,22 @@ async def sign_up(payload: SignUpRequest) -> CurrentUser:
 )
 async def sign_in(
     payload: SignInRequest,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
     settings: Settings = Depends(get_settings),
 ) -> CurrentUser:
-    result = await service.sign_in(email=str(payload.email), password=payload.password)
+    result = await service.sign_in(
+        email=str(payload.email),
+        password=payload.password,
+        current_cookie=request.cookies.get(settings.session_cookie_name),
+    )
     _set_session_cookie(response, result.token, settings)
-    return _current_user(result.user)
+    return CurrentUser(
+        id=str(result.user.id),
+        email=result.user.email,
+        created_at=result.user.created_at,
+    )
 
 
 @router.post(
@@ -138,7 +92,13 @@ async def sign_out(
     settings: Settings = Depends(get_settings),
 ) -> Response:
     await service.sign_out(request.cookies.get(settings.session_cookie_name))
-    response.delete_cookie(key=settings.session_cookie_name, path="/")
+    response.delete_cookie(
+        key=settings.session_cookie_name,
+        path="/",
+        secure=settings.cookie_secure,
+        httponly=True,
+        samesite="lax",
+    )
     response.status_code = 204
     return response
 

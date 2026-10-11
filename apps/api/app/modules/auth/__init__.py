@@ -1,5 +1,11 @@
 """Authentication module public interface."""
 
-from .router import get_current_user, get_optional_user
-
 __all__ = ["get_current_user", "get_optional_user"]
+
+
+def __getattr__(name: str) -> object:
+    if name in __all__:
+        from . import dependencies
+
+        return getattr(dependencies, name)
+    raise AttributeError(name)

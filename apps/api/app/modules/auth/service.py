@@ -22,7 +22,6 @@ class SignInResult:
 @dataclass(frozen=True, slots=True)
 class ResolvedSession:
     user: UserAccount
-    refresh: bool
 
 
 class AuthService:
@@ -35,7 +34,6 @@ class AuthService:
         transaction_manager: TransactionManager,
         *,
         session_ttl: int = 30 * 24 * 60 * 60,
-        session_refresh_threshold: int = 15 * 24 * 60 * 60,
     ) -> None:
         self.repository = repository
         self.password_hasher = password_hasher
@@ -43,9 +41,10 @@ class AuthService:
         self.clock = clock
         self.transaction_manager = transaction_manager
         self.session_ttl = session_ttl
-        self.session_refresh_threshold = session_refresh_threshold
 
-    async def sign_in(self, *, email: str, password: str) -> SignInResult:
+    async def sign_in(
+        self, *, email: str, password: str, current_cookie: str | None = None
+    ) -> SignInResult:
         async with self.transaction_manager.transaction():
             user = await self.repository.get_user_by_email(email.strip().lower())
             password_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
@@ -55,6 +54,8 @@ class AuthService:
                 await self.repository.update_password(user.id, self.password_hasher.hash(password))
             now = self.clock.now()
             raw_token = self.token.generate()
+            if current_cookie is not None:
+                await self.repository.delete_session(self.token.hash(current_cookie))
             await self.repository.create_session(
                 user_id=user.id,
                 token_hash=self.token.hash(raw_token),
@@ -72,21 +73,15 @@ class AuthService:
     async def resolve_session(self, cookie: str | None) -> ResolvedSession | None:
         if cookie is None:
             return None
-        async with self.transaction_manager.transaction():
-            session = await self.repository.get_session(self.token.hash(cookie))
-            if session is None:
-                return None
-            now = self.clock.now()
-            if session.expires_at <= now:
-                return None
-            user = await self.repository.get_user_by_id(session.user_id)
-            if user is None:
-                return None
-            refresh = session.expires_at - now < timedelta(seconds=self.session_refresh_threshold)
-            if refresh:
-                await self.repository.refresh_session(
-                    session.id,
-                    expires_at=now + timedelta(seconds=self.session_ttl),
-                    last_seen_at=now,
-                )
-            return ResolvedSession(user=user, refresh=refresh)
+        session = await self.repository.get_session(self.token.hash(cookie))
+        if session is None:
+            return None
+        now = self.clock.now()
+        if session.expires_at <= now:
+            async with self.transaction_manager.transaction():
+                await self.repository.delete_session(self.token.hash(cookie))
+            return None
+        user = await self.repository.get_user_by_id(session.user_id)
+        if user is None:
+            return None
+        return ResolvedSession(user=user)
