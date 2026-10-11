@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -90,11 +89,7 @@ class SqlAlchemyAuthRepository:
         users: UserRepository | None = None,
     ) -> None:
         self.session = session
-        self.users = (
-            users
-            if users is not None
-            else SqlAlchemyUserRepository(session)
-        )
+        self.users = users if users is not None else SqlAlchemyUserRepository(session)
 
     async def get_user_by_email(
         self,
@@ -126,9 +121,7 @@ class SqlAlchemyAuthRepository:
         token_hash: bytes,
     ) -> AuthSession | None:
         return await self.session.scalar(
-            select(AuthSession).where(
-                AuthSession.token_hash == token_hash
-            )
+            select(AuthSession).where(AuthSession.token_hash == token_hash)
         )
 
     async def create_session(
@@ -152,11 +145,7 @@ class SqlAlchemyAuthRepository:
         self,
         token_hash: bytes,
     ) -> None:
-        await self.session.execute(
-            delete(AuthSession).where(
-                AuthSession.token_hash == token_hash
-            )
-        )
+        await self.session.execute(delete(AuthSession).where(AuthSession.token_hash == token_hash))
 
     async def invalidate_user_reset_tokens(
         self,
@@ -215,8 +204,6 @@ class SqlAlchemyAuthRepository:
         self,
         user_id: UUID,
     ) -> None:
-        stmt = delete(AuthSession).where(
-            AuthSession.user_id == user_id
-        )
+        stmt = delete(AuthSession).where(AuthSession.user_id == user_id)
 
         await self.session.execute(stmt)

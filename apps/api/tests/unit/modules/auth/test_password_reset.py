@@ -44,18 +44,25 @@ class MockAuthRepositoryForPasswordReset:
                 self.tokens[t_hash]["is_used"] = True
 
     async def create_reset_token(self, *, user_id: str, token_hash: str, expires_at) -> None:
-        self.tokens[token_hash] = {"user_id": user_id, "expires_at": expires_at, "is_used": False, "id": "token-id-1"}
+        self.tokens[token_hash] = {
+            "user_id": user_id,
+            "expires_at": expires_at,
+            "is_used": False,
+            "id": "token-id-1",
+        }
 
     async def get_valid_reset_token(self, token_hash: str):
         record = self.tokens.get(token_hash)
         if record is None:
             return None
+
         class TokenRecord:
             def __init__(self, data):
                 self.id = data["id"]
                 self.user_id = data["user_id"]
                 self.expires_at = data["expires_at"]
                 self.is_used = data["is_used"]
+
         return TokenRecord(record)
 
     async def mark_reset_token_used(self, token_id: str) -> None:
@@ -63,7 +70,9 @@ class MockAuthRepositoryForPasswordReset:
             if data["id"] == token_id:
                 data["is_used"] = True
 
-    async def update_password(self, user_id: str, password_hash: str, *, password_changed_at=None) -> None:
+    async def update_password(
+        self, user_id: str, password_hash: str, *, password_changed_at=None
+    ) -> None:
         if self.user and self.user.id == user_id:
             self.user = UserAccount(
                 id=self.user.id,
@@ -83,8 +92,10 @@ class MockTransactionManager:
         class DummyContext:
             async def __aenter__(self):
                 return self
+
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 pass
+
         return DummyContext()
 
 

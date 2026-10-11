@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -66,9 +65,7 @@ def test_password_reset_unknown_email_returns_204(
 
         assert response.status_code == 204
 
-        service.request_password_reset.assert_awaited_once_with(
-            "unknown@example.com"
-        )
+        service.request_password_reset.assert_awaited_once_with("unknown@example.com")
 
         email_sender.send.assert_not_awaited()
     finally:

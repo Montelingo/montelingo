@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -28,9 +27,7 @@ async def test_password_reset_full_lifecycle(
 ) -> None:
     # 1. Capture emails without sending real messages.
     email_sender = InMemoryEmailSender()
-    integration_app.dependency_overrides[get_email_sender] = (
-        lambda: email_sender
-    )
+    integration_app.dependency_overrides[get_email_sender] = lambda: email_sender
 
     original_password = "OriginalSecurePassword123!"
     new_password = "NewSecurePassword456!"
@@ -62,17 +59,11 @@ async def test_password_reset_full_lifecycle(
 
     assert sign_in_response.status_code == 200
 
-    me_before = await integration_client.get(
-        "/api/v1/auth/me"
-    )
+    me_before = await integration_client.get("/api/v1/auth/me")
     assert me_before.status_code == 200
 
     sessions_before = (
-        await db_session.scalars(
-            select(AuthSession).where(
-                AuthSession.user_id == user_id
-            )
-        )
+        await db_session.scalars(select(AuthSession).where(AuthSession.user_id == user_id))
     ).all()
 
     assert len(sessions_before) == 1
@@ -97,34 +88,25 @@ async def test_password_reset_full_lifecycle(
     settings = get_settings()
     expiry_minutes = settings.password_reset_ttl // 60
 
-    assert (
-        f"{expiry_minutes} minutes"
-        in message.text_body
-    )
+    assert f"{expiry_minutes} minutes" in message.text_body
 
     # 6. Extract the reset link and token from the email.
     reset_link = next(
-        line.strip()
-        for line in message.text_body.splitlines()
-        if "/reset-password?token=" in line
+        line.strip() for line in message.text_body.splitlines() if "/reset-password?token=" in line
     )
 
     parsed_url = urlparse(reset_link)
 
     assert parsed_url.path == "/reset-password"
 
-    reset_token = parse_qs(
-        parsed_url.query
-    )["token"][0]
+    reset_token = parse_qs(parsed_url.query)["token"][0]
 
     assert reset_token
 
     # 7. Verify the hashed reset token in PostgreSQL.
     stored_tokens = (
         await db_session.scalars(
-            select(PasswordResetToken).where(
-                PasswordResetToken.user_id == user_id
-            )
+            select(PasswordResetToken).where(PasswordResetToken.user_id == user_id)
         )
     ).all()
 
@@ -133,10 +115,7 @@ async def test_password_reset_full_lifecycle(
     stored_token = stored_tokens[0]
     stored_token_id = stored_token.id
 
-    assert (
-        stored_token.token_hash
-        == SecureToken.hash(reset_token)
-    )
+    assert stored_token.token_hash == SecureToken.hash(reset_token)
     assert stored_token.used_at is None
 
     # 8. Confirm the reset and set a new password.
@@ -151,18 +130,12 @@ async def test_password_reset_full_lifecycle(
     assert confirm_response.status_code == 204
 
     # 9. Verify that the old session is revoked.
-    me_after = await integration_client.get(
-        "/api/v1/auth/me"
-    )
+    me_after = await integration_client.get("/api/v1/auth/me")
 
     assert me_after.status_code == 401
 
     remaining_sessions = (
-        await db_session.scalars(
-            select(AuthSession).where(
-                AuthSession.user_id == user_id
-            )
-        )
+        await db_session.scalars(select(AuthSession).where(AuthSession.user_id == user_id))
     ).all()
 
     assert len(remaining_sessions) == 0
@@ -170,9 +143,7 @@ async def test_password_reset_full_lifecycle(
     # 10. Verify password and token changes in PostgreSQL.
     db_session.expire_all()
 
-    updated_user = await db_session.get(
-        User, user_id
-    )
+    updated_user = await db_session.get(User, user_id)
 
     assert updated_user is not None
     assert updated_user.password_changed_at is not None
@@ -200,10 +171,7 @@ async def test_password_reset_full_lifecycle(
     )
 
     assert reused_response.status_code == 400
-    assert (
-        reused_response.json()["error"]["code"]
-        == "invalid_reset_token"
-    )
+    assert reused_response.json()["error"]["code"] == "invalid_reset_token"
 
     # 12. Old password must fail.
     old_sign_in = await integration_client.post(

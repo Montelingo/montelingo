@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 
-def get_password_reset_email_content(reset_link: str, expires_in_minutes: int) -> tuple[str, str, str]:
+def get_password_reset_email_content(
+    reset_link: str, expires_in_minutes: int
+) -> tuple[str, str, str]:
     """
     Returns (subject, text_content, html_content) for the password reset email.
     """

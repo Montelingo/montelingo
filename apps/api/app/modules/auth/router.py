@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -92,9 +91,7 @@ async def sign_in(
     result = await service.sign_in(
         email=str(payload.email),
         password=payload.password,
-        current_cookie=request.cookies.get(
-            settings.session_cookie_name
-        ),
+        current_cookie=request.cookies.get(settings.session_cookie_name),
     )
 
     _set_session_cookie(
@@ -123,9 +120,7 @@ async def sign_out(
     service: AuthService = Depends(get_auth_service),
     settings: Settings = Depends(get_settings),
 ) -> Response:
-    await service.sign_out(
-        request.cookies.get(settings.session_cookie_name)
-    )
+    await service.sign_out(request.cookies.get(settings.session_cookie_name))
 
     response.delete_cookie(
         key=settings.session_cookie_name,
@@ -167,21 +162,14 @@ async def request_password_reset(
     email_sender: EmailSender = Depends(get_email_sender),
 ) -> Response:
 
-    raw_token = await service.request_password_reset(
-        str(payload.email)
-    )
+    raw_token = await service.request_password_reset(str(payload.email))
 
     if raw_token is not None:
-        reset_link = (
-            f"{str(settings.web_base_url).rstrip('/')}"
-            f"/reset-password?token={raw_token}"
-        )
+        reset_link = f"{str(settings.web_base_url).rstrip('/')}/reset-password?token={raw_token}"
 
-        subject, text_content, html_content = (
-            get_password_reset_email_content(
-                reset_link,
-                int(settings.password_reset_ttl / 60),
-            )
+        subject, text_content, html_content = get_password_reset_email_content(
+            reset_link,
+            int(settings.password_reset_ttl / 60),
         )
 
         message = EmailMessage(
@@ -196,15 +184,11 @@ async def request_password_reset(
             try:
                 await email_sender.send(message)
             except Exception:
-                logger.exception(
-                    "password_reset_email_send_failed"
-                )
+                logger.exception("password_reset_email_send_failed")
 
         background_tasks.add_task(send_reset_email)
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -223,6 +207,4 @@ async def confirm_password_reset(
         new_password=payload.new_password,
     )
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

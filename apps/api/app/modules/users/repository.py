@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -66,11 +65,7 @@ class SqlAlchemyUserRepository:
         self,
         email: str,
     ) -> UserAccount | None:
-        user = await self.session.scalar(
-            select(User).where(
-                func.lower(User.email) == email
-            )
-        )
+        user = await self.session.scalar(select(User).where(func.lower(User.email) == email))
         return _account(user) if user else None
 
     async def get_by_id(
@@ -97,8 +92,4 @@ class SqlAlchemyUserRepository:
         if password_changed_at is not None:
             values["password_changed_at"] = password_changed_at
 
-        await self.session.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(**values)
-        )
+        await self.session.execute(update(User).where(User.id == user_id).values(**values))

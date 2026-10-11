@@ -117,6 +117,7 @@ async def integration_client(integration_app: FastAPI) -> AsyncGenerator[AsyncCl
     ) as async_client:
         yield async_client
 
+
 @pytest.fixture
 def password_hasher() -> PasswordHasher:
     return Argon2PasswordHasher()

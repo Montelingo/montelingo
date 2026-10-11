@@ -14,13 +14,12 @@ async def test_sign_up_integration_success(client: AsyncClient):
     data = response.json()
     assert data["email"] == "new.user@example.com"
     assert "id" in data
-    assert isinstance(data["id"], str)  
+    assert isinstance(data["id"], str)
 
 
 @pytest.mark.anyio
 async def test_sign_up_integration_duplicate_email(client: AsyncClient):
     payload = {"email": "duplicate@example.com", "password": "SecurePassword123!"}
-
 
     res1 = await client.post("/auth/sign-up", json=payload)
     assert res1.status_code == 201

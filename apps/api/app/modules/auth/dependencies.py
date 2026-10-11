@@ -40,7 +40,7 @@ def get_auth_service(
         clock=clock,
         transaction_manager=SessionTransactionManager(session),
         session_ttl=settings.session_ttl,
-          reset_token_ttl=settings.password_reset_ttl,
+        reset_token_ttl=settings.password_reset_ttl,
     )
 
 
@@ -56,7 +56,6 @@ async def get_optional_user(
     cookie = request.cookies.get(settings.session_cookie_name)
     resolved = await service.resolve_session(cookie)
     return _current_user(resolved.user) if resolved is not None else None
-
 
 
 async def get_current_user(
