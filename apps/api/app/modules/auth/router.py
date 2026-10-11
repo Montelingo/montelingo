@@ -139,6 +139,7 @@ async def sign_out(
 ) -> Response:
     await service.sign_out(request.cookies.get(settings.session_cookie_name))
     response.delete_cookie(key=settings.session_cookie_name, path="/")
+    response.status_code = 204
     return response
 
 
