@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -157,7 +157,7 @@ class SqlAlchemyAuthRepository:
                 PasswordResetToken.user_id == user_id,
                 PasswordResetToken.used_at.is_(None),
             )
-            .values(used_at=datetime.now(timezone.utc))
+            .values(used_at=datetime.now(UTC))
         )
 
         await self.session.execute(stmt)
@@ -173,7 +173,7 @@ class SqlAlchemyAuthRepository:
                 user_id=user_id,
                 token_hash=token_hash,
                 expires_at=expires_at,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         )
 
@@ -195,7 +195,7 @@ class SqlAlchemyAuthRepository:
         stmt = (
             update(PasswordResetToken)
             .where(PasswordResetToken.id == token_id)
-            .values(used_at=datetime.now(timezone.utc))
+            .values(used_at=datetime.now(UTC))
         )
 
         await self.session.execute(stmt)

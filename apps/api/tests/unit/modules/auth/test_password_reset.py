@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
+
 import pytest
+
 from app.modules.auth.service import AuthService
 from app.modules.users.domain import UserAccount
 
@@ -66,7 +68,7 @@ class MockAuthRepositoryForPasswordReset:
         return TokenRecord(record)
 
     async def mark_reset_token_used(self, token_id: str) -> None:
-        for t_hash, data in self.tokens.items():
+        for _t_hash, data in self.tokens.items():
             if data["id"] == token_id:
                 data["is_used"] = True
 
@@ -102,7 +104,7 @@ class MockTransactionManager:
 @pytest.mark.asyncio
 async def test_request_password_reset_unknown_email(password_hasher, token_generator):
     repo = MockAuthRepositoryForPasswordReset(user=None)
-    clock = MockClock(datetime.now(timezone.utc))
+    clock = MockClock(datetime.now(UTC))
     service = AuthService(
         repository=repo,
         password_hasher=password_hasher,
@@ -118,7 +120,7 @@ async def test_request_password_reset_unknown_email(password_hasher, token_gener
 
 @pytest.mark.asyncio
 async def test_confirm_password_reset_revokes_sessions(password_hasher, token_generator):
-    now_dt = datetime.now(timezone.utc)
+    now_dt = datetime.now(UTC)
     user = UserAccount(
         id="user-1",
         email="test@example.com",

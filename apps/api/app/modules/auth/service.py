@@ -10,7 +10,6 @@ from app.modules.users.domain import UserAccount
 
 from .repository import AuthRepository
 
-
 INVALID_CREDENTIALS = "Invalid email or password."
 
 

@@ -30,7 +30,6 @@ from .schemas import (
 from .service import AuthService
 from .templates import get_password_reset_email_content
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -14,7 +14,7 @@ def test_sign_up_returns_201(client: TestClient) -> None:
     user = SimpleNamespace(
         id="123e4567-e89b-12d3-a456-426614174000",
         email="user@example.com",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
     service = SimpleNamespace(

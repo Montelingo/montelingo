@@ -15,7 +15,6 @@ from app.infrastructure.email import InMemoryEmailSender, get_email_sender
 from app.modules.auth.models import AuthSession, PasswordResetToken
 from app.modules.users.models import User
 
-
 pytestmark = pytest.mark.integration
 
 

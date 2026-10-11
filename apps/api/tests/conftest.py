@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
 )
-from app.core.security import Argon2PasswordHasher, PasswordHasher, SecureToken
+
 from alembic import command
+from app.core.security import Argon2PasswordHasher, PasswordHasher, SecureToken
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

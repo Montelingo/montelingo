@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -19,7 +19,7 @@ class MockClock:
 
 @pytest.fixture
 def clock() -> MockClock:
-    return MockClock(datetime.now(timezone.utc))
+    return MockClock(datetime.now(UTC))
 
 
 class MockAuthRepository:
@@ -44,7 +44,7 @@ class MockAuthRepository:
         email: str,
         password_hash: str,
     ) -> UserAccount:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         user = UserAccount(
             id="123e4567-e89b-12d3-a456-426614174000",
@@ -115,7 +115,7 @@ async def test_sign_up_duplicate_email(
     clock,
     token_generator,
 ):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     existing = UserAccount(
         id="123e4567-e89b-12d3-a456-426614174000",
