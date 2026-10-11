@@ -1,9 +1,9 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     session_refresh_threshold: int = Field(default=15 * 24 * 60 * 60)
     password_reset_ttl: int = Field(default=30 * 60)
     web_base_url: str = Field(default="http://localhost:3000")
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
-    trusted_proxies: list[str] = Field(default_factory=list)
+    allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
+    trusted_proxies: Annotated[list[str], NoDecode] = Field(default_factory=list)
     rate_limiter_max_keys: int = Field(default=10_000, gt=0)
 
     sign_in_email_limit: int = 5
