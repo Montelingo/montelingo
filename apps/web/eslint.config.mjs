@@ -71,9 +71,13 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["@/features/*/**", "!@/features/*/server"],
+              group: [
+                "@/features/*/**",
+                "!@/features/*/server",
+                "!@/features/*/edge",
+              ],
               message:
-                "Import another feature through its public API (@/features/<name>, or @/features/<name>/server for server-only code), not its internals.",
+                "Import another feature through its public API (@/features/<name>, @/features/<name>/server for server-only code, or @/features/<name>/edge for middleware), not its internals.",
             },
           ],
         },

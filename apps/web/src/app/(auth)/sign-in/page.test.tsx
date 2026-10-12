@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CurrentUser } from "@/features/auth";
+import type { AuthState, CurrentUser } from "@/features/auth";
 
 import SignInPage, { metadata } from "./page";
 
-const { getCurrentUser } = vi.hoisted(() => ({
-  getCurrentUser: vi.fn<() => Promise<CurrentUser | null>>(),
+const { getAuthState } = vi.hoisted(() => ({
+  getAuthState: vi.fn<() => Promise<AuthState>>(),
 }));
-vi.mock("@/features/auth/server", () => ({ getCurrentUser }));
+vi.mock("@/features/auth/server", () => ({ getAuthState }));
 
 // Like Next.js, redirect() throws, so nothing after it runs.
 const { redirect } = vi.hoisted(() => ({
@@ -41,7 +41,7 @@ describe("SignInPage", () => {
   });
 
   it("shows the form to a signed-out visitor, keeping the destination", async () => {
-    getCurrentUser.mockResolvedValue(null);
+    getAuthState.mockResolvedValue({ status: "signed-out" });
 
     render(await renderPage({ next: "/lessons" }));
 
@@ -56,7 +56,7 @@ describe("SignInPage", () => {
   it.each(["https://evil.com", "/forgot-password"])(
     "drops the destination %j for a signed-out visitor",
     async (next) => {
-      getCurrentUser.mockResolvedValue(null);
+      getAuthState.mockResolvedValue({ status: "signed-out" });
 
       render(await renderPage({ next }));
 
@@ -68,7 +68,7 @@ describe("SignInPage", () => {
   );
 
   it("sends a signed-in user to the destination", async () => {
-    getCurrentUser.mockResolvedValue(signedInUser);
+    getAuthState.mockResolvedValue({ status: "signed-in", user: signedInUser });
 
     await expect(renderPage({ next: "/lessons/42" })).rejects.toThrow(
       "NEXT_REDIRECT",
@@ -86,17 +86,19 @@ describe("SignInPage", () => {
     ["an encoded auth page with a slash", { next: "/%73ign-in/" }],
     ["the reset-password page", { next: "/reset-password?token=abc" }],
   ])("sends a signed-in user home when there is %s", async (_case, params) => {
-    getCurrentUser.mockResolvedValue(signedInUser);
+    getAuthState.mockResolvedValue({ status: "signed-in", user: signedInUser });
 
     await expect(renderPage(params)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(redirect).toHaveBeenCalledWith("/");
   });
 
-  it("lets a failed session check reach the error boundary", async () => {
-    getCurrentUser.mockRejectedValue(new Error("API unavailable"));
+  it("shows the form when the session check fails, keeping the destination", async () => {
+    getAuthState.mockResolvedValue({ status: "unavailable" });
 
-    await expect(renderPage()).rejects.toThrow("API unavailable");
+    render(await renderPage({ next: "/lessons" }));
+
+    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
   });
 });
