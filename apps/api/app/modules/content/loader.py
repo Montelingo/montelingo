@@ -7,7 +7,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Never
 
 DEFAULT_CONTENT_PATH = Path(__file__).parent / "data" / "content.json"
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -50,7 +50,7 @@ class Content:
     chapters: tuple[Chapter, ...]
 
 
-def _fail(where: str, message: str) -> None:
+def _fail(where: str, message: str) -> Never:
     raise ValueError(f"{where}: {message}")
 
 
@@ -68,7 +68,10 @@ def _list(value: Any, where: str) -> list[Any]:
 
 def _string(obj: dict[str, Any], key: str, where: str) -> str:
     value = obj.get(key)
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str):
+        _fail(f"{where}.{key}", "expected non-empty string")
+        raise ValueError(f"{where}.{key}: expected non-empty string")
+    if not value.strip():
         _fail(f"{where}.{key}", "expected non-empty string")
     if unicodedata.normalize("NFC", value) != value:
         _fail(f"{where}.{key}", "text must be Unicode NFC")
