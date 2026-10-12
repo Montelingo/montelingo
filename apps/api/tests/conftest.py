@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from alembic import command
+from app.core.security import Argon2PasswordHasher, PasswordHasher, SecureToken
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -116,3 +117,13 @@ async def integration_client(integration_app: FastAPI) -> AsyncGenerator[AsyncCl
         transport=ASGITransport(app=integration_app), base_url="http://test"
     ) as async_client:
         yield async_client
+
+
+@pytest.fixture
+def password_hasher() -> PasswordHasher:
+    return Argon2PasswordHasher()
+
+
+@pytest.fixture
+def token_generator() -> type[SecureToken]:
+    return SecureToken

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -11,12 +12,30 @@ from .models import User
 
 
 class UserRepository(Protocol):
-    async def create(self, *, email: str, password_hash: str) -> UserAccount: ...
+    async def create(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+    ) -> UserAccount: ...
 
-    async def get_by_email(self, email: str) -> UserAccount | None: ...
+    async def get_by_email(
+        self,
+        email: str,
+    ) -> UserAccount | None: ...
 
-    async def get_by_id(self, user_id: UUID) -> UserAccount | None: ...
-    async def update_password(self, user_id: UUID, password_hash: str) -> None: ...
+    async def get_by_id(
+        self,
+        user_id: UUID,
+    ) -> UserAccount | None: ...
+
+    async def update_password(
+        self,
+        user_id: UUID,
+        password_hash: str,
+        *,
+        password_changed_at: datetime | None = None,
+    ) -> None: ...
 
 
 def _account(user: User) -> UserAccount:
@@ -34,18 +53,51 @@ class SqlAlchemyUserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create(self, *, email: str, password_hash: str) -> UserAccount:
-        raise NotImplementedError
-
-    async def get_by_email(self, email: str) -> UserAccount | None:
-        user = await self.session.scalar(select(User).where(func.lower(User.email) == email))
-        return _account(user) if user else None
-
-    async def get_by_id(self, user_id: UUID) -> UserAccount | None:
-        user = await self.session.get(User, user_id)
-        return _account(user) if user else None
-
-    async def update_password(self, user_id: UUID, password_hash: str) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(password_hash=password_hash)
+    async def create(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+    ) -> UserAccount:
+        user = User(
+            email=email,
+            password_hash=password_hash,
         )
+
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+
+        return _account(user)
+
+    async def get_by_email(
+        self,
+        email: str,
+    ) -> UserAccount | None:
+        user = await self.session.scalar(
+            select(User).where(func.lower(User.email) == email.lower())
+        )
+        return _account(user) if user is not None else None
+
+    async def get_by_id(
+        self,
+        user_id: UUID,
+    ) -> UserAccount | None:
+        user = await self.session.get(User, user_id)
+        return _account(user) if user is not None else None
+
+    async def update_password(
+        self,
+        user_id: UUID,
+        password_hash: str,
+        *,
+        password_changed_at: datetime | None = None,
+    ) -> None:
+        values: dict[str, str | datetime] = {
+            "password_hash": password_hash,
+        }
+
+        if password_changed_at is not None:
+            values["password_changed_at"] = password_changed_at
+
+        await self.session.execute(update(User).where(User.id == user_id).values(**values))

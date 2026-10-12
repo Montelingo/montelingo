@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 
-def get_password_reset_email_content(reset_link: str, expires_in_minutes: int) -> tuple[str, str, str]:
+def get_password_reset_email_content(
+    reset_link: str, expires_in_minutes: int
+) -> tuple[str, str, str]:
     """
     Returns (subject, text_content, html_content) for the password reset email.
     """
@@ -25,13 +27,17 @@ def get_password_reset_email_content(reset_link: str, expires_in_minutes: int) -
         <h2>Password Reset Request</h2>
         <p>You have requested to reset your password.</p>
         <p>
-            <a href="{reset_link}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            <a href="{reset_link}" style="background-color: #007bff; color: white;
+               padding: 10px 20px; text-decoration: none;
+               border-radius: 5px; display: inline-block;">
                 Reset Password
             </a>
         </p>
         <p>Or copy and paste this link into your browser:</p>
         <p><a href="{reset_link}">{reset_link}</a></p>
-        <p><small>This link will expire in {expires_in_minutes} minutes. If you did not request this, please ignore this email.</small></p>
+        <p><small>This link will expire in {expires_in_minutes} minutes.
+        If you did not request this,
+        please ignore this email.</small></p>
     </body>
     </html>
     """

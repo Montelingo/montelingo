@@ -1,12 +1,23 @@
 from __future__ import annotations
 
-from typing import Never
+import logging
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Request,
+    Response,
+    status,
+)
 
 from app.api.responses import error_responses
 from app.core.config import Settings, get_settings
-from app.core.errors import ApiError, ErrorCode
+from app.infrastructure.email import (
+    EmailMessage,
+    EmailSender,
+    get_email_sender,
+)
 
 from .dependencies import get_auth_service, get_current_user
 from .schemas import (
@@ -17,19 +28,18 @@ from .schemas import (
     SignUpRequest,
 )
 from .service import AuthService
+from .templates import get_password_reset_email_content
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-def _not_implemented() -> Never:
-  raise ApiError(
-    code=ErrorCode.EMAIL_TAKEN,
-    message="Email is already registered.",
-    status_code=409,
-)
-
-
-def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
+def _set_session_cookie(
+    response: Response,
+    token: str,
+    settings: Settings,
+) -> None:
     response.set_cookie(
         key=settings.session_cookie_name,
         value=token,
@@ -56,11 +66,14 @@ async def sign_up(
         email=str(payload.email),
         password=payload.password,
     )
+
     return CurrentUser(
-        id=str(user.id),  # <--- Osigurava string umesto UUID-a
+        id=str(user.id),
         email=user.email,
         created_at=user.created_at,
     )
+
+
 @router.post(
     "/sign-in",
     operation_id="auth_sign_in",
@@ -79,7 +92,13 @@ async def sign_in(
         password=payload.password,
         current_cookie=request.cookies.get(settings.session_cookie_name),
     )
-    _set_session_cookie(response, result.token, settings)
+
+    _set_session_cookie(
+        response,
+        result.token,
+        settings,
+    )
+
     return CurrentUser(
         id=str(result.user.id),
         email=result.user.email,
@@ -101,6 +120,7 @@ async def sign_out(
     settings: Settings = Depends(get_settings),
 ) -> Response:
     await service.sign_out(request.cookies.get(settings.session_cookie_name))
+
     response.delete_cookie(
         key=settings.session_cookie_name,
         path="/",
@@ -108,7 +128,9 @@ async def sign_out(
         httponly=True,
         samesite="lax",
     )
-    response.status_code = 204
+
+    response.status_code = status.HTTP_204_NO_CONTENT
+
     return response
 
 
@@ -118,7 +140,9 @@ async def sign_out(
     response_model=CurrentUser,
     responses=error_responses(401),
 )
-async def me(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+async def me(
+    user: CurrentUser = Depends(get_current_user),
+) -> CurrentUser:
     return user
 
 
@@ -129,8 +153,41 @@ async def me(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     response_class=Response,
     responses=error_responses(403, 422, 429),
 )
-async def request_password_reset(payload: PasswordResetRequest) -> Response:
-    _not_implemented()
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+    email_sender: EmailSender = Depends(get_email_sender),
+) -> Response:
+
+    raw_token = await service.request_password_reset(str(payload.email))
+
+    if raw_token is not None:
+        reset_link = f"{str(settings.web_base_url).rstrip('/')}/reset-password?token={raw_token}"
+
+        subject, text_content, html_content = get_password_reset_email_content(
+            reset_link,
+            int(settings.password_reset_ttl / 60),
+        )
+
+        message = EmailMessage(
+            to=str(payload.email),
+            subject=subject,
+            text_body=text_content,
+            html_body=html_content,
+        )
+
+        # Only email delivery runs as a background task.
+        async def send_reset_email() -> None:
+            try:
+                await email_sender.send(message)
+            except Exception:
+                logger.exception("password_reset_email_send_failed")
+
+        background_tasks.add_task(send_reset_email)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
@@ -140,5 +197,13 @@ async def request_password_reset(payload: PasswordResetRequest) -> Response:
     response_class=Response,
     responses=error_responses(400, 403, 422),
 )
-async def confirm_password_reset(payload: PasswordResetConfirm) -> Response:
-    _not_implemented()
+async def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    service: AuthService = Depends(get_auth_service),
+) -> Response:
+    await service.confirm_password_reset(
+        raw_token=payload.token,
+        new_password=payload.new_password,
+    )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
