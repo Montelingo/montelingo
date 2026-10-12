@@ -30,6 +30,7 @@ async def test_sign_in_cookie_attributes_and_sign_out_revokes_session(
     sign_in = await integration_client.post(
         "/api/v1/auth/sign-in",
         json={"email": " INTEGRATION@EXAMPLE.COM ", "password": password},
+        headers={"Origin": "http://localhost:3000"},
     )
 
     assert sign_in.status_code == 200
@@ -48,7 +49,10 @@ async def test_sign_in_cookie_attributes_and_sign_out_revokes_session(
     me = await integration_client.get("/api/v1/auth/me")
     assert me.status_code == 200
 
-    sign_out = await integration_client.post("/api/v1/auth/sign-out")
+    sign_out = await integration_client.post(
+        "/api/v1/auth/sign-out",
+        headers={"Origin": "http://localhost:3000"},
+    )
     assert sign_out.status_code == 204
     assert "Max-Age=0" in sign_out.headers["set-cookie"]
 
