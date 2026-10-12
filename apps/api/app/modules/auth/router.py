@@ -9,6 +9,13 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, ErrorCode
 
 from .dependencies import get_auth_service, get_current_user
+from .rate_limit import (
+    SignInRateLimitContext,
+    rate_limit_password_reset,
+    rate_limit_sign_in,
+    rate_limit_sign_up,
+    require_trusted_origin,
+)
 from .schemas import (
     CurrentUser,
     PasswordResetConfirm,
@@ -47,6 +54,7 @@ def _set_session_cookie(response: Response, token: str, settings: Settings) -> N
     response_model=CurrentUser,
     status_code=201,
     responses=error_responses(403, 409, 422, 429),
+    dependencies=[Depends(require_trusted_origin), Depends(rate_limit_sign_up)],
 )
 async def sign_up(payload: SignUpRequest) -> CurrentUser:
     _not_implemented()
@@ -57,19 +65,26 @@ async def sign_up(payload: SignUpRequest) -> CurrentUser:
     operation_id="auth_sign_in",
     response_model=CurrentUser,
     responses=error_responses(401, 403, 422, 429),
+    dependencies=[Depends(require_trusted_origin)],
 )
 async def sign_in(
     payload: SignInRequest,
     request: Request,
     response: Response,
+    rate_limit: SignInRateLimitContext = Depends(rate_limit_sign_in),
     service: AuthService = Depends(get_auth_service),
     settings: Settings = Depends(get_settings),
 ) -> CurrentUser:
-    result = await service.sign_in(
-        email=str(payload.email),
-        password=payload.password,
-        current_cookie=request.cookies.get(settings.session_cookie_name),
-    )
+    try:
+        result = await service.sign_in(
+            email=str(payload.email),
+            password=payload.password,
+            current_cookie=request.cookies.get(settings.session_cookie_name),
+        )
+    except ApiError as exc:
+        if exc.stable_code == ErrorCode.INVALID_CREDENTIALS.value:
+            rate_limit.record_failure()
+        raise
     _set_session_cookie(response, result.token, settings)
     return CurrentUser(
         id=str(result.user.id),
@@ -84,6 +99,7 @@ async def sign_in(
     status_code=204,
     response_class=Response,
     responses=error_responses(403),
+    dependencies=[Depends(require_trusted_origin)],
 )
 async def sign_out(
     request: Request,
@@ -119,6 +135,7 @@ async def me(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     status_code=204,
     response_class=Response,
     responses=error_responses(403, 422, 429),
+    dependencies=[Depends(require_trusted_origin), Depends(rate_limit_password_reset)],
 )
 async def request_password_reset(payload: PasswordResetRequest) -> Response:
     _not_implemented()
@@ -130,6 +147,7 @@ async def request_password_reset(payload: PasswordResetRequest) -> Response:
     status_code=204,
     response_class=Response,
     responses=error_responses(400, 403, 422),
+    dependencies=[Depends(require_trusted_origin)],
 )
 async def confirm_password_reset(payload: PasswordResetConfirm) -> Response:
     _not_implemented()

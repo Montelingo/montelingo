@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.core.config import get_settings
 from app.db.session import get_db_session, get_engine, get_session_factory
 from app.main import create_app
+from app.modules.auth.rate_limit import get_rate_limiter
 
 API_DIR = Path(__file__).resolve().parents[1]
 UNREACHABLE_DB_URL = "postgresql+asyncpg://postgres:postgres@127.0.0.1:1/montelingo"
@@ -35,6 +36,7 @@ def _clear_db_caches() -> None:
     get_settings.cache_clear()
     get_engine.cache_clear()
     get_session_factory.cache_clear()
+    get_rate_limiter.cache_clear()
 
 
 @pytest.fixture
