@@ -1,6 +1,7 @@
 import { ApiClientError, ApiNetworkError, type Schemas } from "@app/api-client";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -120,7 +121,22 @@ describe("SignUpForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("posts if submitted before hydration, so credentials never reach the URL", () => {
+  it("keeps the submit button disabled in the server HTML, until hydration", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<SignUpForm redirectTo="/" />);
+
+    expect(
+      within(container).getByRole("button", { name: "Create account" }),
+    ).toBeDisabled();
+  });
+
+  it("enables the submit button once running in the browser", () => {
+    renderForm();
+
+    expect(submitButton()).toBeEnabled();
+  });
+
+  it("posts, so credentials never reach the URL", () => {
     renderForm();
 
     expect(
