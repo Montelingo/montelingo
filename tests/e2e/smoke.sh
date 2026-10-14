@@ -74,6 +74,25 @@ check_stale_session_redirect() {
   echo "[e2e] $description: OK (redirect to $expected_target)"
 }
 
+# The reset-password URL carries a token, so the page must stop the browser
+# from sending it on as Referer: with the response header and the meta tag.
+check_reset_password_page() {
+  local url="$WEB_URL/reset-password?token=smoke"
+  local headers body
+  check_status "Reset-password page" "$url" 200
+  headers=$(curl --silent --dump-header - --output /dev/null "$url" | tr -d '\r')
+  if ! grep --quiet --ignore-case '^referrer-policy: no-referrer$' <<<"$headers"; then
+    echo "[e2e] Reset-password page: no 'Referrer-Policy: no-referrer' header from $url" >&2
+    exit 1
+  fi
+  body=$(curl --silent "$url")
+  if ! grep --quiet --fixed-strings '<meta name="referrer" content="no-referrer"' <<<"$body"; then
+    echo "[e2e] Reset-password page: no referrer meta tag in the HTML from $url" >&2
+    exit 1
+  fi
+  echo "[e2e] Reset-password page: OK (Referrer-Policy header and meta tag)"
+}
+
 wait_for "API" "$API_URL/api/v1/health/live"
 wait_for "Web" "$WEB_URL"
 
@@ -97,5 +116,7 @@ if [[ "$me_status" == "401" ]]; then
 else
   echo "[e2e] SKIPPED protected page with a stale session: GET /api/v1/auth/me answered $me_status, not 401"
 fi
+check_status "Forgot-password page" "$WEB_URL/forgot-password" 200
+check_reset_password_page
 
 echo "[e2e] All smoke checks passed."
