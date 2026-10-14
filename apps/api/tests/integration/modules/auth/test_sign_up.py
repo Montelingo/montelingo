@@ -13,6 +13,7 @@ from app.modules.users.models import User
 pytestmark = pytest.mark.integration
 
 SIGN_UP_URL = "/api/v1/auth/sign-up"
+SIGN_UP_HEADERS = {"Origin": "http://localhost:3000"}
 
 
 async def test_sign_up_success(
@@ -25,6 +26,7 @@ async def test_sign_up_success(
             "email": "  USER@Example.COM  ",
             "password": "password123",
         },
+        headers=SIGN_UP_HEADERS,
     )
 
     assert response.status_code == 201
@@ -54,6 +56,7 @@ async def test_sign_up_duplicate_email_returns_409(
             "email": "user@example.com",
             "password": "password123",
         },
+        headers=SIGN_UP_HEADERS,
     )
 
     assert first.status_code == 201
@@ -64,6 +67,7 @@ async def test_sign_up_duplicate_email_returns_409(
             "email": "USER@EXAMPLE.COM",
             "password": "anotherpassword123",
         },
+        headers=SIGN_UP_HEADERS,
     )
 
     assert duplicate.status_code == 409
@@ -85,6 +89,7 @@ async def test_sign_up_validation_returns_422(
     response = await integration_client.post(
         SIGN_UP_URL,
         json=payload,
+        headers=SIGN_UP_HEADERS,
     )
 
     assert response.status_code == 422
@@ -101,6 +106,7 @@ async def test_sign_up_password_cannot_equal_email(
             "email": "user@example.com",
             "password": "user@example.com",
         },
+        headers=SIGN_UP_HEADERS,
     )
 
     assert response.status_code == 422
@@ -156,6 +162,7 @@ async def test_concurrent_sign_up_returns_201_and_409(
                 return await client.post(
                     SIGN_UP_URL,
                     json={"email": email, "password": "password123"},
+                    headers=SIGN_UP_HEADERS,
                 )
 
             first, second = await asyncio.gather(register(), register())
