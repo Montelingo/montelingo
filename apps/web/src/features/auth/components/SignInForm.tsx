@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId } from "react";
 
 import { FormAlert } from "@/components/ui/FormAlert";
+import { FormNotice } from "@/components/ui/FormNotice";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
@@ -16,7 +17,9 @@ import {
   authPageHref,
   postAuthRedirectPath,
   FORGOT_PASSWORD_PATH,
+  SIGN_IN_NOTICES,
   SIGN_UP_PATH,
+  type SignInNotice,
 } from "../model/routes";
 import { validateSignIn } from "../model/validation";
 import { AuthSubmitButton } from "./AuthSubmitButton";
@@ -25,9 +28,11 @@ import { linkClassName } from "./link-class-name";
 type SignInFormProps = {
   /** Where to go after signing in, from the page's `?next=`. */
   redirectTo: string;
+  /** A message from the step before, such as a password reset, from the page's `?notice=`. */
+  notice?: SignInNotice | null;
 };
 
-export function SignInForm({ redirectTo }: SignInFormProps) {
+export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
   const router = useRouter();
   const titleId = useId();
   // The value comes from the URL, so it is checked here too; a safe path is unchanged.
@@ -62,8 +67,8 @@ export function SignInForm({ redirectTo }: SignInFormProps) {
         </h1>
         <p className="text-slate-700">Welcome back to Montelingo.</p>
       </div>
-      {/* method="post": submitted natively before hydration, the
-          credentials go in the request body, never in the URL. */}
+      {/* The submit button stays disabled until hydration. method="post" only
+          guarantees the credentials never land in a URL. */}
       <form
         ref={formRef}
         method="post"
@@ -72,6 +77,10 @@ export function SignInForm({ redirectTo }: SignInFormProps) {
         onSubmit={handleSubmit}
         className="flex flex-col gap-4"
       >
+        {/* Shown until the first submit, so it never sits beside an error. */}
+        {notice !== null && attempt === 0 ? (
+          <FormNotice message={SIGN_IN_NOTICES[notice]} />
+        ) : null}
         <FormAlert key={attempt} message={failure?.formError} />
         <TextField
           {...fieldProps("email")}

@@ -11,6 +11,8 @@ from app.core.security import Argon2PasswordHasher, PasswordHasher, SecureToken,
 from app.db.session import get_db_session
 from app.db.transaction import SessionTransactionManager
 from app.modules.users.domain import UserAccount
+from app.modules.users.repository import SqlAlchemyUserRepository
+from app.modules.users.service import DefaultUsersService
 
 from .repository import SqlAlchemyAuthRepository
 from .schemas import CurrentUser
@@ -33,12 +35,15 @@ def get_auth_service(
     password_hasher: PasswordHasher = Depends(get_password_hasher),
     clock: SystemClock = Depends(get_clock),
 ) -> AuthService:
+    users_repository = SqlAlchemyUserRepository(session)
+
     return AuthService(
-        repository=SqlAlchemyAuthRepository(session),
+        repository=SqlAlchemyAuthRepository(session, users=users_repository),
         password_hasher=password_hasher,
         token=SecureToken,
         clock=clock,
         transaction_manager=SessionTransactionManager(session),
+        users_service=DefaultUsersService(users_repository),
         session_ttl=settings.session_ttl,
     )
 
@@ -64,5 +69,9 @@ async def get_current_user(
 ) -> CurrentUser:
     user = await get_optional_user(request, service, settings)
     if user is None:
-        raise ApiError(ErrorCode.AUTHENTICATION_ERROR, "Authentication required.", status_code=401)
+        raise ApiError(
+            ErrorCode.AUTHENTICATION_ERROR,
+            "Authentication required.",
+            status_code=401,
+        )
     return user

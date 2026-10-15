@@ -105,6 +105,34 @@ describe("SubmitButton", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  // Disabled, unlike pending, takes the button out of the tab order and blocks
+  // submitting even without JavaScript.
+  it("does not submit when disabled, by click or by Enter in a field", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <form
+        aria-label="Sign in"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <label htmlFor="email">Email</label>
+        <input id="email" name="email" />
+        <SubmitButton disabled>Sign in</SubmitButton>
+      </form>,
+    );
+
+    const button = screen.getByRole("button", { name: "Sign in" });
+    expect(button).toBeDisabled();
+    expect(button).not.toHaveAttribute("aria-disabled");
+    await user.click(button);
+    await user.type(screen.getByLabelText("Email"), "ana@example.com{Enter}");
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("follows the pending state of its form action", async () => {
     const user = userEvent.setup();
     let finishAction: () => void = () => undefined;

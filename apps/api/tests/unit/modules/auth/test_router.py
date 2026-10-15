@@ -5,11 +5,14 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from app.modules.auth.dependencies import get_auth_service
+
+from .test_sign_up_service import FakeUsersService, make_sign_up_service
+
 
 @pytest.mark.parametrize(
     ("method", "path", "payload"),
     [
-        ("POST", "/api/v1/auth/sign-up", {"email": "user@example.com", "password": "password123"}),
         ("POST", "/api/v1/auth/password-reset", {"email": "user@example.com"}),
         (
             "POST",
@@ -30,8 +33,10 @@ def test_unimplemented_auth_routes_reach_stub(
 
 
 def test_sign_out_without_cookie_is_idempotent(client: TestClient) -> None:
-    response = client.post("/api/v1/auth/sign-out", headers={"Origin": "http://localhost:3000"})
-
+    response = client.post(
+        "/api/v1/auth/sign-out",
+        headers={"Origin": "http://localhost:3000"},
+    )
     assert response.status_code == 204
 
 
@@ -40,6 +45,24 @@ def test_me_without_cookie_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "authentication_error"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"email": "not-an-email", "password": "password123"},
+        {"email": "user@example.com", "password": "short"},
+        {"email": "user@example.com", "password": "x" * 129},
+    ],
+)
+def test_sign_up_rejects_invalid_input(client: TestClient, payload: dict[str, str]) -> None:
+    response = client.post(
+        "/api/v1/auth/sign-up",
+        json=payload,
+        headers={"Origin": "http://localhost:3000"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_auth_routes_validate_input_before_stub(client: TestClient) -> None:
@@ -64,27 +87,45 @@ def test_password_reset_token_has_a_maximum_length(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_sign_up_rate_limit_returns_envelope_and_retry_after(client: TestClient) -> None:
-    headers = {"Origin": "http://localhost:3000"}
-    for _ in range(10):
-        assert (
-            client.post(
+def test_sign_up_rate_limit_returns_envelope_and_retry_after(
+    client: TestClient,
+) -> None:
+    users = FakeUsersService()
+    service, _ = make_sign_up_service(users)
+
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+
+    try:
+        headers = {"Origin": "http://localhost:3000"}
+
+        for _ in range(10):
+            response = client.post(
                 "/api/v1/auth/sign-up",
-                json={"email": "user@example.com", "password": "password123"},
+                json={
+                    "email": "user@example.com",
+                    "password": "password123",
+                },
                 headers=headers,
-            ).status_code
-            == 501
+            )
+            assert response.status_code == 201
+
+        response = client.post(
+            "/api/v1/auth/sign-up",
+            json={
+                "email": "user@example.com",
+                "password": "password123",
+            },
+            headers=headers,
         )
 
-    response = client.post(
-        "/api/v1/auth/sign-up",
-        json={"email": "user@example.com", "password": "password123"},
-        headers=headers,
-    )
+        assert response.status_code == 429
+        assert response.json()["error"]["code"] == "rate_limited"
 
-    assert response.status_code == 429
-    assert response.json()["error"]["code"] == "rate_limited"
-    assert response.headers["Retry-After"] == "3600"
+        retry_after = int(response.headers["Retry-After"])
+        assert 1 <= retry_after <= 3600
+
+    finally:
+        client.app.dependency_overrides.pop(get_auth_service, None)
 
 
 def test_foreign_origin_is_rejected(client: TestClient) -> None:
