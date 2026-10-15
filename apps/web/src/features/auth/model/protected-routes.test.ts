@@ -7,8 +7,8 @@ import {
 } from "./protected-routes";
 
 describe("PROTECTED_PATH_PREFIXES", () => {
-  it("starts with the account page", () => {
-    expect(PROTECTED_PATH_PREFIXES).toContain("/account");
+  it("covers the account pages and the learner area", () => {
+    expect(PROTECTED_PATH_PREFIXES).toEqual(["/account", "/play"]);
   });
 });
 
@@ -20,6 +20,11 @@ describe("isProtectedPath", () => {
     "/account/email/change",
     "/%61ccount",
     "/account%2Femail",
+    "/play",
+    "/play/",
+    "/play/x",
+    "/play/kotor/old-town",
+    "/%70lay",
   ])("protects %j", (pathname) => {
     expect(isProtectedPath(pathname)).toBe(true);
   });
@@ -33,6 +38,10 @@ describe("isProtectedPath", () => {
     "/Account",
     "/sign-in",
     "/%E0%A4%A",
+    "/player",
+    "/playground",
+    "/Play",
+    "/lessons/play",
   ])("leaves %j public", (pathname) => {
     expect(isProtectedPath(pathname)).toBe(false);
   });
@@ -59,6 +68,16 @@ describe("signInRedirectFor", () => {
     ).toBe("/sign-in?next=%2Faccount%2Femail%3Ftab%3Dchange%26step%3D2");
   });
 
+  it("sends the learner area without a session cookie to sign in, keeping the query", () => {
+    expect(
+      signInRedirectFor({
+        pathname: "/play",
+        search: "?x=1",
+        hasSessionCookie: false,
+      }),
+    ).toBe("/sign-in?next=%2Fplay%3Fx%3D1");
+  });
+
   it("lets a protected page with a session cookie through, for the page to verify", () => {
     expect(
       signInRedirectFor({
@@ -69,7 +88,7 @@ describe("signInRedirectFor", () => {
     ).toBeNull();
   });
 
-  it.each(["/", "/accounting", "/lessons", "/sign-in"])(
+  it.each(["/", "/accounting", "/lessons", "/sign-in", "/playground"])(
     "lets the public page %j through without a session cookie",
     (pathname) => {
       expect(

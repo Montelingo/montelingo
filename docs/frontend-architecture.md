@@ -12,10 +12,23 @@ Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:w
 apps/web/src/
   middleware.ts                     # runs before matched requests; protected-route fast path (§5.4)
   app/                              # routing only: pages, layouts, loading/error/not-found files
-    layout.tsx
+    layout.tsx                      # <html>, <body>, and the skip link; no header (§5.4)
     globals.css
     error.tsx
-    not-found.tsx
+    not-found.tsx                   # renders the site header itself (§5.4)
+    (site)/                         # the site's pages, under the site header
+      layout.tsx
+      page.tsx
+      (auth)/
+      account/
+    (learner)/                      # the learner area: full screen, its own chrome (§8)
+      layout.tsx
+      loading.tsx
+      error.tsx
+      not-found.tsx
+      play/
+        layout.tsx                  # the area's session check (§5.4)
+        page.tsx
     api/
       [...path]/
         route.ts                    # same-origin proxy to the API (§5.3); the only route under app/api
@@ -49,7 +62,7 @@ apps/web/src/
       server.ts                     # the feature's server-only public API (only if it has server-only code)
       edge.ts                       # the feature's middleware API (only if the middleware needs it)
   components/
-    ui/                             # shared, domain-free primitives (TextField, SubmitButton, Dialog)
+    ui/                             # shared, domain-free primitives (TextField, SubmitButton, TileCard)
   hooks/                            # shared, domain-free hooks (use-media-query)
   lib/                              # shared utilities: API clients and proxy (§5.3), cn
 ```
@@ -421,7 +434,7 @@ Two server-only functions from `@/features/auth/server` answer "who is signed in
 
 A lookup only happens when the browser sent a session cookie, so `unavailable` always means "there is a cookie the API could not check".
 
-- **The site header** (`SiteHeader`, in the root layout) renders its shell and brand at once. Only the account controls wait for `getAuthState()`, inside their own `<Suspense>` boundary with a same-size placeholder, so a slow API never holds the page and nothing shifts when they arrive. Signed out, the controls are "Sign in" and "Sign up". Signed in, they are the email (linking to `/account`) and "Sign out". When the lookup fails they are "Sign out" alone: "Sign in" would tell a signed-in user they are signed out (and could leave a live session behind on a shared device), and the email is not verified.
+- **The site header** (`SiteHeader`, in `(site)/layout.tsx` and the root `not-found.tsx`) renders its shell and brand at once. Only the account controls wait for `getAuthState()`, inside their own `<Suspense>` boundary with a same-size placeholder, so a slow API never holds the page and nothing shifts when they arrive. Signed out, the controls are "Sign in" and "Sign up". Signed in, they are the email (linking to `/account`) and "Sign out". When the lookup fails they are "Sign out" alone: "Sign in" would tell a signed-in user they are signed out (and could leave a live session behind on a shared device), and the email is not verified.
 - **Sign-in and sign-up** use `getAuthState()` and treat `unavailable` as signed out, so a visitor with a stale cookie still gets the form. If the API is down, submitting the form says so. Sign-in with a known notice (`?notice=password-updated`) skips the check and shows the form even to a signed-in user (§12).
 - **Protected pages** use `getCurrentUser()`. A failed lookup reaches the error boundary, which offers a retry. Treating it as signed out would send a signed-in user to sign in.
 
@@ -429,11 +442,11 @@ A lookup only happens when the browser sent a session cookie, so `unavailable` a
 
 #### Every page is rendered per request
 
-The header is in the root layout and reads the request's cookies, so **every route is dynamic**. Do not use `export const dynamic = "force-static"`, `revalidate` (ISR), or other static rendering on a page: the header would be rendered once, for nobody, and served to everyone. The cost is one `/auth/me` call per page view from a browser with a session cookie (none without one), shared by the header and the page.
+**Every route is dynamic.** The site's pages (in `src/app/(site)/`) and the 404 page render the header, which reads the request's cookies; the learner area (`src/app/(learner)/play/`) checks the session in its layout. Do not use `export const dynamic = "force-static"`, `revalidate` (ISR), or other static rendering on a page: the header, or the learner area's sign-in check, would be rendered once, for nobody, and served to everyone. A new route group outside both must decide this for itself, and is dynamic as soon as anything in it reads cookies or headers. The cost is one `/auth/me` call per page view from a browser with a session cookie (none without one), shared by the header or layout and the page.
 
 #### Reading the current user on the client
 
-Client Components do not fetch the user. A Server Component reads it and passes `CurrentUser` (or the fields needed) down as props. It is serializable, with `createdAt` as an ISO string. There is no client-side user context (§4.1). After a mutation that changes who is signed in, the page must render again on the server: `SignInForm` calls `router.replace()` then `router.refresh()`, `SignOutButton` loads the home page afresh (see below), and `ResetPasswordForm`, whose reset revoked every session, loads the sign-in page afresh (§12). The root layout does not re-render on client navigation, so the header changes only on a refresh or a full load.
+Client Components do not fetch the user. A Server Component reads it and passes `CurrentUser` (or the fields needed) down as props. It is serializable, with `createdAt` as an ISO string. There is no client-side user context (§4.1). After a mutation that changes who is signed in, the page must render again on the server: `SignInForm` calls `router.replace()` then `router.refresh()`, `SignOutButton` loads the home page afresh (see below), and `ResetPasswordForm`, whose reset revoked every session, loads the sign-in page afresh (§12). Layouts do not re-render on client navigation, so the header (in `(site)/layout.tsx`) changes only on a refresh or a full load.
 
 #### Protecting a page
 
@@ -446,7 +459,7 @@ To protect a new section:
 
 1. Add its path to `PROTECTED_PATH_PREFIXES` in `src/features/auth/model/protected-routes.ts`. A prefix covers the path and everything under it (`/account`, `/account/email`), not lookalikes (`/accounting`). This list is the single source of truth.
 2. Add the same path as `<path>/:path*` to `config.matcher` in `src/middleware.ts`. Next.js reads the matcher at build time, so it must be a literal. `middleware.test.ts` fails when it and the list disagree.
-3. In each page, check the session itself. `src/app/account/page.tsx` is the reference:
+3. In each page, check the session itself. `src/app/(site)/account/page.tsx` is the reference (or, for a whole section, its layout; see below):
 
 ```tsx
 import { redirect } from "next/navigation";
@@ -466,6 +479,14 @@ export default async function AccountPage() {
 ```
 
 4. Give the segment an `error.tsx` (with a retry) and a `loading.tsx` (§9), and its `<main>` the `id="main-content"` the skip link targets (§8).
+
+##### Protecting a whole section from a layout
+
+The learner area checks the session once, for everything under `/play`, in `src/app/(learner)/play/layout.tsx` rather than in each page:
+
+- **One level below the group's layout.** An `error.tsx` never catches errors thrown by the layout of its own segment, and the root has no error boundary. With the check in `play/layout.tsx`, a failed lookup reaches `(learner)/error.tsx` and the wait shows `(learner)/loading.tsx`, both inside the learner chrome. `(learner)/layout.tsx` itself is chrome only and loads no data.
+- **The requested path comes from the middleware.** A layout is not told its URL, so the middleware hands every request it lets through its path and query string in the `x-montelingo-path` request header (`REQUESTED_PATH_HEADER`, set with `withRequestedPath()` through `NextResponse.next({ request: { headers } })`). It always overwrites the header, so on the paths it runs for a client cannot set it, and it is sent upstream only, never to the browser. The layout passes it through `requestedPathWithin(PLAY_PATH, …)`, which accepts only a safe path inside `/play` and otherwise returns `/play`, then redirects to `signInHref()` of the result. A stale cookie on `/play/kotor?step=2` returns there after signing in, like the middleware's own redirect.
+- **Full loads only.** Layouts do not run again on client-side navigation between pages under them, so the layout is the gate when a learner page is loaded or refreshed, not on every navigation. The learner pages' data (#67, #68) comes from server adapters that send the session cookie, and they must treat a `401` as signed out (or let it reach the error boundary), never as data.
 
 The middleware imports from `@/features/auth/edge`, never `@/features/auth`. It runs in the Edge runtime before every matched request, and the main entry would pull the API client and the forms into its bundle. `edge.ts` exports only pure functions and constants. `edge.test.ts` follows its imports and fails if any of them reaches `server-only`, `next/headers`, `@/lib/api`, `@/lib/api-config`, `@/lib/browser-api`, or `@app/api-client`.
 
@@ -591,8 +612,38 @@ export type { Lesson, LessonSummary } from "./model/lesson";
 - Compose conditional classes with a `cn()` helper in `src/lib/cn.ts` rather than string concatenation.
 - Shared primitives expose variants through props (`variant="primary"`), not by accepting arbitrary `className` overrides for their core look. `className` is accepted for layout (margin, width) only.
 - Static accessibility rules (`alt` text, labelled controls, keyboard support for click handlers, valid ARIA) are enforced by `eslint-plugin-jsx-a11y` **(enforced)**. `vitest-axe` checks the rendered DOM (roles, accessible names, landmarks, ARIA) in component tests. It cannot check contrast, because jsdom does not apply styles, so contrast is checked in review.
-- Every page's `<main>` has `id="main-content"`, the target of the root layout's "Skip to content" link. Route groups with a shared layout set it there (`(auth)/layout.tsx`, `account/layout.tsx`).
+- Every page's `<main>` has `id="main-content"`, the target of the root layout's "Skip to content" link. Route groups with a shared layout set it there (`(auth)/layout.tsx`, `account/layout.tsx`, and `LearnerShell` for `(learner)/layout.tsx`).
 - Styling must not remove accessibility affordances: never `outline-none` without a visible `focus-visible:` replacement. Text must meet WCAG AA contrast.
+- Pick state-dependent classes from a static map of full class names (`TileCard`'s `STATE_STYLES`), never by building them from strings (`` `border-tile-${state}-edge` ``): Tailwind only generates classes it finds written out in the source.
+
+### 8.1 Tokens
+
+`tailwind.config.ts` holds a small semantic set. Its header comment lists the text pairs that meet WCAG AA, so a new pairing is checked before it is used.
+
+| Token                                                            | Use                                                                                            |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ink`, `ink-muted`, `surface`, `surface-muted`, `surface-sunken` | Text, card and page surfaces, skeleton blocks                                                  |
+| `focus`, `action`, `action-hover`, `action-ink`                  | Focus outlines; primary buttons and button-like links                                          |
+| `tile-<state>-edge`, `-badge`, `-ink`                            | `TileCard`: the card's edge, and the badge's background and text, per state                    |
+| `next`, `next-edge`, `next-ink`                                  | The "next place to go" ribbon and edge                                                         |
+| `art-<1…8>-bg`, `-pattern`, `-ink`                               | `PlaceholderArt` palettes                                                                      |
+| `touch` (3rem), `touch-lg` (3.5rem)                              | Touch targets, as `size-`, `min-h-`, `min-w-`, and spacing                                     |
+| `gutter`, `safe-t`, `safe-r`, `safe-b`, `safe-l`                 | The learner gutter, and padding that is the gutter or the safe-area inset, whichever is larger |
+| `max-w-learner`, `rounded-tile`, `rounded-badge`, `aspect-tile`  | The learner content width, card and badge radii, the card picture's shape                      |
+| `grid-cols-tiles`                                                | `CardGrid`'s columns (the column math is in a comment next to it)                              |
+| `animate-wiggle`, `animate-locked-flash`                         | A locked card's answer to a tap, with and without motion                                       |
+
+There are no custom font sizes. `cn()` uses a `tailwind-merge` configured with the custom names that could conflict with Tailwind's own (spacing, padding, radii, animations, aspect ratio, maximum width), so a later `p-4` still replaces `p-gutter`. Add a new non-colour token there too.
+
+### 8.2 The learner area
+
+The learner area (`src/app/(learner)/`, today `/play`) is tablet-first and full screen. The smallest supported device is the iPad mini 6, 744 × 1133 CSS px, in portrait and landscape.
+
+- **No site header.** `(learner)/layout.tsx` renders `LearnerShell` (`src/features/learner`): a bar with a large Back and Home control (each `size-touch-lg`, 56 px), then the `<main>`. Home goes to the map (`/play`) and is `aria-current="page"` there. Back goes one level up the URL (a place to its region, a region to the map), not back through the browser history, and from the map leads out to `/`, where adults find their account.
+- **Safe areas.** The layout exports `viewport = { viewportFit: "cover" }` (Next.js merges it with its default `width=device-width, initial-scale=1`; never limit zoom), so `env(safe-area-inset-*)` is non-zero on devices with a notch or rounded corners, and the shell pads itself with the `safe-*` padding tokens. The viewport meta tag follows client-side navigation in and out of the area.
+- **Height and scrolling.** `<body>` is at least `100dvh` (`100vh` where `dvh` is unsupported) and a flex column; the shell and its `<main>` grow to fill it. Pages scroll vertically only.
+- **Breakpoints.** Tailwind's `md` (768 px) is wider than the portrait tablet, so learner layouts do not rely on `md` for tablets; `CardGrid` sizes its columns from the container instead.
+- **Cards.** `TileCard` is the tappable card (seven states, each with an icon and a label as well as a colour; locked, loading, and error cards stay focusable with `aria-disabled`; one card can carry the "next place" ribbon), `CardGrid` lays out 3 to 10 of them without sideways scrolling, and `PlaceholderArt` draws a stand-in picture from an ID. All three are in `src/components/ui/` and take their copy from props, so the features that use them (#65, #67, #68) supply the words.
 
 ```tsx
 <button
@@ -616,7 +667,7 @@ export type { Lesson, LessonSummary } from "./model/lesson";
 | Expected, recoverable user error (wrong answer, validation) | Handled in the feature as state. Not thrown                                |
 | Failed mutation from a client component                     | Caught in the feature hook, exposed as `{ status: "error", message }`      |
 
-Every route segment that fetches data has an `error.tsx` (or inherits one from its parent). Error boundaries show a human message and a retry action. They never show `error.message` from the server verbatim:
+Every route segment that fetches data has an `error.tsx` (or inherits one from its parent). The learner area's boundaries sit in the route group, inside its chrome: `(learner)/error.tsx` (a calm "This page didn’t open." that puts the problem on our side, never on the learner or their device, with a large "Try again"), `(learner)/loading.tsx`, and `(learner)/not-found.tsx` (for `notFound()` inside the area, with a link back to the map). A URL that matches no route at all gets the root `not-found.tsx`, with the site header. Error boundaries show a human message and a retry action. They never show `error.message` from the server verbatim:
 
 ```tsx
 // src/app/lessons/[lessonId]/error.tsx
@@ -643,7 +694,8 @@ export default function LessonError({ reset }: ErrorPageProps) {
 
 ### 9.2 Loading states
 
-- Each data-fetching route segment has a `loading.tsx` that renders a skeleton with the same layout as the loaded page, to avoid layout shift.
+- Each data-fetching route segment has a `loading.tsx` that renders a skeleton with the same layout as the loaded page, to avoid layout shift. `(learner)/loading.tsx` mirrors the `/play` placeholder; the region and place pages (#67, #68) add a `loading.tsx` in their own segments that matches them.
+- Skeletons are plain `aria-hidden` blocks, never disabled copies of the real controls: a skeleton of `TileCard`s would put focusable cards in the tab order.
 - Wrap independently slow sections in `<Suspense fallback={<XSkeleton />}>` so the rest of the page can stream.
 - Skeletons live in the feature next to the component they stand in for (`LessonListSkeleton.tsx`).
 - Loading UI is announced to assistive technology: the region uses `aria-busy="true"`, or a visually hidden status element with `role="status"`.
@@ -752,19 +804,19 @@ expect(container).toMatchSnapshot();
 
 ## 12. Current state and known gaps
 
-`src/features/health` is the reference implementation of these conventions: a thin `app/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
+`src/features/health` is the reference implementation of these conventions: a thin `app/(site)/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
 
 `src/features/auth` is the reference for the rest:
 
 - browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
 - the server-only session lookups `getCurrentUser()` and `getAuthState()`, wrapped in React `cache()` and exported from `server.ts` (§5.4). They skip the API call when the request has no `montelingo_session` cookie;
-- the site header (`SiteHeader`, in the root layout) with its account controls and `SignOutButton` (§5.4);
-- route protection: the middleware fast path (`edge.ts`, `signInRedirectFor()`) and the reference protected page, `/account` (§5.4);
+- the site header (`SiteHeader`, in `(site)/layout.tsx` and the root `not-found.tsx`) with its account controls and `SignOutButton` (§5.4);
+- route protection: the middleware fast path (`edge.ts`, `signInRedirectFor()`), the requested-path header for layouts (`withRequestedPath()`, `requestedPathWithin()`), the reference protected page, `/account`, and the reference protected section, `/play` (§5.4);
 - form validation with `zod` (`schemas.ts`);
 - the open-redirect guard `safeRedirectPath()`, and `postAuthRedirectPath()`, which also sends a destination that is an auth page (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, in any case or encoding, with or without a trailing slash) to `/`. Pages and forms use the latter for where to go after signing in;
 - error-code mapping in `errors.ts`;
-- the sign-in and sign-up pages (`src/app/(auth)/`): thin routes that redirect a signed-in user (and treat a failed session lookup as signed out; sign-in does not redirect when it shows a notice, see below) and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. Their submit button (`AuthSubmitButton`) is `disabled` until the page hydrates (`useIsHydrated()` in `src/lib/use-is-hydrated.ts`): before then nothing handles the submit, and a native one would post the values to the page route and lose them. A disabled default button also blocks Enter in a field, which `aria-disabled` cannot do without JavaScript. The forms still use `method="post"`, so credentials never land in a URL.
-- the forgot-password and reset-password pages (`src/app/(auth)/forgot-password/`, `src/app/(auth)/reset-password/`), which, unlike sign-in and sign-up, never redirect a signed-in user and never call `/auth/me`: with no change-password page, a signed-in user may need a reset link too, and a link must work whoever is signed in.
+- the sign-in and sign-up pages (`src/app/(site)/(auth)/`): thin routes that redirect a signed-in user (and treat a failed session lookup as signed out; sign-in does not redirect when it shows a notice, see below) and render `SignInForm` / `SignUpForm`. The forms run on the `useAuthForm()` hook, whose state is a pure reducer in `model/form-state.ts`: client validation shown on blur and on submit, API field errors on the matching field, other errors in a `FormAlert`, focus moved to the first invalid field, and the submit button held until `rate_limited`'s `Retry-After` deadline (an absolute time, re-read on every tick and when the tab or window regains focus, so throttled background timers cannot stretch it). API field errors for a value edited while the call was in flight are dropped, and a call that finishes after the form unmounts does nothing. Their submit button (`AuthSubmitButton`) is `disabled` until the page hydrates (`useIsHydrated()` in `src/lib/use-is-hydrated.ts`): before then nothing handles the submit, and a native one would post the values to the page route and lose them. A disabled default button also blocks Enter in a field, which `aria-disabled` cannot do without JavaScript. The forms still use `method="post"`, so credentials never land in a URL.
+- the forgot-password and reset-password pages (`src/app/(site)/(auth)/forgot-password/`, `src/app/(site)/(auth)/reset-password/`), which, unlike sign-in and sign-up, never redirect a signed-in user and never call `/auth/me`: with no change-password page, a signed-in user may need a reset link too, and a link must work whoever is signed in.
   - `ForgotPasswordForm` shows the "Check your email" confirmation only when the API accepts the request. The API answers `204` whether or not the account exists, so the copy says "if an account exists" and no error can reveal one: enumeration protection is the API's. Every failure is shown like on the other forms (the generic, unreachable, or rate-limited message in the alert, and a `validation_error` on the email on the field, since the API's validator is stricter than ours), so nobody waits for an email that was never sent. "Send another link" returns to the form with the email filled in.
   - `/reset-password?token=…` reads the token with `parseResetToken()` (one value of 1 to 256 characters, passed on byte for byte). A missing or unusable token shows `InvalidResetLink`, with a link to request a new one; so does `invalid_reset_token` (or a `validation_error` on `token`) after submitting `ResetPasswordForm`. On success the form loads `/sign-in?notice=password-updated` as a new document with `replaceDocument()`, like sign-out: the reset revoked every session, so this drops all client state and the router cache in one request, and the replaced history entry keeps the used link out of Back. The sign-in page shows the notice even to a signed-in user instead of redirecting them, so someone who reset another account's password in this browser still sees it, and signing in as that account replaces the session. It shows a notice only for a known key in `SIGN_IN_NOTICES` (`parseSignInNotice()`), so a link can never put its own text on the page; `FormNotice` shows it until the first submit.
   - The token is a secret in the URL. Required controls: the page sets `<meta name="referrer" content="no-referrer">` and robots `noindex, nofollow` through its metadata, and `next.config.ts` sends `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex, nofollow` for `/reset-password`, because the headers apply before the browser reaches the meta tags, which Next.js renders after the stylesheet and scripts. It sets no `Cache-Control`: Next.js already sends `private, no-cache, no-store, max-age=0, must-revalidate` for this page, which is dynamic like every route (§5.4). `getBrowserApiClient()` sets `referrerPolicy: "strict-origin"` on every API call, so the confirm request (and any later call from the same document, whose `no-referrer` policy outlives client-side navigations) sends the origin as `Origin` and `Referer` for the API's CSRF check (ADR 0004), never the path or token. The token is never logged: no client code logs it, the proxy logs only the method and path, and `next.config.ts` keeps `/reset-password` out of `next dev`'s request log (`logging.incomingRequests.ignore`), which prints the query. The page never uses the token on load (mail link scanners open links), and it does not strip the token from the address bar, so a reload still works; the token is single-use with a short lifetime. Reverse proxies and ingress in front of the web app must drop query strings for `/reset-password` from their access logs, which the app cannot control.
@@ -775,10 +827,12 @@ Installed and enforced:
 - Testing Library (`@testing-library/react`, `user-event`, `jest-dom`) and `vitest-axe`, with matchers registered in `vitest.setup.ts`. `ApiHealthCard.test.tsx` is the reference component test.
 - `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
 - The same-origin API proxy (including the trusted client IP), the server and browser API clients, and the single base-URL source (§5.3). `server-only` marks the server modules. Vitest aliases it to its no-op entry so those modules can be unit-tested.
-- The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3).
-- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message), `FormNotice` (a polite `role="status"` message for good news, such as "Password updated — please sign in."), and `ErrorFallback` (the body of an `error.tsx`: a message and a "Try again" button that refreshes the route and resets the boundary).
+- The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3), extended with the custom tokens (§8.1).
+- Form primitives in `src/components/ui/`: `TextField` (label, description, and error wired through `aria-describedby` and `aria-invalid`; the error may contain a link, such as "Sign in instead"), `PasswordField` (a show-password toggle button with `aria-pressed`, named after its field: "Show password", "Show confirm password"), `SubmitButton` (a pending state from its `pending` prop or the parent `<form action>`; it stays focusable with `aria-disabled` and ignores clicks and Enter while pending), `FormAlert` (a `role="alert"` message that renders only when there is one; give it a new `key` per submit attempt to announce a repeated message), `FormNotice` (a polite `role="status"` message for good news, such as "Password updated — please sign in."), and `ErrorFallback` (the body of an `error.tsx`: a message, an optional `description` in place of the default advice to check the connection, and a "Try again" button that refreshes the route and resets the boundary; `size="large"` makes the button a 56 px touch target).
 
 - `zod` (v4) for runtime validation of form input (§5.2).
+- The learner area (§8.2): `src/features/learner` (`LearnerShell` with its Back and Home controls, and the `/play` placeholder and its skeleton, until the map arrives in #67), the `(learner)` route group with its boundaries, and the card primitives `TileCard`, `CardGrid`, and `PlaceholderArt` in `src/components/ui/`, exercised by component tests until real data uses them. `TILE_CARD_STATES` and `TileCardState` live in `tile-card-state.ts`, not in the client module `TileCard.tsx`, so Server Components can use the list.
+- Design tokens in `tailwind.config.ts` (§8.1), and a `cn()` that knows the custom ones.
 
 Known gaps to close as real features land:
 

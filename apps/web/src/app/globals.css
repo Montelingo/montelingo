@@ -8,4 +8,7 @@
 
 body {
   @apply m-0 min-h-screen bg-gradient-to-br from-indigo-50 via-teal-50 to-amber-50 font-sans text-slate-900;
+  /* The visible height, which on tablets and phones excludes the browser's
+     toolbars; browsers without dvh keep min-h-screen (100vh) above. */
+  min-height: 100dvh;
 }

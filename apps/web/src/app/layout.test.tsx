@@ -1,13 +1,8 @@
 import { screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import RootLayout from "./layout";
-
-// The real header streams the session lookup; SiteHeader.test.tsx covers it.
-vi.mock("@/features/auth/server", () => ({
-  SiteHeader: () => <header>Site header</header>,
-}));
 
 // RootLayout renders <html> and <body>, which Testing Library cannot mount, so
 // it is rendered to markup and its body is shown in the test document.
@@ -26,15 +21,13 @@ afterEach(() => {
 });
 
 describe("RootLayout", () => {
-  it("puts the site header above every page", () => {
+  // The site pages get the header from (site)/layout.tsx; the learner area
+  // is full screen without it.
+  it("leaves the header to each section", () => {
     renderLayout();
 
-    const header = screen.getByRole("banner");
-    expect(header).toHaveTextContent("Site header");
-    expect(
-      header.compareDocumentPosition(screen.getByRole("main")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveTextContent("Page");
   });
 
   it("starts with a link that skips to the page's main content", () => {

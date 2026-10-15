@@ -2,6 +2,8 @@ import { safeRedirectPath } from "./redirect";
 
 export const HOME_PATH = "/";
 export const ACCOUNT_PATH = "/account";
+// The learner area: the map, and the regions and places under it.
+export const PLAY_PATH = "/play";
 export const SIGN_IN_PATH = "/sign-in";
 export const SIGN_UP_PATH = "/sign-up";
 export const FORGOT_PASSWORD_PATH = "/forgot-password";

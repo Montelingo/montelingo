@@ -104,6 +104,8 @@ check_status "Unknown API route via the web proxy" "$WEB_URL/api/v1/does-not-exi
 check_status "Web sign-in page" "$WEB_URL/sign-in" 200
 check_redirect "Protected page without a session" "$WEB_URL/account?tab=email" 307 \
   "$WEB_URL/sign-in?next=%2Faccount%3Ftab%3Demail"
+check_redirect "Learner area without a session" "$WEB_URL/play?x=1" 307 \
+  "$WEB_URL/sign-in?next=%2Fplay%3Fx%3D1"
 
 # Needs GET /auth/me to answer 401 for an unknown session. While the endpoint
 # is still a 501 stub, the page shows its error boundary instead, so the check
@@ -113,8 +115,12 @@ me_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
 if [[ "$me_status" == "401" ]]; then
   check_stale_session_redirect "Protected page with a stale session" "$WEB_URL/account" \
     "/sign-in?next=%2Faccount"
+  # The learner area checks the session in a layout, which learns the
+  # requested path (and query) from the middleware.
+  check_stale_session_redirect "Learner area with a stale session" "$WEB_URL/play?x=1" \
+    "/sign-in?next=%2Fplay%3Fx%3D1"
 else
-  echo "[e2e] SKIPPED protected page with a stale session: GET /api/v1/auth/me answered $me_status, not 401"
+  echo "[e2e] SKIPPED protected pages with a stale session: GET /api/v1/auth/me answered $me_status, not 401"
 fi
 check_status "Forgot-password page" "$WEB_URL/forgot-password" 200
 check_reset_password_page
