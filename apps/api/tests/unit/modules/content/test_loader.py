@@ -6,6 +6,7 @@ import re
 import unicodedata
 from collections import Counter
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -181,6 +182,38 @@ def test_loader_accepts_changed_word_text_and_note() -> None:
             lambda data: data["chapters"][0]["words"][0].update(text="plaz\u030ca"),
             "Unicode NFC",
         ),
+        (
+            lambda data: data["chapters"][0]["words"][0].update(text=" more"),
+            "leading or trailing whitespace",
+        ),
+        (
+            lambda data: data["chapters"][0]["words"][0].update(text="more "),
+            "leading or trailing whitespace",
+        ),
+        (
+            lambda data: data["chapters"][0]["words"][0].update(note=" napomena "),
+            "leading or trailing whitespace",
+        ),
+        (
+            lambda data: data.update(unexpected=True),
+            "unknown keys",
+        ),
+        (
+            lambda data: data["regions"][0].update(unexpected=True),
+            "unknown keys",
+        ),
+        (
+            lambda data: data["locations"][0].update(unexpected=True),
+            "unknown keys",
+        ),
+        (
+            lambda data: data["chapters"][0].update(unexpected=True),
+            "unknown keys",
+        ),
+        (
+            lambda data: data["chapters"][0]["words"][0].update(notes="wrong key"),
+            "unknown keys",
+        ),
     ],
 )
 def test_invalid_entries_report_location(
@@ -192,3 +225,34 @@ def test_invalid_entries_report_location(
 
     with pytest.raises(ValueError, match=re.escape(expected)):
         parse_content(bad)
+
+
+def test_repeated_word_with_identical_notes_is_rejected() -> None:
+    data = make_content_data()
+
+    first = data["chapters"][2]["words"][-1]
+    second = data["chapters"][3]["words"][0]
+
+    second["text"] = first["text"]
+    second["note"] = first["note"]
+
+    with pytest.raises(ValueError, match="identical notes"):
+        parse_content(data)
+
+
+def test_loader_rejects_duplicate_json_keys(tmp_path: Path) -> None:
+    source = DEFAULT_CONTENT_PATH.read_text(encoding="utf-8")
+
+    modified = source.replace(
+        '"starting_location":',
+        '"starting_location": "budva", "starting_location":',
+        1,
+    )
+
+    assert modified != source
+
+    path = tmp_path / "content.json"
+    path.write_text(modified, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate JSON key"):
+        load_content(path)

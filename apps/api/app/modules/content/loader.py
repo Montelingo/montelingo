@@ -22,6 +22,23 @@ def _obj(value: Any, where: str) -> dict[str, Any]:
     return value
 
 
+def _check_keys(obj: dict[str, Any], allowed: set[str], where: str) -> None:
+    unknown = set(obj) - allowed
+    if unknown:
+        _fail(where, f"unknown keys: {sorted(unknown)!r}")
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key {key!r}")
+        result[key] = value
+
+    return result
+
+
 def _list(value: Any, where: str) -> list[Any]:
     if not isinstance(value, list):
         _fail(where, "expected array")
@@ -30,10 +47,16 @@ def _list(value: Any, where: str) -> list[Any]:
 
 def _string(obj: dict[str, Any], key: str, where: str) -> str:
     value = obj.get(key)
+
     if not isinstance(value, str) or not value.strip():
         _fail(f"{where}.{key}", "expected non-empty string")
+
+    if value != value.strip():
+        _fail(f"{where}.{key}", "leading or trailing whitespace is not allowed")
+
     if unicodedata.normalize("NFC", value) != value:
         _fail(f"{where}.{key}", "text must be Unicode NFC")
+
     return value
 
 
@@ -59,6 +82,7 @@ def _parse_regions(
     for index, raw in enumerate(_list(data.get("regions"), "regions")):
         where = f"regions[{index}]"
         item = _obj(raw, where)
+        _check_keys(item, {"slug", "name"}, where)
         slug = _slug(item, "slug", where)
         _register_slug(slug, used_slugs, where)
 
@@ -82,6 +106,7 @@ def _parse_locations(
     for index, raw in enumerate(_list(data.get("locations"), "locations")):
         where = f"locations[{index}]"
         item = _obj(raw, where)
+        _check_keys(item, {"slug", "name", "region_slug", "is_starting"}, where)
         slug = _slug(item, "slug", where)
         _register_slug(slug, used_slugs, where)
 
@@ -109,9 +134,11 @@ def _parse_word(
     raw: Any,
     where: str,
     used_numbers: set[int],
-    words_by_text: dict[str, Word],
+    words_by_text: dict[str, list[Word]],
 ) -> Word:
     item = _obj(raw, where)
+    _check_keys(item, {"number", "text", "note"}, where)
+
     number = item.get("number")
 
     if type(number) is not int or number < 1:
@@ -121,20 +148,31 @@ def _parse_word(
         _fail(f"{where}.number", f"duplicate recording number {number}")
 
     word_text = _string(item, "text", where)
+
     note = None
     if "note" in item and item["note"] is not None:
         note = _string(item, "note", where)
 
-    previous = words_by_text.get(word_text.casefold())
-    if previous is not None and (previous.note is None or note is None):
-        _fail(
-            where,
-            f"repeated word {word_text!r} (numbers {previous.number} and {number}) without notes",
-        )
+    previous_words = words_by_text.get(word_text.casefold(), [])
+
+    for previous in previous_words:
+        if previous.note is None or note is None:
+            _fail(
+                where,
+                f"repeated word {word_text!r} "
+                f"(numbers {previous.number} and {number}) without notes",
+            )
+
+        if previous.note.casefold() == note.casefold():
+            _fail(
+                where,
+                f"repeated word {word_text!r} "
+                f"(numbers {previous.number} and {number}) with identical notes",
+            )
 
     word = Word(number=number, text=word_text, note=note)
     used_numbers.add(number)
-    words_by_text[word_text.casefold()] = word
+    words_by_text.setdefault(word_text.casefold(), []).append(word)
     return word
 
 
@@ -145,11 +183,12 @@ def _parse_chapters(
 ) -> tuple[Chapter, ...]:
     chapters: list[Chapter] = []
     used_numbers: set[int] = set()
-    words_by_text: dict[str, Word] = {}
+    words_by_text: dict[str, list[Word]] = {}
 
     for index, raw in enumerate(_list(data.get("chapters"), "chapters")):
         where = f"chapters[{index}]"
         item = _obj(raw, where)
+        _check_keys(item, {"slug", "title", "location_slug", "words"}, where)
         slug = _slug(item, "slug", where)
         _register_slug(slug, used_slugs, where)
 
@@ -186,6 +225,13 @@ def _parse_chapters(
 def parse_content(data: Any) -> Content:
     """Validate decoded JSON and return typed immutable domain objects."""
     content_data = _obj(data, "content")
+
+    _check_keys(
+        content_data,
+        {"starting_location", "regions", "locations", "chapters"},
+        "content",
+    )
+
     starting_location_slug = _slug(
         content_data,
         "starting_location",
@@ -231,7 +277,10 @@ def load_content(path: str | Path = DEFAULT_CONTENT_PATH) -> Content:
     path = Path(path)
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"{path}: cannot load content: {exc}") from exc
 
