@@ -139,6 +139,18 @@ describe("TileCard", () => {
       expect(onActivate).toHaveBeenCalledTimes(1);
     });
 
+    it("does not activate again while Enter is held down", async () => {
+      const user = userEvent.setup();
+      const onActivate = vi.fn();
+      renderCard({ state, onActivate });
+
+      await user.tab();
+      // One keydown, then two repeats (`repeat: true`), then the release.
+      await user.keyboard("{Enter>3/}");
+
+      expect(onActivate).toHaveBeenCalledTimes(1);
+    });
+
     it("does not activate again while Space is held down", () => {
       const onActivate = vi.fn();
       renderCard({ state, onActivate });
@@ -228,6 +240,25 @@ describe("TileCard", () => {
       // A new node in the live region is what makes it speak again.
       expect(secondMessage).not.toBe(firstMessage);
       expect(firstMessage).not.toBeInTheDocument();
+    });
+
+    it("keeps the picture in place when a tap restarts the feedback", async () => {
+      const user = userEvent.setup();
+      render(
+        <TileCard
+          title="Kotor"
+          state="locked"
+          href="/play/kotor"
+          picture={<span data-testid="picture" />}
+        />,
+      );
+      const picture = screen.getByTestId("picture");
+
+      await user.click(card());
+      await user.click(card());
+
+      expect(face()).toHaveAttribute("data-feedback", "wiggle");
+      expect(screen.getByTestId("picture")).toBe(picture);
     });
 
     it("keeps the message out of the card's name", async () => {

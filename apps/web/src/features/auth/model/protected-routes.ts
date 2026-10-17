@@ -1,4 +1,5 @@
 import { ACCOUNT_PATH, PLAY_PATH, signInHref } from "./routes";
+import { isPathWithin } from "./url-path";
 
 /**
  * The pages that need a signed-in user: each path and everything under it
@@ -17,14 +18,8 @@ export const PROTECTED_PATH_PREFIXES: readonly string[] = [
  * case-sensitive, like the router's.
  */
 export function isProtectedPath(pathname: string): boolean {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(pathname);
-  } catch {
-    decoded = pathname;
-  }
-  return PROTECTED_PATH_PREFIXES.some(
-    (prefix) => decoded === prefix || decoded.startsWith(`${prefix}/`),
+  return PROTECTED_PATH_PREFIXES.some((prefix) =>
+    isPathWithin(pathname, prefix),
   );
 }
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import { ACTION_SIZE_STYLES, ACTION_STYLE } from "@/components/ui/action-style";
 import { PLAY_PATH } from "@/features/auth";
+import { cn } from "@/lib/cn";
 
 // For notFound() inside the learner area (such as a region or place that does
 // not exist): stays in the learner chrome and leads back to the map. Unknown
@@ -14,7 +16,7 @@ export default function LearnerNotFound() {
       <p className="text-lg text-ink-muted">Let’s go back to your map.</p>
       <Link
         href={PLAY_PATH}
-        className="inline-flex min-h-touch-lg items-center justify-center rounded-lg bg-action px-6 text-lg font-semibold text-action-ink hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className={cn(ACTION_STYLE, ACTION_SIZE_STYLES.large)}
       >
         Go to your map
       </Link>

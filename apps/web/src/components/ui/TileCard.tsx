@@ -15,7 +15,10 @@ import {
   type AnimationEvent,
   type KeyboardEvent,
   type ReactNode,
+  type Ref,
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -146,6 +149,21 @@ export function TileCard({
 }: TileCardProps) {
   const [lockedTaps, setLockedTaps] = useState(0);
   const [isWiggling, setIsWiggling] = useState(false);
+  const faceRef = useRef<HTMLSpanElement>(null);
+
+  // Restarts the feedback on every tap, even one while it is still playing:
+  // dropping the animation for one style recalculation (the forced layout)
+  // and restoring it starts it again. Remounting the face would do the same,
+  // but would also remount the picture, and an image could flicker.
+  useLayoutEffect(() => {
+    const element = faceRef.current;
+    if (lockedTaps === 0 || element === null) {
+      return;
+    }
+    element.style.animation = "none";
+    void element.offsetWidth;
+    element.style.animation = "";
+  }, [lockedTaps]);
 
   useEffect(() => {
     if (!isWiggling) {
@@ -173,7 +191,14 @@ export function TileCard({
   }
 
   // Links answer Enter natively but not Space, which would scroll the page.
+  // A held Enter repeats the native activation, so its repeats are cancelled.
   function handleOpenKeyDown(event: KeyboardEvent<HTMLAnchorElement>) {
+    if (event.key === "Enter") {
+      if (event.repeat) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (event.key !== " ") {
       return;
     }
@@ -202,9 +227,7 @@ export function TileCard({
 
   const face = (
     <CardFace
-      // A new key per tap restarts the animation. It sits on this inner,
-      // non-focusable element, so focus stays on the card.
-      key={lockedTaps}
+      ref={faceRef}
       title={title}
       state={state}
       picture={picture}
@@ -250,6 +273,7 @@ export function TileCard({
 }
 
 type CardFaceProps = {
+  ref: Ref<HTMLSpanElement>;
   title: string;
   state: TileCardState;
   picture: ReactNode;
@@ -262,6 +286,7 @@ type CardFaceProps = {
 // What the card looks like. Spans throughout: the card may be a <span>, which
 // only takes phrasing content.
 function CardFace({
+  ref,
   title,
   state,
   picture,
@@ -275,6 +300,7 @@ function CardFace({
 
   return (
     <span
+      ref={ref}
       // Marks the locked feedback while it plays, for tests and tooling.
       data-feedback={isWiggling ? "wiggle" : undefined}
       onAnimationEnd={onAnimationEnd}

@@ -5,6 +5,8 @@ import { startTransition } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { ACTION_SIZE_STYLES, ACTION_STYLE } from "./action-style";
+
 const DEFAULT_DESCRIPTION = "Check your connection and try again in a moment.";
 
 // "large" is for touch-first screens: a bigger heading and a retry button at
@@ -13,12 +15,12 @@ const SIZE_STYLES = {
   default: {
     title: "text-2xl",
     description: "",
-    button: "px-4 py-2",
+    button: ACTION_SIZE_STYLES.default,
   },
   large: {
     title: "text-3xl",
     description: "text-lg",
-    button: "min-h-touch-lg px-6 text-lg",
+    button: ACTION_SIZE_STYLES.large,
   },
 } as const;
 
@@ -59,10 +61,7 @@ export function ErrorFallback({
       <button
         type="button"
         onClick={handleRetry}
-        className={cn(
-          "inline-flex items-center justify-center rounded-lg bg-action font-semibold text-action-ink hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-          styles.button,
-        )}
+        className={cn(ACTION_STYLE, styles.button)}
       >
         Try again
       </button>

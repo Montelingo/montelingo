@@ -8,7 +8,12 @@ function normalizePath(pathname: string): string {
   return pathname.replace(/\/{2,}/g, "/").replace(/(.)\/+$/, "$1");
 }
 
-/** True when `pathname` is `root` or a path under it. */
+/**
+ * True when `pathname` is `root` or a path under it. Unlike the auth checks,
+ * the path is compared as written, not decoded: `parentPath()` cuts the Back
+ * target from this same string, and decoding the check alone would let them
+ * disagree (`/play%2Fkotor` would be inside `/play` with no parent there).
+ */
 export function isWithinPath(pathname: string, root: string): boolean {
   const path = normalizePath(pathname);
   return path === root || path.startsWith(`${root}/`);

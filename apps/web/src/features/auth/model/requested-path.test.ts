@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { isProtectedPath } from "./protected-routes";
 import {
   REQUESTED_PATH_HEADER,
   requestedPathWithin,
@@ -40,12 +41,28 @@ describe("requestedPathWithin", () => {
     expect(requestedPathWithin("/play", requested)).toBe(expected);
   });
 
+  // The router decodes the path, so these are /play/kotor and /play, which
+  // the middleware protects as part of /play. They return as requested.
+  it.each([
+    ["/%70lay/kotor", ""],
+    ["/%70lay/kotor", "?step=2"],
+    ["/%70lay", ""],
+  ])("returns %j%s, encoded but inside the section", (pathname, search) => {
+    expect(isProtectedPath(pathname)).toBe(true);
+    expect(requestedPathWithin("/play", `${pathname}${search}`)).toBe(
+      `${pathname}${search}`,
+    );
+  });
+
   it.each([
     ["missing", null],
     ["undefined", undefined],
     ["empty", ""],
     ["outside the section", "/account"],
     ["a lookalike path", "/playground"],
+    ["an encoded lookalike path", "/%70layground"],
+    ["a malformed encoding inside the section", "/play/%E0%A4%A"],
+    ["a malformed encoding outside the section", "/%70lay/%E0%A4%A"],
     ["a path that leaves the section", "/play/../account"],
     ["an absolute URL", "https://evil.com/play"],
     ["a protocol-relative URL", "//evil.com/play"],

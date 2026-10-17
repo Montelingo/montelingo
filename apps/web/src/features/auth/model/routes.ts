@@ -1,4 +1,5 @@
 import { safeRedirectPath } from "./redirect";
+import { PLACEHOLDER_ORIGIN } from "./url-path";
 
 export const HOME_PATH = "/";
 export const ACCOUNT_PATH = "/account";
@@ -10,7 +11,6 @@ export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const RESET_PASSWORD_PATH = "/reset-password";
 
 const DEFAULT_REDIRECT_PATH = HOME_PATH;
-const PLACEHOLDER_ORIGIN = "https://montelingo.invalid";
 
 // The auth pages, compared lowercased: never a destination after signing in.
 const AUTH_PAGE_PATHS: ReadonlySet<string> = new Set(

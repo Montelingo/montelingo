@@ -23,9 +23,11 @@ export function CardGrid({ label, children, className }: CardGridProps) {
       aria-label={label}
       className={cn("grid grid-cols-tiles gap-4", className)}
     >
+      {/* Children.toArray keys every element (from its own key, or its
+          position); text has no key, so it keeps its position. */}
       {Children.toArray(children).map((child, index) => (
         <li
-          key={isValidElement(child) && child.key !== null ? child.key : index}
+          key={isValidElement(child) ? child.key : index}
           className="flex min-w-0"
         >
           {child}

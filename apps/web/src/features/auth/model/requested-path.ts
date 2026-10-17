@@ -1,4 +1,5 @@
 import { safeRedirectPath } from "./redirect";
+import { isPathWithin, PLACEHOLDER_ORIGIN } from "./url-path";
 
 /**
  * The request header in which the middleware hands a protected page's path
@@ -7,8 +8,6 @@ import { safeRedirectPath } from "./redirect";
  * a signed-out visitor to sign in and back to the page they asked for.
  */
 export const REQUESTED_PATH_HEADER = "x-montelingo-path";
-
-const PLACEHOLDER_ORIGIN = "https://montelingo.invalid";
 
 type RequestedUrl = {
   /** The requested path, as the router sees it (`request.nextUrl.pathname`). */
@@ -36,6 +35,8 @@ export function withRequestedPath(
  * `REQUESTED_PATH_HEADER`: that path when `safeRedirectPath()` accepts it and
  * it is `section` or under it, otherwise `section` itself. The check keeps a
  * layout from sending anyone elsewhere if the header is ever missing or wrong.
+ * It decodes the path as `isProtectedPath()` does, so every path the
+ * middleware protects as part of `section` (`/%70lay/kotor`) returns there.
  */
 export function requestedPathWithin(
   section: string,
@@ -43,7 +44,5 @@ export function requestedPathWithin(
 ): string {
   const path = safeRedirectPath(requestedPath, section);
   const { pathname } = new URL(path, PLACEHOLDER_ORIGIN);
-  const isInSection =
-    pathname === section || pathname.startsWith(`${section}/`);
-  return isInSection ? path : section;
+  return isPathWithin(pathname, section) ? path : section;
 }
