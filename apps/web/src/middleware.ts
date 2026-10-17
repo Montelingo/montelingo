@@ -1,10 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getSessionCookieName, signInRedirectFor } from "@/features/auth/edge";
+import {
+  getSessionCookieName,
+  signInRedirectFor,
+  withRequestedPath,
+} from "@/features/auth/edge";
 
 // Sends a request for a protected page without a session cookie straight to
 // sign-in. Only a fast path: the cookie can be stale, so protected pages still
 // check the session with getCurrentUser().
+//
+// A request it lets through carries its path and query string to the render in
+// the REQUESTED_PATH_HEADER request header (overwriting any the client sent),
+// so a layout that checks the session can return a signed-out visitor to the
+// page they asked for. The header goes upstream only, never to the browser.
 export function middleware(request: NextRequest) {
   const target = signInRedirectFor({
     pathname: request.nextUrl.pathname,
@@ -12,7 +21,9 @@ export function middleware(request: NextRequest) {
     hasSessionCookie: request.cookies.has(getSessionCookieName()),
   });
   if (target === null) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: { headers: withRequestedPath(request.headers, request.nextUrl) },
+    });
   }
   // Built on nextUrl, the router's parsed view of this request, rather than
   // request.url. Behind a proxy the server's own origin (such as 0.0.0.0:3000)
@@ -29,5 +40,5 @@ export function middleware(request: NextRequest) {
 // of PROTECTED_PATH_PREFIXES as `<path>/:path*` (which also matches `<path>`);
 // middleware.test.ts checks that the two agree.
 export const config = {
-  matcher: ["/account/:path*"],
+  matcher: ["/account/:path*", "/play/:path*"],
 };

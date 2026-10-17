@@ -50,4 +50,51 @@ describe("ErrorFallback", () => {
 
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("advises checking the connection by default", () => {
+    renderFallback();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Check your connection and try again in a moment.",
+    );
+  });
+
+  describe("with its own description, large", () => {
+    function renderLarge() {
+      const reset = vi.fn();
+      const view = render(
+        <ErrorFallback
+          title="This page didn’t open."
+          description="Something went wrong on our side."
+          size="large"
+          reset={reset}
+        />,
+      );
+      return { ...view, reset };
+    }
+
+    it("shows the description instead of the default", () => {
+      renderLarge();
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent("Something went wrong on our side.");
+      expect(alert).not.toHaveTextContent(/connection/);
+    });
+
+    it("refetches the page and resets the boundary on retry", async () => {
+      const user = userEvent.setup();
+      const { reset } = renderLarge();
+
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+      expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it("has no accessibility violations", async () => {
+      const { container } = renderLarge();
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  });
 });

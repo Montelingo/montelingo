@@ -32,10 +32,15 @@ export {
   type AuthFormError,
 } from "./errors";
 export { safeRedirectPath } from "./model/redirect";
+export {
+  REQUESTED_PATH_HEADER,
+  requestedPathWithin,
+} from "./model/requested-path";
 export { parseResetToken } from "./model/reset-token";
 export {
   ACCOUNT_PATH,
   parseSignInNotice,
+  PLAY_PATH,
   postAuthRedirectPath,
   signInHref,
   signInNoticeHref,

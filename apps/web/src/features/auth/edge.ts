@@ -7,4 +7,8 @@ export {
   PROTECTED_PATH_PREFIXES,
   signInRedirectFor,
 } from "./model/protected-routes";
+export {
+  REQUESTED_PATH_HEADER,
+  withRequestedPath,
+} from "./model/requested-path";
 export { getSessionCookieName } from "./model/session-cookie";
