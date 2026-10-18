@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -8,10 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from app.core.errors import ApiError, ErrorCode
 from app.core.security import DUMMY_PASSWORD_HASH, Clock, PasswordHasher, SecureToken
 from app.db.transaction import TransactionManager
+from app.infrastructure.email import EmailSender, EmailSendError
 from app.modules.users.domain import UserAccount
 from app.modules.users.service import UsersService
 
 from .repository import AuthRepository
+from .templates import password_reset_email
 
 INVALID_CREDENTIALS = "Invalid email or password."
 INVALID_RESET_TOKEN = "This password reset link is invalid or has expired."
@@ -46,6 +49,8 @@ class AuthService:
         users_service: UsersService | None = None,
         session_ttl: int = 30 * 24 * 60 * 60,
         password_reset_ttl: int = 30 * 60,
+        email_sender: EmailSender | None = None,
+        web_base_url: str = "http://localhost:3000",
     ) -> None:
         self.repository = repository
         self.password_hasher = password_hasher
@@ -55,6 +60,8 @@ class AuthService:
         self.users_service = users_service
         self.session_ttl = session_ttl
         self.password_reset_ttl = password_reset_ttl
+        self.email_sender = email_sender
+        self.web_base_url = web_base_url.rstrip("/")
 
     async def sign_up(self, *, email: str, password: str) -> UserAccount:
         if self.users_service is None:
@@ -174,6 +181,22 @@ class AuthService:
                 expires_at=self.clock.now() + timedelta(seconds=self.password_reset_ttl),
             )
             return PasswordResetIssued(email=user.email, token=raw_token)
+
+    async def send_password_reset_email(self, issued: PasswordResetIssued) -> None:
+        """Emails the reset link. A delivery failure is logged by the sender, not raised,
+        so it never changes the answer to the reset request.
+        """
+        if self.email_sender is None:
+            raise RuntimeError("EmailSender is not configured.")
+        message = password_reset_email(
+            to=issued.email,
+            reset_link=f"{self.web_base_url}/reset-password?token={issued.token}",
+            expires_in_minutes=math.ceil(self.password_reset_ttl / 60),
+        )
+        try:
+            await self.email_sender.send(message)
+        except EmailSendError:
+            pass
 
     async def confirm_password_reset(self, *, token: str, new_password: str) -> None:
         """Consumes the token, sets the new password and revokes every session, atomically.

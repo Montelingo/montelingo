@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Argon2PasswordHasher, SecureToken
@@ -50,7 +50,7 @@ async def request_reset_token(client: AsyncClient, sender: InMemoryEmailSender, 
     return parse_qs(urlsplit(link).query)["token"][0]
 
 
-async def confirm(client: AsyncClient, token: str, password: str = NEW_PASSWORD) -> int:
+async def confirm_status(client: AsyncClient, token: str, password: str = NEW_PASSWORD) -> int:
     response = await client.post(
         "/api/v1/auth/password-reset/confirm",
         json={"token": token, "new_password": password},
@@ -106,7 +106,7 @@ async def test_reset_changes_password_revokes_sessions_and_does_not_sign_in(
     await db_session.refresh(stored)
     assert stored.used_at is not None
 
-    assert await confirm(integration_client, token, "another password 789") == 400
+    assert await confirm_status(integration_client, token, "another password 789") == 400
     assert await sign_in(integration_client, email, OLD_PASSWORD) == 401
     assert await sign_in(integration_client, email, NEW_PASSWORD) == 200
 
@@ -126,8 +126,8 @@ async def test_requesting_again_invalidates_the_earlier_link(
         select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
     )
     assert [t.token_hash for t in tokens.all()] == [SecureToken.hash(second)]
-    assert await confirm(integration_client, first) == 400
-    assert await confirm(integration_client, second) == 204
+    assert await confirm_status(integration_client, first) == 400
+    assert await confirm_status(integration_client, second) == 204
 
 
 async def test_expired_token_is_rejected(
@@ -146,7 +146,7 @@ async def test_expired_token_is_rejected(
     stored.expires_at = datetime.now(UTC) - timedelta(seconds=1)
     await db_session.flush()
 
-    assert await confirm(integration_client, token) == 400
+    assert await confirm_status(integration_client, token) == 400
     assert await sign_in(integration_client, email, OLD_PASSWORD) == 200
 
 
@@ -155,9 +155,13 @@ async def test_unknown_email_answers_204_and_stores_nothing(
     db_session: AsyncSession,
     email_sender: InMemoryEmailSender,
 ) -> None:
+    tokens_before = await db_session.scalar(select(func.count()).select_from(PasswordResetToken))
+
     response = await integration_client.post(
         "/api/v1/auth/password-reset", json={"email": "nobody@example.com"}, headers=ORIGIN
     )
 
     assert response.status_code == 204
     assert email_sender.messages == []
+    tokens_after = await db_session.scalar(select(func.count()).select_from(PasswordResetToken))
+    assert tokens_after == tokens_before

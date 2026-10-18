@@ -8,6 +8,7 @@ import pytest
 
 from app.core.errors import ApiError
 from app.core.security import SecureToken
+from app.infrastructure.email import EmailMessage, EmailSendError, InMemoryEmailSender
 from app.modules.auth.service import AuthService
 from app.modules.users.domain import UserAccount
 
@@ -79,7 +80,16 @@ def make_user() -> UserAccount:
     )
 
 
-def make_service(repository: FakeResetRepository, clock: MutableClock) -> AuthService:
+class FailingEmailSender:
+    async def send(self, message: EmailMessage) -> None:
+        raise EmailSendError("example.com", ConnectionError("SMTP is down"))
+
+
+def make_service(
+    repository: FakeResetRepository,
+    clock: MutableClock,
+    email_sender: InMemoryEmailSender | FailingEmailSender | None = None,
+) -> AuthService:
     return AuthService(
         repository=repository,  # type: ignore[arg-type]
         password_hasher=FakeHasher(),
@@ -87,10 +97,12 @@ def make_service(repository: FakeResetRepository, clock: MutableClock) -> AuthSe
         clock=clock,
         transaction_manager=FakeTransactions(),  # type: ignore[arg-type]
         password_reset_ttl=TTL,
+        email_sender=email_sender or InMemoryEmailSender(),
+        web_base_url="https://app.example/",
     )
 
 
-async def test_request_for_unknown_email_issues_nothing() -> None:
+async def test_request_for_unknown_email_stores_no_token() -> None:
     repository = FakeResetRepository(user=None)
     service = make_service(repository, MutableClock(NOW))
 
@@ -184,3 +196,52 @@ async def test_wrong_token_is_rejected() -> None:
 
     assert error.value.stable_code == "invalid_reset_token"
     assert repository.password_updates == []
+
+
+async def test_reset_email_links_to_the_web_reset_page_and_states_the_expiry() -> None:
+    sender = InMemoryEmailSender()
+    service = make_service(FakeResetRepository(make_user()), MutableClock(NOW), sender)
+    issued = await service.request_password_reset("user@example.com")
+    assert issued is not None
+
+    await service.send_password_reset_email(issued)
+
+    [message] = sender.messages
+    assert message.to == "user@example.com"
+    assert f"https://app.example/reset-password?token={issued.token}" in message.text_body
+    assert "30 minutes" in message.text_body
+    assert message.html_body is not None
+    assert f"https://app.example/reset-password?token={issued.token}" in message.html_body
+
+
+async def test_unknown_email_sends_nothing() -> None:
+    sender = InMemoryEmailSender()
+    service = make_service(FakeResetRepository(user=None), MutableClock(NOW), sender)
+
+    assert await service.request_password_reset("nobody@example.com") is None
+    assert sender.messages == []
+
+
+async def test_reset_email_delivery_failure_is_not_raised() -> None:
+    service = make_service(
+        FakeResetRepository(make_user()), MutableClock(NOW), FailingEmailSender()
+    )
+    issued = await service.request_password_reset("user@example.com")
+    assert issued is not None
+
+    await service.send_password_reset_email(issued)
+
+
+@pytest.mark.parametrize(
+    ("ttl", "copy"), [(30 * 60, "30 minutes"), (90, "2 minutes"), (45, "1 minute ")]
+)
+async def test_reset_email_rounds_the_expiry_up_to_whole_minutes(ttl: int, copy: str) -> None:
+    sender = InMemoryEmailSender()
+    service = make_service(FakeResetRepository(make_user()), MutableClock(NOW), sender)
+    service.password_reset_ttl = ttl
+    issued = await service.request_password_reset("user@example.com")
+    assert issued is not None
+
+    await service.send_password_reset_email(issued)
+
+    assert copy in sender.messages[0].text_body

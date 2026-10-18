@@ -5,7 +5,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from app.api.responses import error_responses
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, ErrorCode
-from app.infrastructure.email import EmailMessage, EmailSender, EmailSendError, get_email_sender
 
 from .dependencies import get_auth_service, get_current_user
 from .rate_limit import (
@@ -23,7 +22,6 @@ from .schemas import (
     SignUpRequest,
 )
 from .service import AuthService
-from .templates import password_reset_email
 
 router = APIRouter()
 
@@ -137,27 +135,12 @@ async def request_password_reset(
     payload: PasswordResetRequest,
     background_tasks: BackgroundTasks,
     service: AuthService = Depends(get_auth_service),
-    settings: Settings = Depends(get_settings),
-    email_sender: EmailSender = Depends(get_email_sender),
 ) -> Response:
     issued = await service.request_password_reset(str(payload.email))
     if issued is not None:
-        message = password_reset_email(
-            to=issued.email,
-            reset_link=f"{settings.web_base_url.rstrip('/')}/reset-password?token={issued.token}",
-            expires_in_minutes=settings.password_reset_ttl // 60,
-        )
         # Sent after the response, so delivery neither delays nor changes it.
-        background_tasks.add_task(_send_reset_email, email_sender, message)
+        background_tasks.add_task(service.send_password_reset_email, issued)
     return Response(status_code=204)
-
-
-async def _send_reset_email(email_sender: EmailSender, message: EmailMessage) -> None:
-    try:
-        await email_sender.send(message)
-    except EmailSendError:
-        # The request-scoped sender has already logged the failure.
-        pass
 
 
 @router.post(

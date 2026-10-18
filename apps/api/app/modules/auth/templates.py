@@ -9,10 +9,11 @@ PASSWORD_RESET_SUBJECT = "Reset your Montelingo password"
 
 def password_reset_email(*, to: str, reset_link: str, expires_in_minutes: int) -> EmailMessage:
     """The password reset email. It carries no personal data beyond the link."""
+    expiry = f"{expires_in_minutes} minute{'' if expires_in_minutes == 1 else 's'}"
     text_body = (
         "Someone asked to reset the password for your Montelingo account.\n\n"
         f"To choose a new password, open this link:\n{reset_link}\n\n"
-        f"The link expires in {expires_in_minutes} minutes and works once.\n"
+        f"The link expires in {expiry} and works once.\n"
         "If you did not ask for this, ignore this email. Your password stays the same.\n"
     )
     link = escape(reset_link, quote=True)
@@ -23,7 +24,7 @@ def password_reset_email(*, to: str, reset_link: str, expires_in_minutes: int) -
         "<p>Someone asked to reset the password for your Montelingo account.</p>"
         f'<p><a href="{link}">Choose a new password</a></p>'
         f"<p>Or paste this link into your browser:<br>{link}</p>"
-        f"<p>The link expires in {expires_in_minutes} minutes and works once. "
+        f"<p>The link expires in {expiry} and works once. "
         "If you did not ask for this, ignore this email. Your password stays the same.</p>"
         "</body></html>\n"
     )
