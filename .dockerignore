@@ -6,3 +6,5 @@
 **/*.pyc
 **/dist
 **/coverage
+.env
+.env.*

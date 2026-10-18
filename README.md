@@ -14,6 +14,7 @@ Turborepo; root `package.json` scripts wrap each app's commands (see
 - [FastAPI modular-monolith boundaries and rules](docs/fastapi-modular-monolith.md)
 - [Frontend architecture conventions](docs/frontend-architecture.md)
 - [API conventions](docs/architecture/api-conventions.md)
+- [Deployment: staging on Hetzner with Compose and Caddy](docs/deployment.md)
 - Architecture decision records:
   - [ADR 0001: Monorepo without a heavyweight orchestrator](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
   - [ADR 0002: OpenAPI contract and client generation](docs/adr/0002-openapi-contract-and-client-generation.md)
@@ -27,7 +28,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 ```
 .
 ├── .github/
-│   ├── workflows/          # ci.yml, containers.yml, e2e.yml
+│   ├── workflows/          # ci.yml, containers.yml, e2e.yml, deploy.yml
 │   └── CODEOWNERS
 ├── apps/
 │   ├── api/                # FastAPI backend (uv project)
@@ -70,7 +71,10 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │   ├── architecture/       # API conventions
 │   ├── fastapi-modular-monolith.md
 │   └── frontend-architecture.md
+├── deploy/                 # deploy.sh, compose.sh, backup.sh (run on the server, see docs/deployment.md)
 ├── compose.yaml
+├── compose.prod.yaml       # staging/production stack: GHCR images, Caddy, no published ports but Caddy's
+├── Caddyfile               # TLS edge for compose.prod.yaml
 ├── package.json            # root scripts wrapping pnpm/uv commands; Prettier for Markdown
 ├── pnpm-workspace.yaml     # pnpm workspace (apps/web, packages/*)
 ├── pnpm-lock.yaml
@@ -78,6 +82,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 ├── uv.lock
 ├── .python-version         # Python version for uv (local, CI, API image)
 ├── .env.example
+├── .env.production.example # server settings for compose.prod.yaml (real file: /opt/montelingo/.env)
 ├── .editorconfig
 ├── .dockerignore
 └── .gitignore

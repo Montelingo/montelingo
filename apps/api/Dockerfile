@@ -35,4 +35,6 @@ RUN addgroup --system --gid 1001 appgroup && \
 
 USER appuser
 
-CMD ["sh", "-c", "alembic -c apps/api/alembic.ini upgrade head && fastapi run apps/api/app/main.py --host 0.0.0.0 --port 8000"]
+# Migrations are not run here: Compose's one-shot `migrate` service applies them
+# once per deploy, before the API starts (compose.yaml, compose.prod.yaml).
+CMD ["fastapi", "run", "apps/api/app/main.py", "--host", "0.0.0.0", "--port", "8000"]

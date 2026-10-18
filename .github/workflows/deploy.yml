@@ -1,0 +1,113 @@
+name: Deploy
+
+# Deploys main to staging after the Containers workflow has pushed its images.
+# Run it by hand (Actions > Deploy > Run workflow) with an older commit SHA to
+# roll back. See docs/deployment.md.
+
+on:
+  workflow_run:
+    workflows: [Containers]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit SHA on main to deploy (40 characters). Its images must already be in GHCR.'
+        required: true
+
+# One deploy at a time, and a running deploy is never cancelled halfway.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    env:
+      COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.commit || github.event.workflow_run.head_sha }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_DIR: /opt/montelingo
+      STAGING_URL: ${{ vars.STAGING_URL }}
+    steps:
+      - name: Check that the server is configured
+        id: configured
+        run: |
+          if [[ -z "$DEPLOY_HOST" || -z "$DEPLOY_USER" ]]; then
+            echo "::warning::Staging is not set up yet (no DEPLOY_HOST/DEPLOY_USER in the staging environment, see #77). Skipping the deploy."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate the commit
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          if [[ ! "$COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Expected a 40-character commit SHA, got '$COMMIT'."
+            exit 1
+          fi
+
+      # The deploy files come from the same commit as the images.
+      - name: Check out the deployed commit
+        if: steps.configured.outputs.ready == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT }}
+
+      - name: Set up SSH
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host staging
+            HostName $DEPLOY_HOST
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          EOF
+
+      - name: Copy the deploy files
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          rsync -a --chmod=F644,D755 compose.prod.yaml Caddyfile "staging:$DEPLOY_DIR/"
+          rsync -a --delete --chmod=F755,D755 deploy/ "staging:$DEPLOY_DIR/deploy/"
+
+      - name: Deploy
+        if: steps.configured.outputs.ready == 'true'
+        run: |
+          # Expands on the runner on purpose. COMMIT was checked to be 40 hex characters.
+          # shellcheck disable=SC2029
+          ssh staging "IMAGE_TAG=sha-$COMMIT $DEPLOY_DIR/deploy/deploy.sh"
+
+      - name: Check the public health endpoint
+        if: steps.configured.outputs.ready == 'true' && vars.STAGING_URL != ''
+        run: |
+          for _ in $(seq 1 10); do
+            if curl --silent --fail --output /dev/null "$STAGING_URL/api/v1/health/ready"; then
+              echo "Staging is ready."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::$STAGING_URL/api/v1/health/ready did not answer 200."
+          exit 1

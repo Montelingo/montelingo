@@ -1,0 +1,25 @@
+# TLS edge for compose.prod.yaml. Caddy gets and renews the certificate for
+# STAGING_DOMAIN itself and redirects HTTP to HTTPS. Values come from the
+# caddy service's environment (see .env.production.example).
+{
+	email {$ACME_EMAIL}
+}
+
+{$STAGING_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# Staging is private. Health checks stay open for the uptime monitor.
+	@private not path /api/v1/health/*
+	basic_auth @private {
+		{$STAGING_BASIC_AUTH_USER} {$STAGING_BASIC_AUTH_HASH}
+	}
+
+	# Caddy replaces any X-Forwarded-For the client sent with the client's
+	# address, which the web reads with TRUSTED_PROXY_HOPS=1.
+	reverse_proxy web:3000
+}

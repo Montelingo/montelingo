@@ -2,7 +2,16 @@
 # Smoke-tests the docker compose stack (api + web + postgres).
 # Usage: bash tests/e2e/smoke.sh
 # Env vars: API_URL, WEB_URL, MAX_ATTEMPTS, SLEEP_SECONDS (all optional).
+# SMOKE_CURL_ARGS (optional) adds curl options to every request, for example
+# basic auth on staging (docs/deployment.md):
+#   API_URL=https://staging.example.com WEB_URL=https://staging.example.com \
+#     SMOKE_CURL_ARGS="--user montelingo:<password>" bash tests/e2e/smoke.sh
 set -euo pipefail
+
+read -r -a smoke_curl_args <<<"${SMOKE_CURL_ARGS:-}"
+curl() {
+  command curl "${smoke_curl_args[@]}" "$@"
+}
 
 API_URL="${API_URL:-http://localhost:8000}"
 WEB_URL="${WEB_URL:-http://localhost:3000}"
@@ -49,6 +58,8 @@ check_redirect() {
   result=$(curl --silent --output /dev/null --write-out '%{http_code} %{redirect_url}' "$url")
   status="${result%% *}"
   location="${result#* }"
+  # curl adds --user credentials to the URL it resolves a relative Location against.
+  location="$(sed -E 's#://[^/@]*@#://#' <<<"$location")"
   if [[ "$status" != "$expected_status" || "$location" != "$expected_location" ]]; then
     echo "[e2e] $description: expected $expected_status to $expected_location from $url, got $status to $location" >&2
     exit 1
