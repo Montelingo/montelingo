@@ -11,6 +11,7 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=500']
+        exclude: ^apps/api/app/modules/content/data/content\.json$
 
   - repo: local
     hooks:
