@@ -10,6 +10,8 @@ from alembic import context
 from app.core.config import get_settings
 from app.db.base import Base
 from app.modules.auth import models as auth_models  # noqa: F401
+from app.modules.content import models as content_models  # noqa: F401
+from app.modules.progress import models as progress_models  # noqa: F401
 from app.modules.users import models as user_models  # noqa: F401
 
 config = context.config

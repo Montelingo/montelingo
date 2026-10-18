@@ -140,10 +140,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Location */
+        get: operations["content_get_location"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Progress */
+        get: operations["progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Regions */
+        get: operations["content_list_regions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/regions/{region_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Region */
+        get: operations["content_get_region"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Chapter */
+        Chapter: {
+            /** Id */
+            id: string;
+            /**
+             * Position
+             * @description Recording order (1-30).
+             */
+            position: number;
+            /** Title */
+            title: string;
+            /** Words */
+            words: components["schemas"]["Word"][];
+        };
         /** CurrentUser */
         CurrentUser: {
             /**
@@ -198,6 +280,56 @@ export interface components {
              */
             status: "ok";
         };
+        /** LocationDetail */
+        LocationDetail: {
+            /** Chapters */
+            chapters: components["schemas"]["Chapter"][];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Region Id */
+            region_id: string;
+        };
+        /** LocationState */
+        LocationState: {
+            /** Id */
+            id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "locked" | "available" | "in-progress" | "completed";
+        };
+        /** LocationSummary */
+        LocationSummary: {
+            /** Chapter Count */
+            chapter_count: number;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Region Id */
+            region_id: string;
+            /** Word Count */
+            word_count: number;
+        };
+        /** PageInfo */
+        PageInfo: {
+            /**
+             * Has More
+             * @default false
+             */
+            has_more: boolean;
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** PaginatedResponse[RegionSummary] */
+        PaginatedResponse_RegionSummary_: {
+            /** Items */
+            items: components["schemas"]["RegionSummary"][];
+            page: components["schemas"]["PageInfo"];
+        };
         /** PasswordResetConfirm */
         PasswordResetConfirm: {
             /** New Password */
@@ -213,6 +345,13 @@ export interface components {
              */
             email: string;
         };
+        /** ProgressState */
+        ProgressState: {
+            /** Locations */
+            locations: components["schemas"]["LocationState"][];
+            /** Regions */
+            regions: components["schemas"]["RegionState"][];
+        };
         /** ReadyHealth */
         ReadyHealth: {
             /**
@@ -221,6 +360,34 @@ export interface components {
              * @constant
              */
             status: "ready";
+        };
+        /** RegionDetail */
+        RegionDetail: {
+            /** Id */
+            id: string;
+            /** Locations */
+            locations: components["schemas"]["LocationSummary"][];
+            /** Name */
+            name: string;
+        };
+        /** RegionState */
+        RegionState: {
+            /** Id */
+            id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "locked" | "available" | "in-progress" | "completed";
+        };
+        /** RegionSummary */
+        RegionSummary: {
+            /** Id */
+            id: string;
+            /** Location Count */
+            location_count: number;
+            /** Name */
+            name: string;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -241,6 +408,24 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** Word */
+        Word: {
+            /** Audio Url */
+            audio_url: string | null;
+            /** Id */
+            id: string;
+            /** Image Url */
+            image_url: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Number
+             * @description Recording number (1-300), also the audio file name.
+             */
+            number: number;
+            /** Text */
+            text: string;
         };
     };
     responses: never;
@@ -583,6 +768,162 @@ export interface operations {
             };
             /** @description Service unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    content_get_location: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressState"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    content_list_regions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_RegionSummary_"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    content_get_region: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                region_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegionDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

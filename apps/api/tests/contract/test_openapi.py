@@ -4,6 +4,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
+import pytest
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
@@ -28,6 +29,10 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/auth/password-reset/confirm",
         "/api/v1/health/live",
         "/api/v1/health/ready",
+        "/api/v1/regions",
+        "/api/v1/regions/{region_id}",
+        "/api/v1/locations/{location_id}",
+        "/api/v1/progress",
     }
 
 
@@ -89,9 +94,53 @@ def test_password_reset_request_operation_id_is_frozen(app: FastAPI) -> None:
     assert operation["operationId"] == "auth_password_reset_request"
 
 
-def test_auth_stubs_do_not_document_not_implemented(app: FastAPI) -> None:
-    schema = app.openapi()
-    operations = [
-        operation for path, _, operation in _operations(schema) if path.startswith("/api/v1/auth/")
-    ]
-    assert all("501" not in operation["responses"] for operation in operations)
+def test_stubs_do_not_document_not_implemented(app: FastAPI) -> None:
+    assert all("501" not in op["responses"] for _, _, op in _operations(app.openapi()))
+
+
+# The phase 1 map contract, frozen in #58 (epic #70). Changing a row is a contract change.
+# Routes with a path parameter also document 422: FastAPI adds it for any parameter, and
+# declaring it keeps it on the error envelope instead of HTTPValidationError.
+MAP_CONTRACT = [
+    ("/api/v1/regions", "content_list_regions", "PaginatedResponse_RegionSummary_", {"401"}),
+    ("/api/v1/regions/{region_id}", "content_get_region", "RegionDetail", {"401", "404", "422"}),
+    (
+        "/api/v1/locations/{location_id}",
+        "content_get_location",
+        "LocationDetail",
+        {"401", "404", "422"},
+    ),
+    ("/api/v1/progress", "progress_get", "ProgressState", {"401"}),
+]
+
+
+@pytest.mark.parametrize(("path", "operation_id", "model", "errors"), MAP_CONTRACT)
+def test_map_contract_is_frozen(
+    app: FastAPI, path: str, operation_id: str, model: str, errors: set[str]
+) -> None:
+    operation = app.openapi()["paths"][path]["get"]
+
+    assert operation["operationId"] == operation_id
+    assert set(operation["responses"]) == {"200", *errors}
+    schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema == {"$ref": f"#/components/schemas/{model}"}
+
+
+def test_map_states_are_the_svg_map_contract_literals(app: FastAPI) -> None:
+    components = app.openapi()["components"]["schemas"]
+
+    for name in ("RegionState", "LocationState"):
+        assert components[name]["properties"]["state"]["enum"] == [
+            "locked",
+            "available",
+            "in-progress",
+            "completed",
+        ]
+
+
+def test_word_media_fields_are_required_and_nullable(app: FastAPI) -> None:
+    word = app.openapi()["components"]["schemas"]["Word"]
+
+    assert set(word["required"]) == {"id", "number", "text", "note", "image_url", "audio_url"}
+    for field in ("image_url", "audio_url"):
+        assert {"type": "null"} in word["properties"][field]["anyOf"]
