@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -17,7 +18,9 @@ class UserRepository(Protocol):
 
     async def get_by_id(self, user_id: UUID) -> UserAccount | None: ...
 
-    async def update_password(self, user_id: UUID, password_hash: str) -> None: ...
+    async def update_password(
+        self, user_id: UUID, password_hash: str, *, password_changed_at: datetime | None = None
+    ) -> None: ...
 
 
 def _account(user: User) -> UserAccount:
@@ -55,7 +58,10 @@ class SqlAlchemyUserRepository:
         user = await self.session.get(User, user_id)
         return _account(user) if user else None
 
-    async def update_password(self, user_id: UUID, password_hash: str) -> None:
-        await self.session.execute(
-            update(User).where(User.id == user_id).values(password_hash=password_hash)
-        )
+    async def update_password(
+        self, user_id: UUID, password_hash: str, *, password_changed_at: datetime | None = None
+    ) -> None:
+        values: dict[str, str | datetime] = {"password_hash": password_hash}
+        if password_changed_at is not None:
+            values["password_changed_at"] = password_changed_at
+        await self.session.execute(update(User).where(User.id == user_id).values(**values))

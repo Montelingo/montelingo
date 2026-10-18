@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Never
-
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 
 from app.api.responses import error_responses
 from app.core.config import Settings, get_settings
@@ -26,14 +24,6 @@ from .schemas import (
 from .service import AuthService
 
 router = APIRouter()
-
-
-def _not_implemented() -> Never:
-    raise ApiError(
-        ErrorCode.NOT_IMPLEMENTED,
-        "Authentication endpoint is not implemented.",
-        status_code=501,
-    )
 
 
 def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
@@ -141,8 +131,16 @@ async def me(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
     responses=error_responses(403, 422, 429),
     dependencies=[Depends(require_trusted_origin), Depends(rate_limit_password_reset)],
 )
-async def request_password_reset(payload: PasswordResetRequest) -> Response:
-    _not_implemented()
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    service: AuthService = Depends(get_auth_service),
+) -> Response:
+    issued = await service.request_password_reset(str(payload.email))
+    if issued is not None:
+        # Sent after the response, so delivery neither delays nor changes it.
+        background_tasks.add_task(service.send_password_reset_email, issued)
+    return Response(status_code=204)
 
 
 @router.post(
@@ -153,5 +151,9 @@ async def request_password_reset(payload: PasswordResetRequest) -> Response:
     responses=error_responses(400, 403, 422),
     dependencies=[Depends(require_trusted_origin)],
 )
-async def confirm_password_reset(payload: PasswordResetConfirm) -> Response:
-    _not_implemented()
+async def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    service: AuthService = Depends(get_auth_service),
+) -> Response:
+    await service.confirm_password_reset(token=payload.token, new_password=payload.new_password)
+    return Response(status_code=204)

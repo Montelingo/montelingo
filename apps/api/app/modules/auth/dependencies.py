@@ -10,6 +10,7 @@ from app.core.errors import ApiError, ErrorCode
 from app.core.security import Argon2PasswordHasher, PasswordHasher, SecureToken, SystemClock
 from app.db.session import get_db_session
 from app.db.transaction import SessionTransactionManager
+from app.infrastructure.email import EmailSender, get_email_sender
 from app.modules.users.domain import UserAccount
 from app.modules.users.repository import SqlAlchemyUserRepository
 from app.modules.users.service import DefaultUsersService
@@ -34,6 +35,7 @@ def get_auth_service(
     settings: Settings = Depends(get_settings),
     password_hasher: PasswordHasher = Depends(get_password_hasher),
     clock: SystemClock = Depends(get_clock),
+    email_sender: EmailSender = Depends(get_email_sender),
 ) -> AuthService:
     users_repository = SqlAlchemyUserRepository(session)
 
@@ -45,6 +47,9 @@ def get_auth_service(
         transaction_manager=SessionTransactionManager(session),
         users_service=DefaultUsersService(users_repository),
         session_ttl=settings.session_ttl,
+        password_reset_ttl=settings.password_reset_ttl,
+        email_sender=email_sender,
+        web_base_url=settings.web_base_url,
     )
 
 
