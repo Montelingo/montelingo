@@ -14,6 +14,7 @@ from app.modules.users.service import UsersService
 from .repository import AuthRepository
 
 INVALID_CREDENTIALS = "Invalid email or password."
+INVALID_RESET_TOKEN = "This password reset link is invalid or has expired."
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +28,12 @@ class ResolvedSession:
     user: UserAccount
 
 
+@dataclass(frozen=True, slots=True)
+class PasswordResetIssued:
+    email: str
+    token: str
+
+
 class AuthService:
     def __init__(
         self,
@@ -38,6 +45,7 @@ class AuthService:
         *,
         users_service: UsersService | None = None,
         session_ttl: int = 30 * 24 * 60 * 60,
+        password_reset_ttl: int = 30 * 60,
     ) -> None:
         self.repository = repository
         self.password_hasher = password_hasher
@@ -46,6 +54,7 @@ class AuthService:
         self.transaction_manager = transaction_manager
         self.users_service = users_service
         self.session_ttl = session_ttl
+        self.password_reset_ttl = password_reset_ttl
 
     async def sign_up(self, *, email: str, password: str) -> UserAccount:
         if self.users_service is None:
@@ -147,3 +156,37 @@ class AuthService:
         if user is None:
             return None
         return ResolvedSession(user=user)
+
+    async def request_password_reset(self, email: str) -> PasswordResetIssued | None:
+        """Issues a reset token for an existing user, replacing earlier unused ones.
+
+        Returns None for an unknown email, and the caller answers the same way.
+        """
+        async with self.transaction_manager.transaction():
+            user = await self.repository.get_user_by_email(email.strip().lower())
+            if user is None:
+                return None
+
+            raw_token = self.token.generate()
+            await self.repository.replace_reset_token(
+                user_id=user.id,
+                token_hash=self.token.hash(raw_token),
+                expires_at=self.clock.now() + timedelta(seconds=self.password_reset_ttl),
+            )
+            return PasswordResetIssued(email=user.email, token=raw_token)
+
+    async def confirm_password_reset(self, *, token: str, new_password: str) -> None:
+        """Consumes the token, sets the new password and revokes every session, atomically.
+
+        Does not sign the user in.
+        """
+        async with self.transaction_manager.transaction():
+            now = self.clock.now()
+            user_id = await self.repository.consume_reset_token(self.token.hash(token), now=now)
+            if user_id is None:
+                raise ApiError(ErrorCode.INVALID_RESET_TOKEN, INVALID_RESET_TOKEN, status_code=400)
+
+            await self.repository.update_password(
+                user_id, self.password_hasher.hash(new_password), password_changed_at=now
+            )
+            await self.repository.delete_user_sessions(user_id)

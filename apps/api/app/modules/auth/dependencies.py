@@ -45,6 +45,7 @@ def get_auth_service(
         transaction_manager=SessionTransactionManager(session),
         users_service=DefaultUsersService(users_repository),
         session_ttl=settings.session_ttl,
+        password_reset_ttl=settings.password_reset_ttl,
     )
 
 

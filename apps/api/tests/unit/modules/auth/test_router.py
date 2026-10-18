@@ -1,35 +1,148 @@
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Iterator
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.security import SecureToken
+from app.infrastructure.email import (
+    EmailMessage,
+    EmailSendError,
+    InMemoryEmailSender,
+    get_email_sender,
+)
 from app.modules.auth.dependencies import get_auth_service
 
+from .test_password_reset_service import NOW, FakeResetRepository, MutableClock, make_user
+from .test_password_reset_service import make_service as make_reset_service
 from .test_sign_up_service import FakeUsersService, make_sign_up_service
+
+ORIGIN = {"Origin": "http://localhost:3000"}
+
+
+class FailingEmailSender:
+    async def send(self, message: EmailMessage) -> None:
+        raise EmailSendError("example.com", ConnectionError("SMTP is down"))
+
+
+@pytest.fixture
+def reset_repository(client: TestClient) -> Iterator[FakeResetRepository]:
+    repository = FakeResetRepository(make_user())
+    service = make_reset_service(repository, MutableClock(NOW))
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+    yield repository
+    client.app.dependency_overrides.pop(get_auth_service, None)
+
+
+@pytest.fixture
+def email_sender(client: TestClient) -> Iterator[InMemoryEmailSender]:
+    sender = InMemoryEmailSender()
+    client.app.dependency_overrides[get_email_sender] = lambda: sender
+    yield sender
+    client.app.dependency_overrides.pop(get_email_sender, None)
+
+
+def test_password_reset_emails_a_link_to_the_web_reset_page(
+    client: TestClient,
+    reset_repository: FakeResetRepository,
+    email_sender: InMemoryEmailSender,
+) -> None:
+    response = client.post(
+        "/api/v1/auth/password-reset", json={"email": "user@example.com"}, headers=ORIGIN
+    )
+
+    assert response.status_code == 204
+    [message] = email_sender.messages
+    assert message.to == "user@example.com"
+    assert "30 minutes" in message.text_body
+    assert message.html_body is not None
+    link = next(line for line in message.text_body.splitlines() if "token=" in line)
+    url = urlsplit(link)
+    assert f"{url.scheme}://{url.netloc}{url.path}" == "http://localhost:3000/reset-password"
+    [token] = parse_qs(url.query)["token"]
+    assert list(reset_repository.tokens) == [SecureToken.hash(token)]
+
+
+def test_password_reset_for_unknown_email_answers_the_same_and_sends_nothing(
+    client: TestClient,
+    reset_repository: FakeResetRepository,
+    email_sender: InMemoryEmailSender,
+) -> None:
+    response = client.post(
+        "/api/v1/auth/password-reset", json={"email": "nobody@example.com"}, headers=ORIGIN
+    )
+
+    assert response.status_code == 204
+    assert email_sender.messages == []
+    assert reset_repository.tokens == {}
+
+
+def test_password_reset_email_failure_does_not_change_the_response(
+    client: TestClient, reset_repository: FakeResetRepository
+) -> None:
+    client.app.dependency_overrides[get_email_sender] = lambda: FailingEmailSender()
+    try:
+        response = client.post(
+            "/api/v1/auth/password-reset", json={"email": "user@example.com"}, headers=ORIGIN
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_email_sender, None)
+
+    assert response.status_code == 204
+    assert len(reset_repository.tokens) == 1
+
+
+def test_password_reset_confirm_rejects_an_invalid_token(
+    client: TestClient, reset_repository: FakeResetRepository
+) -> None:
+    response = client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": "not-a-real-token", "new_password": "password123"},
+        headers=ORIGIN,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_reset_token"
 
 
 @pytest.mark.parametrize(
-    ("method", "path", "payload"),
+    ("path", "payload"),
     [
-        ("POST", "/api/v1/auth/password-reset", {"email": "user@example.com"}),
+        ("/api/v1/auth/password-reset", {"email": "user@example.com"}),
         (
-            "POST",
             "/api/v1/auth/password-reset/confirm",
             {"token": "reset-token", "new_password": "password123"},
         ),
     ],
 )
-def test_unimplemented_auth_routes_reach_stub(
-    client: TestClient, method: str, path: str, payload: dict[str, Any] | None
+def test_password_reset_routes_reject_a_foreign_origin(
+    client: TestClient, path: str, payload: dict[str, str]
 ) -> None:
-    response = client.request(
-        method, path, json=payload, headers={"Origin": "http://localhost:3000"}
+    response = client.post(path, json=payload, headers={"Origin": "https://foreign.example"})
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "authorization_error"
+
+
+def test_password_reset_request_is_rate_limited_per_email(
+    client: TestClient,
+    reset_repository: FakeResetRepository,
+    email_sender: InMemoryEmailSender,
+) -> None:
+    for _ in range(3):
+        response = client.post(
+            "/api/v1/auth/password-reset", json={"email": "user@example.com"}, headers=ORIGIN
+        )
+        assert response.status_code == 204
+
+    response = client.post(
+        "/api/v1/auth/password-reset", json={"email": "user@example.com"}, headers=ORIGIN
     )
 
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "not_implemented"
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "rate_limited"
 
 
 def test_sign_out_without_cookie_is_idempotent(client: TestClient) -> None:
