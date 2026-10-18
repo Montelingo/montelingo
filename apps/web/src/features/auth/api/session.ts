@@ -26,7 +26,7 @@ export const getCurrentUser = cache(fetchCurrentUser);
 /**
  * Like `getCurrentUser()`, but never throws for a failed lookup: it returns
  * `{ status: "unavailable" }` and logs the failure. For UI that must render
- * whatever happens (the site header, in the root layout) and for pages where
+ * whatever happens (the site header, in the (site) layout) and for pages where
  * an unknown user can be treated as signed out (sign-in, sign-up).
  *
  * Shares `getCurrentUser()`'s call, and is cached itself so a failure is

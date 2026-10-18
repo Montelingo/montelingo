@@ -1,7 +1,7 @@
+import { PLACEHOLDER_ORIGIN } from "./url-path";
+
 const DEFAULT_REDIRECT_PATH = "/";
 const MAX_REDIRECT_PATH_LENGTH = 2048;
-// Any origin works: the check is that a path stays on whichever origin it is resolved against.
-const PLACEHOLDER_ORIGIN = "https://montelingo.invalid";
 
 /**
  * Returns `next` as a path on this site, or `fallback` when it could send the

@@ -9,7 +9,8 @@ import type { AuthState } from "../model/user";
 import { AuthNav } from "./AuthNav";
 import { AuthNavSkeleton } from "./AuthNavSkeleton";
 
-// The root layout's header, on every page. The shell renders at once; only the
+// The site's header, on every page outside the learner area ((site)/layout.tsx
+// and the root not-found page). The shell renders at once; only the
 // account controls wait for the session lookup, inside their own Suspense
 // boundary, so a slow API never holds the page. getAuthState() never throws
 // for a failed lookup, and shares its call with the page through React cache().
