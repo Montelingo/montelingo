@@ -1,4 +1,5 @@
 """Content use cases. The read path arrives with #63."""
+
 from __future__ import annotations
 
 from app.core.errors import ApiError, ErrorCode
@@ -75,10 +76,10 @@ class ContentService:
             chapter_id = str(chapter.id)
             if chapter_id not in chapter_by_id:
                 chapter_schema = ChapterSchema(
-                id=chapter.slug,
-                title=chapter.title,
-                 position=chapter.position,
-                words=[],
+                    id=chapter.slug,
+                    title=chapter.title,
+                    position=chapter.position,
+                    words=[],
                 )
                 chapter_by_id[chapter_id] = chapter_schema
                 chapters.append(chapter_schema)

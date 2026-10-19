@@ -1,4 +1,5 @@
 """Content persistence. The read path arrives with #63, the seed upserts with #62."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -15,9 +16,7 @@ class ContentRepository(Protocol):
 
     async def get_region(self, slug: str) -> Region | None: ...
 
-    async def list_region_locations(
-        self, region_id: UUID
-    ) -> list[tuple[str, str, int, int]]: ...
+    async def list_region_locations(self, region_id: UUID) -> list[tuple[str, str, int, int]]: ...
 
     async def get_location(self, slug: str) -> tuple[Location, str] | None: ...
 
@@ -43,18 +42,13 @@ class SqlAlchemyContentRepository:
         )
 
         result = await self.session.execute(statement)
-        return [
-            (slug, name, location_count)
-            for slug, name, location_count in result.all()
-        ]
+        return [(slug, name, location_count) for slug, name, location_count in result.all()]
 
     async def get_region(self, slug: str) -> Region | None:
         statement = select(Region).where(Region.slug == slug)
         return await self.session.scalar(statement)
 
-    async def list_region_locations(
-        self, region_id: UUID
-    ) -> list[tuple[str, str, int, int]]:
+    async def list_region_locations(self, region_id: UUID) -> list[tuple[str, str, int, int]]:
         chapter_counts = (
             select(
                 Chapter.location_id.label("location_id"),

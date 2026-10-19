@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -177,12 +176,8 @@ async def test_location_detail_recording_order(
     assert len(chapters[0]["words"]) == 10
     assert len(chapters[1]["words"]) == 10
 
-    assert [word["number"] for word in chapters[0]["words"]] == list(
-        range(1, 11)
-    )
-    assert [word["number"] for word in chapters[1]["words"]] == list(
-        range(11, 21)
-    )
+    assert [word["number"] for word in chapters[0]["words"]] == list(range(1, 11))
+    assert [word["number"] for word in chapters[1]["words"]] == list(range(11, 21))
 
     for chapter in chapters:
         for word in chapter["words"]:
@@ -209,6 +204,7 @@ async def test_unknown_content_returns_404(
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "content_not_found"
+
 
 async def test_content_query_count_stays_constant(
     integration_client: AsyncClient,
@@ -237,9 +233,7 @@ async def test_content_query_count_stays_constant(
         executemany: bool,
     ) -> None:
         sql = statement.lower()
-        if sql.lstrip().startswith("select") and any(
-            table in sql for table in content_tables
-        ):
+        if sql.lstrip().startswith("select") and any(table in sql for table in content_tables):
             statements.append(sql)
 
     paths = {
@@ -280,9 +274,7 @@ async def test_content_query_count_stays_constant(
             Region,
             (
                 await db_session.scalar(
-                    __import__("sqlalchemy").select(Region.id).where(
-                        Region.slug == "north"
-                    )
+                    __import__("sqlalchemy").select(Region.id).where(Region.slug == "north")
                 )
             ),
         )
@@ -298,9 +290,7 @@ async def test_content_query_count_stays_constant(
         await db_session.flush()
 
         city_id = await db_session.scalar(
-            __import__("sqlalchemy").select(Location.id).where(
-                Location.slug == "city"
-            )
+            __import__("sqlalchemy").select(Location.id).where(Location.slug == "city")
         )
         assert city_id is not None
 

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from uuid import uuid4
@@ -47,9 +46,7 @@ class FakeContentRepository:
     async def get_region(self, slug: str) -> Region | None:
         return self.region if slug == self.region.slug else None
 
-    async def list_region_locations(
-        self, region_id: object
-    ) -> list[tuple[str, str, int, int]]:
+    async def list_region_locations(self, region_id: object) -> list[tuple[str, str, int, int]]:
         if region_id != self.region.id:
             return []
         return [("city", "City", 1, 1)]
