@@ -1,6 +1,40 @@
 {
   "components": {
     "schemas": {
+      "Chapter": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "description": "Recording order (1-30).",
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/Word"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "position",
+          "words"
+        ],
+        "title": "Chapter",
+        "type": "object"
+      },
       "CurrentUser": {
         "properties": {
           "created_at": {
@@ -124,6 +158,147 @@
         "title": "LiveHealth",
         "type": "object"
       },
+      "LocationDetail": {
+        "properties": {
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/Chapter"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Region Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "region_id",
+          "chapters"
+        ],
+        "title": "LocationDetail",
+        "type": "object"
+      },
+      "LocationState": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "locked",
+              "available",
+              "in-progress",
+              "completed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "LocationState",
+        "type": "object"
+      },
+      "LocationSummary": {
+        "properties": {
+          "chapter_count": {
+            "minimum": 0.0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Region Id",
+            "type": "string"
+          },
+          "word_count": {
+            "minimum": 0.0,
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "region_id",
+          "chapter_count",
+          "word_count"
+        ],
+        "title": "LocationSummary",
+        "type": "object"
+      },
+      "PageInfo": {
+        "properties": {
+          "has_more": {
+            "default": false,
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "next_cursor",
+          "has_more"
+        ],
+        "title": "PageInfo",
+        "type": "object"
+      },
+      "PaginatedResponse_RegionSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RegionSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "PaginatedResponse[RegionSummary]",
+        "type": "object"
+      },
       "PasswordResetConfirm": {
         "properties": {
           "new_password": {
@@ -160,6 +335,30 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "ProgressState": {
+        "properties": {
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/LocationState"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionState"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "regions",
+          "locations"
+        ],
+        "title": "ProgressState",
+        "type": "object"
+      },
       "ReadyHealth": {
         "properties": {
           "status": {
@@ -173,6 +372,83 @@
           "status"
         ],
         "title": "ReadyHealth",
+        "type": "object"
+      },
+      "RegionDetail": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/LocationSummary"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "locations"
+        ],
+        "title": "RegionDetail",
+        "type": "object"
+      },
+      "RegionState": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "locked",
+              "available",
+              "in-progress",
+              "completed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "RegionState",
+        "type": "object"
+      },
+      "RegionSummary": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "location_count": {
+            "minimum": 0.0,
+            "title": "Location Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "location_count"
+        ],
+        "title": "RegionSummary",
         "type": "object"
       },
       "SignInRequest": {
@@ -215,6 +491,68 @@
           "password"
         ],
         "title": "SignUpRequest",
+        "type": "object"
+      },
+      "Word": {
+        "properties": {
+          "audio_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
+          },
+          "id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "number": {
+            "description": "Recording number (1-300), also the audio file name.",
+            "minimum": 1.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "text",
+          "note",
+          "image_url",
+          "audio_url"
+        ],
+        "title": "Word",
         "type": "object"
       }
     }
@@ -599,6 +937,192 @@
         "summary": "Readiness probe",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/locations/{location_id}": {
+      "get": {
+        "operationId": "content_get_location",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          }
+        },
+        "summary": "Get Location",
+        "tags": [
+          "content"
+        ]
+      }
+    },
+    "/api/v1/progress": {
+      "get": {
+        "operationId": "progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "Get Progress",
+        "tags": [
+          "progress"
+        ]
+      }
+    },
+    "/api/v1/regions": {
+      "get": {
+        "operationId": "content_list_regions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_RegionSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "summary": "List Regions",
+        "tags": [
+          "content"
+        ]
+      }
+    },
+    "/api/v1/regions/{region_id}": {
+      "get": {
+        "operationId": "content_get_region",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_id",
+            "required": true,
+            "schema": {
+              "title": "Region Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          }
+        },
+        "summary": "Get Region",
+        "tags": [
+          "content"
         ]
       }
     }

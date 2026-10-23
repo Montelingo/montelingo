@@ -19,6 +19,8 @@ Turborepo; root `package.json` scripts wrap each app's commands (see
   - [ADR 0001: Monorepo without a heavyweight orchestrator](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
   - [ADR 0002: OpenAPI contract and client generation](docs/adr/0002-openapi-contract-and-client-generation.md)
   - [ADR 0003: Upgrade the web app to React 19](docs/adr/0003-react-19.md)
+  - [ADR 0004: Session-based authentication](docs/adr/0004-session-based-authentication.md)
+  - [ADR 0005: Content model and map state](docs/adr/0005-content-model-and-map-state.md)
 
 All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 `pnpm format:check:docs` to check; CI runs the check).
@@ -36,7 +38,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │   │   │   ├── api/v1/     # /api/v1 router (aggregates module routers)
 │   │   │   ├── core/       # settings, error codes/handlers, request IDs
 │   │   │   ├── db/         # async SQLAlchemy engine/session, Base
-│   │   │   ├── modules/    # business modules (health); see docs/fastapi-modular-monolith.md
+│   │   │   ├── modules/    # business modules (auth, users, health, content, progress); see docs/fastapi-modular-monolith.md
 │   │   │   ├── schemas/    # shared API schemas (error envelope, pagination)
 │   │   │   └── main.py     # create_app() application factory
 │   │   ├── alembic/        # Alembic env + versions
