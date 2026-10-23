@@ -21,6 +21,7 @@ class ErrorCode(str, Enum):
     EMAIL_TAKEN = "email_taken"
     INVALID_RESET_TOKEN = "invalid_reset_token"
     NOT_IMPLEMENTED = "not_implemented"
+    CONTENT_NOT_FOUND = "content_not_found"
 
 
 @dataclass
