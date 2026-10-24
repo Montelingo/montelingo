@@ -323,7 +323,7 @@ Each feature has an adapter module in `api/` that:
 
 1. calls the typed client (`getApiClient().GET("/api/v1/...")`) and passes the result to `unwrap()`, which returns the typed success body or throws `ApiClientError`
 2. maps the API shape (`snake_case`, localization envelopes, cursors) to the feature's domain type
-3. lets `ApiClientError` propagate, or converts expected cases (such as 404 → `null`) into typed results
+3. lets `ApiClientError` propagate, or converts expected cases (such as 404 → `null`) into typed results. A feature whose `errors.ts` owns a not-found code may call `notFound()` there instead, as `features/map` does for `content_not_found`
 
 ```ts
 // src/features/lessons/api/lessons-api.ts
@@ -359,6 +359,8 @@ export async function getLesson(lessonId: string): Promise<Lesson | null> {
 ```
 
 The API contract guarantees every documented JSON response has a precise generated type (a backend contract test enforces it), so adapters do not re-validate API responses. If a response type is ever imprecise, fix the FastAPI response model instead of adding a schema on the frontend.
+
+The exception is `src/features/map`: the map draws and links places from content ids and server-decided states, so its adapters parse every content and progress response with the Zod schemas in `features/map/schemas.ts` before `model/` maps them to domain types. A response that breaks the contract fails there, in one place. Each schema `satisfies` its generated type, so the generated types stay the only response types and the schemas only add what TypeScript cannot check (the slug format, UUIDs, integer bounds).
 
 Use runtime validation (a Zod schema in `schemas.ts`) when data crosses a boundary TypeScript cannot check:
 
@@ -660,13 +662,13 @@ The learner area (`src/app/(learner)/`, today `/play`) is tablet-first and full 
 
 ### 9.1 Error boundaries
 
-| Failure                                                     | Handled by                                                                 |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Resource does not exist                                     | Adapter returns `null` → page calls `notFound()` → nearest `not-found.tsx` |
-| Unexpected error while rendering a route                    | Nearest `error.tsx` in the route segment                                   |
-| Error in the root layout                                    | `src/app/global-error.tsx`                                                 |
-| Expected, recoverable user error (wrong answer, validation) | Handled in the feature as state. Not thrown                                |
-| Failed mutation from a client component                     | Caught in the feature hook, exposed as `{ status: "error", message }`      |
+| Failure                                                     | Handled by                                                                                                                                     |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Resource does not exist                                     | Adapter returns `null` → page calls `notFound()` → nearest `not-found.tsx` (the map adapters call `notFound()` through `errors.ts` themselves) |
+| Unexpected error while rendering a route                    | Nearest `error.tsx` in the route segment                                                                                                       |
+| Error in the root layout                                    | `src/app/global-error.tsx`                                                                                                                     |
+| Expected, recoverable user error (wrong answer, validation) | Handled in the feature as state. Not thrown                                                                                                    |
+| Failed mutation from a client component                     | Caught in the feature hook, exposed as `{ status: "error", message }`                                                                          |
 
 Every route segment that fetches data has an `error.tsx` (or inherits one from its parent). The learner area's boundaries sit in the route group, inside its chrome: `(learner)/error.tsx` (a calm "This page didn’t open." that puts the problem on our side, never on the learner or their device, with a large "Try again"), `(learner)/loading.tsx` (§9.2), and `(learner)/not-found.tsx` (for `notFound()` inside the area, with a link back to the map). A URL that matches no route at all gets the root `not-found.tsx`, with the site header. Error boundaries show a human message and a retry action. They never show `error.message` from the server verbatim:
 
@@ -835,6 +837,7 @@ Installed and enforced:
 - `zod` (v4) for runtime validation of form input (§5.2).
 - The learner area (§8.2): `src/features/learner` (`LearnerShell` with its Back and Home controls, the area's neutral `LearnerPageSkeleton`, and the `/play` placeholder and its skeleton, until the map arrives in #67), the `(learner)` route group with its boundaries, and the card primitives `TileCard`, `CardGrid`, and `PlaceholderArt` in `src/components/ui/`, exercised by component tests until real data uses them. `TILE_CARD_STATES` and `TileCardState` live in `tile-card-state.ts`, not in the client module `TileCard.tsx`, so Server Components can use the list.
 - Design tokens in `tailwind.config.ts` (§8.1), and a `cn()` that knows the custom ones.
+- The map feature slice (#65): `src/features/map`, the only place that knows the content and progress API. `server.ts` exports `listRegions()`, `getRegion()`, `getLocation()` (which call `notFound()` for `content_not_found` and throw anything else to the error boundary) and `getProgress()` (which never throws: a failure is `{ status: "error" }`, so content still renders), each wrapped in React `cache()`. `server.ts` also exports the error mapping (`toMapErrorMessage()`), which needs the API client. `index.ts` exports the domain types, `MapElementState` and the SVG map contract types, `joinProgress()` (an item missing from progress is `loading`, never `available`; a failed progress makes every item `error`) and `pickNextPlace()`.
 
 Known gaps to close as real features land:
 
