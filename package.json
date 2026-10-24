@@ -20,6 +20,7 @@
     "format:docs": "prettier --write \"**/*.md\"",
     "format:check:docs": "prettier --check \"**/*.md\"",
     "e2e:smoke": "bash tests/e2e/smoke.sh",
+    "e2e:auth": "bash tests/e2e/auth.sh",
     "check:web": "pnpm format:check:web && pnpm lint:web && pnpm typecheck:web && pnpm test:web && pnpm build:web",
     "check:api": "uv lock --check && pnpm format:check:api && pnpm lint:api && pnpm typecheck:api && pnpm test:api",
     "check:contract": "pnpm contract:check && pnpm typecheck:api-client",
