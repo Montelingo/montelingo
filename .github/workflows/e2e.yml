@@ -40,6 +40,9 @@ jobs:
         # --wait fails the step unless every service reports healthy.
         run: docker compose up --build -d --wait --wait-timeout 300
 
+      - name: Seed content
+        run: docker compose run --rm migrate python apps/api/scripts/seed_content.py
+
       - name: Wait for services and run smoke checks
         run: pnpm run e2e:smoke
 
