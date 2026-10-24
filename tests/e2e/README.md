@@ -11,3 +11,21 @@ docker compose down -v
 Optional environment variables: `API_URL` (default `http://localhost:8000`), `WEB_URL` (default `http://localhost:3000`), `MAX_ATTEMPTS` (default `30`), `SLEEP_SECONDS` (default `2`).
 
 The `e2e.yml` workflow runs the same steps on every pull request and push to `main`.
+
+[`auth.sh`](auth.sh) proves the real web-origin authentication flow through the proxy,
+API, Postgres, and Mailpit. It creates a unique account, checks sign-up/sign-in,
+`/api/v1/auth/me`, protected account routing, sign-out, password reset using the
+link retrieved from Mailpit's HTTP API, password replacement, sign-in rate
+limiting, and foreign-origin protection. It uses `jq` to parse JSON, in addition
+to Bash and curl.
+
+```bash
+docker compose up --build -d --wait
+pnpm e2e:smoke
+pnpm e2e:auth
+docker compose down -v
+```
+
+Optional variables for `auth.sh`: `WEB_URL` (default `http://localhost:3000`),
+`MAILPIT_URL` (default `http://localhost:8025`), `MAX_ATTEMPTS` (default `30`),
+and `SLEEP_SECONDS` (default `2`).
