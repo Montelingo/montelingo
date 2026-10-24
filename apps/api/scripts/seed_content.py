@@ -54,7 +54,10 @@ async def seed_content(session: AsyncSession, content: Content) -> SeedCounts:
             location.slug: location for location in (await session.scalars(select(Location))).all()
         }
         for location in locations.values():
-            location.is_start = False
+            if location.is_start and location.slug != content.starting_location:
+                location.is_start = False
+                counts.updated += 1
+        await session.flush()
         location_ids: dict[str, UUID] = {}
         for position, location_data in enumerate(content.locations, 1):
             location_row = locations.get(location_data.slug)
