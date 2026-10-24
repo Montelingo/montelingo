@@ -31,81 +31,123 @@ async def seed_content(session: AsyncSession, content: Content) -> SeedCounts:
     counts = SeedCounts()
     transaction = session.begin_nested() if session.in_transaction() else session.begin()
     async with transaction:
-        regions = {row.slug: row for row in (await session.scalars(select(Region))).all()}
+        regions: dict[str, Region] = {
+            region.slug: region for region in (await session.scalars(select(Region))).all()
+        }
         region_ids: dict[str, UUID] = {}
-        for position, item in enumerate(content.regions, 1):
-            row = regions.get(item.slug)
-            if row is None:
-                row = Region(slug=item.slug, name=item.name, position=position)
-                session.add(row)
+        for position, region_data in enumerate(content.regions, 1):
+            region_row = regions.get(region_data.slug)
+            if region_row is None:
+                region_row = Region(slug=region_data.slug, name=region_data.name, position=position)
+                session.add(region_row)
                 await session.flush()
                 counts.inserted += 1
             else:
-                if (row.name, row.position) != (item.name, position):
-                    row.name = item.name
-                    row.position = position
+                if (region_row.name, region_row.position) != (region_data.name, position):
+                    region_row.name = region_data.name
+                    region_row.position = position
                     counts.updated += 1
-            region_ids[item.slug] = row.id
-        counts.stale += len(set(regions) - {item.slug for item in content.regions})
+            region_ids[region_data.slug] = region_row.id
+        counts.stale += len(set(regions) - {region_data.slug for region_data in content.regions})
 
-        locations = {row.slug: row for row in (await session.scalars(select(Location))).all()}
-        for row in locations.values():
-            row.is_start = False
+        locations: dict[str, Location] = {
+            location.slug: location for location in (await session.scalars(select(Location))).all()
+        }
+        for location in locations.values():
+            location.is_start = False
         location_ids: dict[str, UUID] = {}
-        for position, item in enumerate(content.locations, 1):
-            row = locations.get(item.slug)
-            values = (region_ids[item.region_slug], item.name, position, item.is_starting)
-            if row is None:
-                row = Location(
-                    slug=item.slug,
+        for position, location_data in enumerate(content.locations, 1):
+            location_row = locations.get(location_data.slug)
+            values = (
+                region_ids[location_data.region_slug],
+                location_data.name,
+                position,
+                location_data.is_starting,
+            )
+            if location_row is None:
+                location_row = Location(
+                    slug=location_data.slug,
                     region_id=values[0],
                     name=values[1],
                     position=values[2],
                     is_start=values[3],
                 )
-                session.add(row)
+                session.add(location_row)
                 await session.flush()
                 counts.inserted += 1
             else:
-                if (row.region_id, row.name, row.position, row.is_start) != values:
-                    row.region_id, row.name, row.position, row.is_start = values
+                if (
+                    location_row.region_id,
+                    location_row.name,
+                    location_row.position,
+                    location_row.is_start,
+                ) != values:
+                    (
+                        location_row.region_id,
+                        location_row.name,
+                        location_row.position,
+                        location_row.is_start,
+                    ) = values
                     counts.updated += 1
-            location_ids[item.slug] = row.id
-        counts.stale += len(set(locations) - {item.slug for item in content.locations})
+            location_ids[location_data.slug] = location_row.id
+        counts.stale += len(
+            set(locations) - {location_data.slug for location_data in content.locations}
+        )
 
-        chapters = {row.slug: row for row in (await session.scalars(select(Chapter))).all()}
+        chapters: dict[str, Chapter] = {
+            chapter.slug: chapter for chapter in (await session.scalars(select(Chapter))).all()
+        }
         chapter_ids: dict[str, UUID] = {}
-        for position, item in enumerate(content.chapters, 1):
-            row = chapters.get(item.slug)
-            chapter_values = (location_ids[item.location_slug], item.title, position)
-            if row is None:
-                row = Chapter(
-                    slug=item.slug,
+        for position, chapter_data in enumerate(content.chapters, 1):
+            chapter_row = chapters.get(chapter_data.slug)
+            chapter_values = (
+                location_ids[chapter_data.location_slug],
+                chapter_data.title,
+                position,
+            )
+            if chapter_row is None:
+                chapter_row = Chapter(
+                    slug=chapter_data.slug,
                     location_id=chapter_values[0],
                     title=chapter_values[1],
                     position=chapter_values[2],
                 )
-                session.add(row)
+                session.add(chapter_row)
                 await session.flush()
                 counts.inserted += 1
             else:
-                if (row.location_id, row.title, row.position) != chapter_values:
-                    row.location_id, row.title, row.position = chapter_values
+                if (
+                    chapter_row.location_id,
+                    chapter_row.title,
+                    chapter_row.position,
+                ) != chapter_values:
+                    chapter_row.location_id, chapter_row.title, chapter_row.position = (
+                        chapter_values
+                    )
                     counts.updated += 1
-            chapter_ids[item.slug] = row.id
-        counts.stale += len(set(chapters) - {item.slug for item in content.chapters})
+            chapter_ids[chapter_data.slug] = chapter_row.id
+        counts.stale += len(
+            set(chapters) - {chapter_data.slug for chapter_data in content.chapters}
+        )
 
-        words = {row.number: row for row in (await session.scalars(select(VocabularyItem))).all()}
+        words: dict[int, VocabularyItem] = {
+            word.number: word for word in (await session.scalars(select(VocabularyItem))).all()
+        }
         file_numbers: set[int] = set()
-        for chapter in content.chapters:
-            for position, item in enumerate(chapter.words, 1):
-                file_numbers.add(item.number)
-                row = words.get(item.number)
-                word_values = (chapter_ids[chapter.slug], item.text, item.note, position)
-                if row is None:
+        for chapter_data in content.chapters:
+            for position, word_data in enumerate(chapter_data.words, 1):
+                file_numbers.add(word_data.number)
+                word_row = words.get(word_data.number)
+                word_values = (
+                    chapter_ids[chapter_data.slug],
+                    word_data.text,
+                    word_data.note,
+                    position,
+                )
+                if word_row is None:
                     session.add(
                         VocabularyItem(
-                            number=item.number,
+                            number=word_data.number,
                             chapter_id=word_values[0],
                             text=word_values[1],
                             note=word_values[2],
@@ -114,8 +156,15 @@ async def seed_content(session: AsyncSession, content: Content) -> SeedCounts:
                     )
                     counts.inserted += 1
                 else:
-                    if (row.chapter_id, row.text, row.note, row.position) != word_values:
-                        row.chapter_id, row.text, row.note, row.position = word_values
+                    if (
+                        word_row.chapter_id,
+                        word_row.text,
+                        word_row.note,
+                        word_row.position,
+                    ) != word_values:
+                        word_row.chapter_id, word_row.text, word_row.note, word_row.position = (
+                            word_values
+                        )
                         counts.updated += 1
         counts.stale += len(set(words) - file_numbers)
     return counts
