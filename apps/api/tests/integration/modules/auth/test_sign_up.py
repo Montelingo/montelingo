@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.security import Argon2PasswordHasher
+from app.modules.progress.models import LearningProfile
 from app.modules.users.models import User
 
 pytestmark = pytest.mark.integration
@@ -45,6 +46,10 @@ async def test_sign_up_success(
     assert user.password_hash != "password123"
     assert user.password_hash.startswith("$argon2id$")
     assert Argon2PasswordHasher().verify("password123", user.password_hash)
+    profile = await db_session.scalar(
+        select(LearningProfile).where(LearningProfile.user_id == user.id)
+    )
+    assert profile is not None
 
 
 async def test_sign_up_duplicate_email_returns_409(

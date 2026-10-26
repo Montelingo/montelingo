@@ -10,6 +10,7 @@ from app.core.errors import ApiError, ErrorCode
 from app.core.security import DUMMY_PASSWORD_HASH, Clock, PasswordHasher, SecureToken
 from app.db.transaction import TransactionManager
 from app.infrastructure.email import EmailSender, EmailSendError
+from app.modules.progress.repository import LearningProfileRepository
 from app.modules.users.domain import UserAccount
 from app.modules.users.service import UsersService
 
@@ -47,6 +48,7 @@ class AuthService:
         transaction_manager: TransactionManager,
         *,
         users_service: UsersService | None = None,
+        learning_profile_repository: LearningProfileRepository | None = None,
         session_ttl: int = 30 * 24 * 60 * 60,
         password_reset_ttl: int = 30 * 60,
         email_sender: EmailSender | None = None,
@@ -58,6 +60,7 @@ class AuthService:
         self.clock = clock
         self.transaction_manager = transaction_manager
         self.users_service = users_service
+        self.learning_profile_repository = learning_profile_repository
         self.session_ttl = session_ttl
         self.password_reset_ttl = password_reset_ttl
         self.email_sender = email_sender
@@ -83,6 +86,9 @@ class AuthService:
 
         password_hash = self.password_hasher.hash(password)
 
+        if self.learning_profile_repository is None:
+            raise RuntimeError("LearningProfileRepository is not configured.")
+
         try:
             async with self.transaction_manager.transaction():
                 existing_user = await self.users_service.get_by_email(normalized_email)
@@ -93,6 +99,7 @@ class AuthService:
                     email=normalized_email,
                     password_hash=password_hash,
                 )
+                await self.learning_profile_repository.create_for_user(user.id)
 
             return user
 

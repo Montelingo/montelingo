@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
 from app.core.errors import ApiError
 from app.core.security import SecureToken
 from app.modules.auth.service import AuthService
+from app.modules.progress.models import LearningProfile
 from app.modules.users.domain import UserAccount
 
 from .test_service import FakeClock, FakeHasher, FakeRepository, FakeTransactions
@@ -40,10 +41,22 @@ class FakeUsersService:
         )
 
 
+class FakeLearningProfileRepository:
+    def __init__(self) -> None:
+        self.created_user_id: UUID | None = None
+
+    async def create_for_user(self, user_id: UUID) -> LearningProfile:
+        self.created_user_id = user_id
+        return LearningProfile(user_id=user_id)
+
+
 def make_sign_up_service(
-    users: FakeUsersService, hasher: FakeHasher | None = None
+    users: FakeUsersService,
+    hasher: FakeHasher | None = None,
+    profiles: FakeLearningProfileRepository | None = None,
 ) -> tuple[AuthService, FakeHasher]:
     password_hasher = hasher or FakeHasher()
+    profile_repository = profiles or FakeLearningProfileRepository()
     service = AuthService(
         repository=FakeRepository(),
         password_hasher=password_hasher,
@@ -51,6 +64,7 @@ def make_sign_up_service(
         clock=FakeClock(),
         transaction_manager=FakeTransactions(),
         users_service=users,
+        learning_profile_repository=profile_repository,
     )
     return service, password_hasher
 

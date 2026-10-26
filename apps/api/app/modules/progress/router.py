@@ -5,13 +5,14 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends
 
 from app.api.responses import error_responses
-from app.modules.auth import get_current_user
+from app.modules.progress import get_learning_profile
 from app.modules.content import Content, load_content
+from .models import LearningProfile
 
 from .schemas import ProgressState
 from .service import ProgressService
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 
 @lru_cache
@@ -31,5 +32,6 @@ def get_progress_service() -> ProgressService:
 )
 async def get_progress(
     service: ProgressService = Depends(get_progress_service),
+    _learning_profile: LearningProfile = Depends(get_learning_profile),
 ) -> ProgressState:
     return service.get_state()
