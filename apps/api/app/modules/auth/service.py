@@ -69,6 +69,8 @@ class AuthService:
     async def sign_up(self, *, email: str, password: str) -> UserAccount:
         if self.users_service is None:
             raise RuntimeError("UsersService is not configured.")
+        if self.learning_profile_repository is None:
+            raise RuntimeError("LearningProfileRepository is not configured.")
 
         normalized_email = email.strip().lower()
 
@@ -85,9 +87,6 @@ class AuthService:
             )
 
         password_hash = self.password_hasher.hash(password)
-
-        if self.learning_profile_repository is None:
-            raise RuntimeError("LearningProfileRepository is not configured.")
 
         try:
             async with self.transaction_manager.transaction():

@@ -42,7 +42,8 @@ async def test_profile_lookup_is_scoped_to_the_current_user(
     repository = SqlAlchemyLearningProfileRepository(db_session)
 
     assert (await repository.get_by_user_id(first_user.id)).id == first_profile.id
-    assert (await repository.get_by_user_id(first_user.id)).id != second_profile.id
+    assert (await repository.get_by_user_id(second_user.id)).id == second_profile.id
+    assert (await repository.get_by_user_id(second_user.id)).id != first_profile.id
 
 
 async def test_deleting_user_cascades_profile_and_location_progress(
