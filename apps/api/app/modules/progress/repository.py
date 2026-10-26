@@ -16,9 +16,7 @@ class LearningProfileRepository(Protocol):
 
 
 class ProgressRepository(Protocol):
-    async def get_location_progress(
-        self, learning_profile_id: UUID
-    ) -> list[LocationProgress]: ...
+    async def get_location_progress(self, learning_profile_id: UUID) -> list[LocationProgress]: ...
 
 
 class SqlAlchemyLearningProfileRepository:
@@ -42,9 +40,7 @@ class SqlAlchemyProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_location_progress(
-        self, learning_profile_id: UUID
-    ) -> list[LocationProgress]:
+    async def get_location_progress(self, learning_profile_id: UUID) -> list[LocationProgress]:
         result = await self.session.scalars(
             select(LocationProgress).where(
                 LocationProgress.learning_profile_id == learning_profile_id
