@@ -110,7 +110,7 @@ MAP_CONTRACT = [
         "LocationDetail",
         {"401", "404", "422"},
     ),
-    ("/api/v1/progress", "progress_get", "ProgressState", {"401"}),
+    ("/api/v1/progress", "progress_get", "ProgressState", {"401", "500"}),
 ]
 
 
