@@ -10,7 +10,8 @@ export const SIGN_UP_PATH = "/sign-up";
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const RESET_PASSWORD_PATH = "/reset-password";
 
-const DEFAULT_REDIRECT_PATH = HOME_PATH;
+// Where a learner lands after signing in when nothing else was asked for.
+const DEFAULT_REDIRECT_PATH = PLAY_PATH;
 
 // The auth pages, compared lowercased: never a destination after signing in.
 const AUTH_PAGE_PATHS: ReadonlySet<string> = new Set(
@@ -21,9 +22,9 @@ const AUTH_PAGE_PATHS: ReadonlySet<string> = new Set(
 
 /**
  * Where to send the user once they are signed in: `next` when
- * `safeRedirectPath()` accepts it and it is not an auth page, otherwise `/`.
- * An auth page would only redirect a signed-in user again, dropping the rest
- * of the `next` chain.
+ * `safeRedirectPath()` accepts it and it is not an auth page, otherwise the
+ * map (`/play`). An auth page would only redirect a signed-in user again,
+ * dropping the rest of the `next` chain.
  */
 export function postAuthRedirectPath(next: unknown): string {
   const path = safeRedirectPath(next, DEFAULT_REDIRECT_PATH);

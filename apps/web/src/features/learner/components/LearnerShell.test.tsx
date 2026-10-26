@@ -67,7 +67,7 @@ describe("LearnerShell", () => {
     usePathname.mockReturnValue("/play/kotor");
     render(
       <LearnerShell homeHref="/play" exitHref="/">
-        <a href="/play/kotor/old-town">Old Town</a>
+        <a href="/elsewhere/old-town">Old Town</a>
       </LearnerShell>,
     );
 
