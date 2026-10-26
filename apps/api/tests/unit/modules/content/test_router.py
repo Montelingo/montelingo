@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.modules.auth import get_current_user
 from app.modules.auth.schemas import CurrentUser
+from app.modules.progress import get_learning_profile
+from app.modules.progress.models import LearningProfile
 
 MAP_ROUTES = [
     "/api/v1/regions",
@@ -24,8 +27,12 @@ def signed_in(client: TestClient) -> Iterator[None]:
         email="user@example.com",
         created_at=datetime(2026, 10, 18, tzinfo=UTC),
     )
+    client.app.dependency_overrides[get_learning_profile] = lambda: LearningProfile(
+        user_id=UUID("7d3c6a8e-1f4b-4c2a-9e5d-2b8f0a6c4d1e")
+    )
     yield
     client.app.dependency_overrides.pop(get_current_user, None)
+    client.app.dependency_overrides.pop(get_learning_profile, None)
 
 
 @pytest.mark.parametrize("path", MAP_ROUTES)
