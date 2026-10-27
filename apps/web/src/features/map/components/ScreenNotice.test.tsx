@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import { ScreenNotice } from "./ScreenNotice";
@@ -39,6 +39,26 @@ describe("ScreenNotice", () => {
         .getAllByText(message)
         .filter((element) => element.closest("[aria-hidden='true']") === null),
     ).toEqual([screen.getByRole("status")]);
+  });
+
+  it("calls onAnnounce once, when the message is announced", async () => {
+    const onAnnounce = vi.fn();
+    const { rerender } = render(
+      <ScreenNotice message={message} onAnnounce={onAnnounce} />,
+    );
+
+    expect(onAnnounce).not.toHaveBeenCalled();
+    // A new callback on a later render neither restarts the delay nor runs
+    // it again.
+    const nextOnAnnounce = vi.fn();
+    rerender(<ScreenNotice message={message} onAnnounce={nextOnAnnounce} />);
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(message);
+    });
+    expect(onAnnounce).not.toHaveBeenCalled();
+    expect(nextOnAnnounce).toHaveBeenCalledTimes(1);
+    rerender(<ScreenNotice message={message} onAnnounce={nextOnAnnounce} />);
+    expect(nextOnAnnounce).toHaveBeenCalledTimes(1);
   });
 
   it("shows an action under the message", () => {

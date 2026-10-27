@@ -1,4 +1,4 @@
-import { PLAY_PATH } from "@/features/auth";
+import { PLAY_PATH } from "@/features/auth/edge";
 
 // The map's URLs: /play, then /play/<region>, then /play/<region>/<location>.
 // Ids are content slugs, encoded anyway so an id can never add a path segment.

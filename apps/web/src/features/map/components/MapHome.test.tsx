@@ -1,13 +1,18 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
-import { MAP_NOTICES, type MapNotice } from "../model/notices";
+import { MAP_NOTICES, type MapNotice, withMapNotice } from "../model/notices";
 import { toRegionPickerRegions } from "../model/screens";
 import { newAccountProgress, seedRegions } from "../test-fixtures";
 import { MapHome } from "./MapHome";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+// useSearchParams() returns the URL as it is now, like Next.js, whose router
+// follows history.replaceState().
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 
 const newAccountRegions = toRegionPickerRegions(
   seedRegions(),
@@ -32,8 +37,19 @@ function renderHome(
   regions = newAccountRegions,
   notice: MapNotice | null = null,
 ) {
+  // The page shows a notice it read from its URL.
+  const path = "/play";
+  window.history.replaceState(
+    null,
+    "",
+    notice === null ? path : withMapNotice(path, notice),
+  );
   return render(<MapHome regions={regions} notice={notice} />);
 }
+
+afterEach(() => {
+  window.history.replaceState(null, "", "/");
+});
 
 describe("MapHome", () => {
   it("is headed as the learner's map", () => {

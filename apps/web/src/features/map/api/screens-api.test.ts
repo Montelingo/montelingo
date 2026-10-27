@@ -63,6 +63,16 @@ function signedOutError(): ApiClientError {
   });
 }
 
+// A call that fails only when the test says so, to choose which call of a
+// loader fails first.
+function pendingCall<Value>() {
+  let fail: (error: Error) => void = () => undefined;
+  const promise = new Promise<Value>((_resolve, reject) => {
+    fail = reject;
+  });
+  return { promise, fail };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   navigation.notFound.mockImplementation(() => {
@@ -341,4 +351,122 @@ describe("assertLocationOpen", () => {
     ).rejects.toBeInstanceOf(NotFoundSignal);
     expect(navigation.redirect).not.toHaveBeenCalled();
   });
+});
+
+// A loader waits for all its calls, so the outcome never depends on which one
+// fails first.
+describe("a loader whose calls fail together", () => {
+  it.each([
+    ["the unknown region fails first", ["getRegion", "getProgress"]],
+    ["the ended session fails first", ["getProgress", "getRegion"]],
+  ] as const)(
+    "sends a signed-out visitor to sign in, not to the region's 404, when %s",
+    async (_case, failureOrder) => {
+      const calls = {
+        getRegion: pendingCall<RegionDetail>(),
+        getProgress: pendingCall<ProgressResult>(),
+      };
+      const errors = {
+        getRegion: new NotFoundSignal(),
+        getProgress: signedOutError(),
+      };
+      adapters.getRegion.mockReturnValue(calls.getRegion.promise);
+      adapters.getProgress.mockReturnValue(calls.getProgress.promise);
+
+      const loading = loadRegionScreen("atlantis");
+      for (const adapter of failureOrder) {
+        calls[adapter].fail(errors[adapter]);
+      }
+
+      await expect(loading).rejects.toThrow("NEXT_REDIRECT");
+      expect(navigation.redirect).toHaveBeenCalledTimes(1);
+      expect(navigation.redirect).toHaveBeenCalledWith(
+        "/sign-in?next=%2Fplay%2Fatlantis",
+      );
+    },
+  );
+
+  it.each([
+    ["the unknown location fails first", ["getLocation", "getProgress"]],
+    ["the ended session fails first", ["getProgress", "getLocation"]],
+  ] as const)(
+    "sends a signed-out visitor to sign in, not to the location's 404, when %s",
+    async (_case, failureOrder) => {
+      const calls = {
+        getLocation: pendingCall<LocationDetail>(),
+        getProgress: pendingCall<ProgressResult>(),
+      };
+      const errors = {
+        getLocation: new NotFoundSignal(),
+        getProgress: signedOutError(),
+      };
+      adapters.getLocation.mockReturnValue(calls.getLocation.promise);
+      adapters.getProgress.mockReturnValue(calls.getProgress.promise);
+
+      const loading = assertLocationOpen("coast", "atlantis");
+      for (const adapter of failureOrder) {
+        calls[adapter].fail(errors[adapter]);
+      }
+
+      await expect(loading).rejects.toThrow("NEXT_REDIRECT");
+      expect(navigation.redirect).toHaveBeenCalledTimes(1);
+      expect(navigation.redirect).toHaveBeenCalledWith(
+        "/sign-in?next=%2Fplay%2Fcoast%2Fatlantis",
+      );
+    },
+  );
+
+  it.each([
+    ["the region fails first", ["getRegion", "getLocation"]],
+    ["the location fails first", ["getLocation", "getRegion"]],
+  ] as const)(
+    "throws the region's failure, the first call's, when %s",
+    async (_case, failureOrder) => {
+      const calls = {
+        getRegion: pendingCall<RegionDetail>(),
+        getLocation: pendingCall<LocationDetail>(),
+      };
+      const errors = {
+        getRegion: new Error("API unavailable"),
+        getLocation: new NotFoundSignal(),
+      };
+      adapters.getRegion.mockReturnValue(calls.getRegion.promise);
+      adapters.getLocation.mockReturnValue(calls.getLocation.promise);
+
+      const loading = assertLocationOpen("coast", "atlantis");
+      for (const adapter of failureOrder) {
+        calls[adapter].fail(errors[adapter]);
+      }
+
+      await expect(loading).rejects.toBe(errors.getRegion);
+      expect(navigation.redirect).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["the region fails first", ["getRegion", "getLocation"]],
+    ["the location fails first", ["getLocation", "getRegion"]],
+  ] as const)(
+    "throws notFound() for an unknown region, the first call, when %s",
+    async (_case, failureOrder) => {
+      const calls = {
+        getRegion: pendingCall<RegionDetail>(),
+        getLocation: pendingCall<LocationDetail>(),
+      };
+      const errors = {
+        getRegion: new NotFoundSignal(),
+        getLocation: new Error("API unavailable"),
+      };
+      adapters.getRegion.mockReturnValue(calls.getRegion.promise);
+      adapters.getLocation.mockReturnValue(calls.getLocation.promise);
+
+      const loading = assertLocationOpen("atlantis", "kotor");
+      for (const adapter of failureOrder) {
+        calls[adapter].fail(errors[adapter]);
+      }
+
+      await expect(loading).rejects.toBe(errors.getRegion);
+      expect(navigation.redirect).not.toHaveBeenCalled();
+    },
+  );
 });

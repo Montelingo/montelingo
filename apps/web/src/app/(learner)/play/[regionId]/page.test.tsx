@@ -36,6 +36,9 @@ vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
   ...navigation,
   useRouter: () => ({ refresh: vi.fn() }),
+  // The URL as it is now, like Next.js, whose router follows
+  // history.replaceState().
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -132,10 +135,25 @@ function pageProps(
   };
 }
 
+// Puts the page's URL in the browser, which useSearchParams() reads.
+function visit(path: string, { notice }: { notice?: string | string[] } = {}) {
+  const query = new URLSearchParams();
+  for (const value of [notice ?? []].flat()) {
+    query.append("notice", value);
+  }
+  const search = query.toString();
+  window.history.replaceState(
+    null,
+    "",
+    search === "" ? path : `${path}?${search}`,
+  );
+}
+
 async function renderPage(
   regionId: string,
   searchParams?: { notice?: string | string[] },
 ) {
+  visit(`/play/${regionId}`, searchParams);
   return render(await RegionPage(pageProps(regionId, searchParams)));
 }
 
@@ -153,6 +171,7 @@ beforeEach(() => {
 
 afterEach(() => {
   consoleError.mockRestore();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("RegionPage", () => {

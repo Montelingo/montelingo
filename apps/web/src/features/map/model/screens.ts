@@ -1,4 +1,4 @@
-import { PLAY_PATH } from "@/features/auth";
+import { PLAY_PATH } from "@/features/auth/edge";
 
 import type { LocationDetail, Region, RegionDetail } from "./content";
 import {

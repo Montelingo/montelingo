@@ -2,7 +2,7 @@ import "server-only";
 
 import { notFound, redirect } from "next/navigation";
 
-import { PLAY_PATH } from "@/features/auth";
+import { PLAY_PATH } from "@/features/auth/edge";
 
 import { redirectOnSignedOut } from "../errors";
 import type { RegionPickerRegion } from "../model/map-state";
@@ -25,18 +25,22 @@ import { getProgress } from "./progress-api";
 // every place in the error state. A `401` from any call means the session
 // ended mid-visit, which play/layout.tsx cannot see on a client-side
 // navigation, so the loader sends the learner to sign in and back to its own
-// screen. Built on the cached adapters, so a page and its metadata share one
-// call each.
+// screen. A loader waits for all its calls before deciding, so the outcome
+// never depends on which call fails first: a `401` from any of them wins over
+// every other failure, because a signed-out visitor signs in first and must
+// not learn whether a region exists; otherwise the first failure in the order
+// the calls are listed is thrown. Built on the cached adapters, so a page and
+// its metadata share one call each.
 
 /**
  * The map: every region, with its state and link. Redirects to sign in when
  * the session has ended.
  */
 export async function loadRegionPicker(): Promise<RegionPickerRegion[]> {
-  const [regions, progress] = await signedIn(
-    PLAY_PATH,
-    Promise.all([listRegions(), getProgress()]),
-  );
+  const [regions, progress] = await signedIn(PLAY_PATH, [
+    listRegions(),
+    getProgress(),
+  ]);
   return toRegionPickerRegions(regions, progress);
 }
 
@@ -51,10 +55,10 @@ export async function loadRegionPicker(): Promise<RegionPickerRegion[]> {
 export async function loadRegionScreen(
   regionId: string,
 ): Promise<RegionScreenData> {
-  const [region, progress] = await signedIn(
-    regionPath(regionId),
-    Promise.all([getRegion(regionId), getProgress()]),
-  );
+  const [region, progress] = await signedIn(regionPath(regionId), [
+    getRegion(regionId),
+    getProgress(),
+  ]);
   const screen = toRegionScreen(region, progress);
   const leaveTo = lockedRegionRedirect(screen.region.state);
   if (leaveTo !== null) {
@@ -69,7 +73,7 @@ export async function loadRegionScreen(
  * region, and redirects to sign in when the session has ended.
  */
 export async function loadRegionName(regionId: string): Promise<string> {
-  const region = await signedIn(regionPath(regionId), getRegion(regionId));
+  const [region] = await signedIn(regionPath(regionId), [getRegion(regionId)]);
   return region.name;
 }
 
@@ -92,7 +96,7 @@ export async function assertLocationOpen(
 ): Promise<LocationScreenData> {
   const [region, location, progress] = await signedIn(
     locationPath(regionId, locationId),
-    Promise.all([getRegion(regionId), getLocation(locationId), getProgress()]),
+    [getRegion(regionId), getLocation(locationId), getProgress()],
   );
   // A real place under the wrong region, such as /play/coast/durmitor.
   if (location.regionId !== region.id) {
@@ -111,17 +115,37 @@ export async function assertLocationOpen(
   return screen;
 }
 
-// Waits for a loader's calls, sending a `401` to sign in, then back to
-// `returnTo`. Every other error, including Next.js's own `notFound()` signal,
-// is rethrown as it is, so nothing is swallowed here.
-async function signedIn<Result>(
+// The values of a loader's calls, in the order they were listed.
+type Settled<Requests extends readonly unknown[]> = {
+  -readonly [Index in keyof Requests]: Awaited<Requests[Index]>;
+};
+
+// Waits for every one of a loader's calls to settle, then returns their
+// values in order. When any failed, a `401` from any of them sends the learner
+// to sign in, then back to `returnTo`, even if another call failed first;
+// otherwise the first failure in the order of `requests` is rethrown as it is,
+// including Next.js's own `notFound()` signal, so nothing is swallowed here.
+// Waiting for all of them, rather than the first failure, makes the outcome
+// the same however the calls race.
+async function signedIn<const Requests extends readonly unknown[]>(
   returnTo: string,
-  request: Promise<Result>,
-): Promise<Result> {
-  try {
-    return await request;
-  } catch (error) {
-    redirectOnSignedOut(error, returnTo);
-    throw error;
+  requests: Requests,
+): Promise<Settled<Requests>> {
+  const values: unknown[] = [];
+  const failures: unknown[] = [];
+  for (const result of await Promise.allSettled(requests)) {
+    if (result.status === "fulfilled") {
+      values.push(result.value);
+    } else {
+      failures.push(result.reason);
+    }
   }
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      redirectOnSignedOut(failure, returnTo);
+    }
+    throw failures[0];
+  }
+  // allSettled() keeps the order of `requests`, and none of them failed.
+  return values as Settled<Requests>;
 }

@@ -1,13 +1,18 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
-import { MAP_NOTICES, type MapNotice } from "../model/notices";
+import { MAP_NOTICES, type MapNotice, withMapNotice } from "../model/notices";
 import { type RegionScreenData, toRegionScreen } from "../model/screens";
 import { newAccountProgress, seedRegionDetail } from "../test-fixtures";
 import { RegionScreen } from "./RegionScreen";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+// useSearchParams() returns the URL as it is now, like Next.js, whose router
+// follows history.replaceState().
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 
 const newAccountCoast = toRegionScreen(
   seedRegionDetail("coast"),
@@ -26,8 +31,19 @@ function renderScreen(
   data: RegionScreenData = newAccountCoast,
   notice: MapNotice | null = null,
 ) {
+  // The page shows a notice it read from its URL.
+  const path = `/play/${data.region.id}`;
+  window.history.replaceState(
+    null,
+    "",
+    notice === null ? path : withMapNotice(path, notice),
+  );
   return render(<RegionScreen {...data} notice={notice} />);
 }
+
+afterEach(() => {
+  window.history.replaceState(null, "", "/");
+});
 
 describe("RegionScreen", () => {
   it("is headed with the region's name", () => {
@@ -73,6 +89,10 @@ describe("RegionScreen", () => {
           ),
       ).toBe(true);
     });
+    // Said once: a reload of the screen does not show it again.
+    expect(window.location.pathname + window.location.search).toBe(
+      "/play/coast",
+    );
   });
 
   it("offers a retry when progress could not be read, still showing the places", () => {

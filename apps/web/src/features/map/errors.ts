@@ -1,7 +1,7 @@
 import { ApiClientError, ApiNetworkError } from "@app/api-client";
 import { notFound, redirect } from "next/navigation";
 
-import { signInHref } from "@/features/auth";
+import { signInHref } from "@/features/auth/edge";
 
 // Server-side only in practice: exported from ./server, not ./index, because it
 // pulls in the API client. A client `error.tsx` cannot use it either: in

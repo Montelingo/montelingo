@@ -26,6 +26,9 @@ vi.mock("@/lib/api", () => ({
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
   useRouter: () => ({ refresh: vi.fn() }),
+  // The URL as it is now, like Next.js, whose router follows
+  // history.replaceState().
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -80,7 +83,22 @@ function serveApi({ progressStatus = 200 } = {}) {
   });
 }
 
+// Puts the page's URL in the browser, which useSearchParams() reads.
+function visit(path: string, { notice }: { notice?: string | string[] } = {}) {
+  const query = new URLSearchParams();
+  for (const value of [notice ?? []].flat()) {
+    query.append("notice", value);
+  }
+  const search = query.toString();
+  window.history.replaceState(
+    null,
+    "",
+    search === "" ? path : `${path}?${search}`,
+  );
+}
+
 async function renderPage(searchParams: { notice?: string | string[] } = {}) {
+  visit("/play", searchParams);
   return render(
     await PlayPage({ searchParams: Promise.resolve(searchParams) }),
   );
@@ -96,6 +114,7 @@ beforeEach(() => {
 
 afterEach(() => {
   consoleError.mockRestore();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("PlayPage", () => {
