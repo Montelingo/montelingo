@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -5,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Argon2PasswordHasher
@@ -206,6 +207,27 @@ async def test_unknown_content_returns_404(
     assert response.json()["error"]["code"] == "content_not_found"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/regions/Kotor",
+        "/api/v1/regions/a_b",
+        "/api/v1/locations/Kotor",
+        "/api/v1/locations/a_b",
+    ],
+)
+async def test_invalid_content_slug_returns_422(
+    integration_client: AsyncClient,
+    db_session: AsyncSession,
+    path: str,
+) -> None:
+    await sign_in_test_user(integration_client, db_session)
+
+    response = await integration_client.get(path)
+
+    assert response.status_code == 422
+
+
 async def test_content_query_count_stays_constant(
     integration_client: AsyncClient,
     db_session: AsyncSession,
@@ -233,7 +255,9 @@ async def test_content_query_count_stays_constant(
         executemany: bool,
     ) -> None:
         sql = statement.lower()
-        if sql.lstrip().startswith("select") and any(table in sql for table in content_tables):
+        if sql.lstrip().startswith("select") and any(
+            table in sql for table in content_tables
+        ):
             statements.append(sql)
 
     paths = {
@@ -270,14 +294,13 @@ async def test_content_query_count_stays_constant(
             name="East Town",
             position=1,
         )
-        north = await db_session.get(
-            Region,
-            (
-                await db_session.scalar(
-                    __import__("sqlalchemy").select(Region.id).where(Region.slug == "north")
-                )
-            ),
+
+        north_id = await db_session.scalar(
+            select(Region.id).where(Region.slug == "north")
         )
+        assert north_id is not None
+
+        north = await db_session.get(Region, north_id)
         assert north is not None
 
         north_location = Location(
@@ -290,7 +313,7 @@ async def test_content_query_count_stays_constant(
         await db_session.flush()
 
         city_id = await db_session.scalar(
-            __import__("sqlalchemy").select(Location.id).where(Location.slug == "city")
+            select(Location.id).where(Location.slug == "city")
         )
         assert city_id is not None
 
