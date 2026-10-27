@@ -80,7 +80,8 @@ describe("PlayLayout", () => {
 
       await expect(renderLayout()).rejects.toThrow("NEXT_REDIRECT");
 
-      expect(redirect).toHaveBeenCalledWith("/sign-in?next=%2Fplay");
+      // The map is where sign-in leads by default, so it needs no ?next=.
+      expect(redirect).toHaveBeenCalledWith("/sign-in");
     },
   );
 

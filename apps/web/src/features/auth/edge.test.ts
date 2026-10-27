@@ -5,10 +5,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // edge.ts is imported by the middleware, which runs in the Edge runtime before
-// every matched request. Nothing it reaches may be server-only or call the API.
+// every matched request, and by other features' modules, which may end up in
+// the browser bundle. Nothing it reaches may be server-only, call the API, or
+// render: it is pure functions and constants only.
 const FORBIDDEN_IMPORTS = [
   "server-only",
   "next/headers",
+  "react",
+  "@/features/auth",
   "@/lib/api",
   "@/lib/api-config",
   "@/lib/browser-api",
@@ -70,6 +74,7 @@ describe("the auth feature's edge entry", () => {
 
   it("follows the modules it re-exports", () => {
     expect(imports.has("./model/protected-routes")).toBe(true);
+    expect(imports.has("./model/routes")).toBe(true);
     expect(imports.has("./routes")).toBe(true);
   });
 

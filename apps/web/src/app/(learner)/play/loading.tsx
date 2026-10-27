@@ -1,5 +1,5 @@
-import { LearnerHomePlaceholderSkeleton } from "@/features/learner";
+import { MapHomeSkeleton } from "@/features/map";
 
 export default function PlayLoading() {
-  return <LearnerHomePlaceholderSkeleton />;
+  return <MapHomeSkeleton />;
 }
