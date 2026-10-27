@@ -13,6 +13,21 @@ export const MAP_ELEMENT_STATES = [
 
 export type MapElementState = (typeof MAP_ELEMENT_STATES)[number];
 
+// The states a place can be opened in, as TileCard draws them. Every other
+// state keeps it shut: `locked`, and `loading` and `error`, where the server
+// has not said the place is open (ADR 0005).
+const OPEN_STATES: ReadonlySet<MapElementState> = new Set<MapElementState>([
+  "available",
+  "active",
+  "in-progress",
+  "completed",
+]);
+
+/** True when a place in `state` can be opened. */
+export function isOpenState(state: MapElementState): boolean {
+  return OPEN_STATES.has(state);
+}
+
 /** The only states the server decides (ADR 0005). */
 export type ServerMapState = Extract<
   MapElementState,
@@ -29,3 +44,19 @@ export type MapLocationState = MapElement;
 export type OnRegionSelect = (regionId: string) => void;
 
 export type OnLocationSelect = (locationId: string) => void;
+
+// What the card screens draw for each element: the contract's id and state,
+// plus the name to show and the link that opens it. The SVG map can take the
+// same items and ignore what it does not need.
+
+export type RegionPickerRegion = MapRegionState & {
+  readonly name: string;
+  readonly href: string;
+};
+
+export type LocationPickerLocation = MapLocationState & {
+  readonly name: string;
+  readonly href: string;
+  /** The next place to go (`pickNextPlace()`); at most one per region. */
+  readonly isNext: boolean;
+};

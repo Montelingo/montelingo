@@ -24,7 +24,7 @@ type PlayLayoutProps = Readonly<{
 //
 // Layouts do not run again on client-side navigation inside /play, so this is
 // the gate for full loads only: the pages' own data requests must still treat
-// a 401 as signed out.
+// a 401 as signed out, as the map's loaders do (redirectOnSignedOut()).
 export default async function PlayLayout({ children }: PlayLayoutProps) {
   const user = await getCurrentUser();
 
