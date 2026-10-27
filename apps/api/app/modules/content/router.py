@@ -30,9 +30,7 @@ def set_content_cache(response: Response) -> None:
     response.headers["Cache-Control"] = CACHE_CONTROL
 
 
-router = APIRouter(
-    dependencies=[Depends(get_current_user), Depends(set_content_cache)]
-)
+router = APIRouter(dependencies=[Depends(get_current_user), Depends(set_content_cache)])
 
 
 def get_content_service(

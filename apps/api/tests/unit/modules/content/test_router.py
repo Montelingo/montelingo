@@ -45,15 +45,11 @@ class FakeContentService:
         return domain.RegionDetailRead(slug=slug, name="Coast", locations=())
 
     async def get_location(self, slug: str) -> domain.LocationDetailRead:
-        return domain.LocationDetailRead(
-            slug=slug, name="Budva", region_slug="coast", chapters=()
-        )
+        return domain.LocationDetailRead(slug=slug, name="Budva", region_slug="coast", chapters=())
 
 
 @pytest.mark.parametrize("path", MAP_ROUTES[:3])
-def test_content_routes_are_implemented(
-    client: TestClient, signed_in: None, path: str
-) -> None:
+def test_content_routes_are_implemented(client: TestClient, signed_in: None, path: str) -> None:
     client.app.dependency_overrides[get_content_service] = FakeContentService
     try:
         response = client.get(path)

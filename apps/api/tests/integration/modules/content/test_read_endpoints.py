@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -255,9 +254,7 @@ async def test_content_query_count_stays_constant(
         executemany: bool,
     ) -> None:
         sql = statement.lower()
-        if sql.lstrip().startswith("select") and any(
-            table in sql for table in content_tables
-        ):
+        if sql.lstrip().startswith("select") and any(table in sql for table in content_tables):
             statements.append(sql)
 
     paths = {
@@ -295,9 +292,7 @@ async def test_content_query_count_stays_constant(
             position=1,
         )
 
-        north_id = await db_session.scalar(
-            select(Region.id).where(Region.slug == "north")
-        )
+        north_id = await db_session.scalar(select(Region.id).where(Region.slug == "north"))
         assert north_id is not None
 
         north = await db_session.get(Region, north_id)
@@ -312,9 +307,7 @@ async def test_content_query_count_stays_constant(
         db_session.add_all([extra_location, north_location])
         await db_session.flush()
 
-        city_id = await db_session.scalar(
-            select(Location.id).where(Location.slug == "city")
-        )
+        city_id = await db_session.scalar(select(Location.id).where(Location.slug == "city"))
         assert city_id is not None
 
         extra_chapter = Chapter(
