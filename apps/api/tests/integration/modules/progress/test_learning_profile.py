@@ -74,9 +74,13 @@ async def test_deleting_user_cascades_profile_and_location_progress(
     await db_session.delete(user)
     await db_session.flush()
 
-    assert await db_session.scalar(
-        select(LearningProfile).where(LearningProfile.id == profile.id)
-    ) is None
-    assert await db_session.scalar(
-        select(LocationProgress).where(LocationProgress.learning_profile_id == profile.id)
-    ) is None
+    assert (
+        await db_session.scalar(select(LearningProfile).where(LearningProfile.id == profile.id))
+        is None
+    )
+    assert (
+        await db_session.scalar(
+            select(LocationProgress).where(LocationProgress.learning_profile_id == profile.id)
+        )
+        is None
+    )
