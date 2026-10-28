@@ -42,7 +42,8 @@ async def test_profile_lookup_is_scoped_to_the_current_user(
     repository = SqlAlchemyLearningProfileRepository(db_session)
 
     assert (await repository.get_by_user_id(first_user.id)).id == first_profile.id
-    assert (await repository.get_by_user_id(first_user.id)).id != second_profile.id
+    assert (await repository.get_by_user_id(second_user.id)).id == second_profile.id
+    assert (await repository.get_by_user_id(second_user.id)).id != first_profile.id
 
 
 async def test_deleting_user_cascades_profile_and_location_progress(
@@ -53,6 +54,8 @@ async def test_deleting_user_cascades_profile_and_location_progress(
         name="Region",
         position=999999,
     )
+    db_session.add(region)
+    await db_session.flush()
     location = Location(
         region_id=region.id,
         slug=f"location-{uuid4().hex}",
@@ -60,7 +63,7 @@ async def test_deleting_user_cascades_profile_and_location_progress(
         position=999999,
     )
     user = User(email="cascade-profile@example.com", password_hash="hash")
-    db_session.add_all([region, location, user])
+    db_session.add_all([location, user])
     await db_session.flush()
     profile = LearningProfile(user_id=user.id)
     db_session.add(profile)

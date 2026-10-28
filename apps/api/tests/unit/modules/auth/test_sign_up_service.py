@@ -72,7 +72,8 @@ def make_sign_up_service(
 @pytest.mark.asyncio
 async def test_sign_up_success() -> None:
     users = FakeUsersService()
-    service, hasher = make_sign_up_service(users)
+    profiles = FakeLearningProfileRepository()
+    service, hasher = make_sign_up_service(users, profiles=profiles)
 
     user = await service.sign_up(email="user@example.com", password="password123")
 
@@ -80,6 +81,7 @@ async def test_sign_up_success() -> None:
     assert users.created_email == "user@example.com"
     assert users.created_hash == "new-hash"
     assert hasher.hashed_passwords == ["password123"]
+    assert profiles.created_user_id == user.id
 
 
 @pytest.mark.asyncio

@@ -11,6 +11,12 @@ type CardGridProps = {
   className?: string;
 };
 
+/**
+ * The grid's columns and gap, for a skeleton that stands in for a `CardGrid`
+ * and must lay its blocks out the same way.
+ */
+export const CARD_GRID_CLASS = "grid grid-cols-tiles gap-4";
+
 // A labelled list of cards in as many columns as fit (the `tiles` grid token):
 // three on the smallest supported tablet in portrait, four in landscape. It
 // never scrolls sideways: columns shrink to the container, items may shrink
@@ -21,7 +27,7 @@ export function CardGrid({ label, children, className }: CardGridProps) {
     <ul
       role="list"
       aria-label={label}
-      className={cn("grid grid-cols-tiles gap-4", className)}
+      className={cn(CARD_GRID_CLASS, className)}
     >
       {/* Children.toArray keys every element (from its own key, or its
           position); text has no key, so it keeps its position. */}
