@@ -5,9 +5,7 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends
 
 from app.api.responses import error_responses
-from app.modules.progress import get_learning_profile
 from app.modules.content import Content, load_content
-from .models import LearningProfile
 
 from .dependencies import get_learning_profile
 from .models import LearningProfile
