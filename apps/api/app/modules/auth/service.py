@@ -88,6 +88,9 @@ class AuthService:
 
         password_hash = self.password_hasher.hash(password)
 
+        if self.learning_profile_repository is None:
+            raise RuntimeError("LearningProfileRepository is not configured.")
+
         try:
             async with self.transaction_manager.transaction():
                 existing_user = await self.users_service.get_by_email(normalized_email)

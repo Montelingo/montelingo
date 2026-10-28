@@ -5,7 +5,6 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends
 
 from app.api.responses import error_responses
-from app.modules.auth import get_current_user
 from app.modules.content import Content, load_content
 
 from .dependencies import get_learning_profile
@@ -13,7 +12,7 @@ from .models import LearningProfile
 from .schemas import ProgressState
 from .service import ProgressService
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 
 @lru_cache
