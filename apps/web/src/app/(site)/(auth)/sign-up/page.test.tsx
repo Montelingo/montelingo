@@ -87,13 +87,19 @@ describe("SignUpPage", () => {
     ["an auth page", { next: "/sign-up" }],
     ["an encoded auth page with a slash", { next: "/%73ign-in/" }],
     ["the reset-password page", { next: "/reset-password?token=abc" }],
-  ])("sends a signed-in user home when there is %s", async (_case, params) => {
-    getAuthState.mockResolvedValue({ status: "signed-in", user: signedInUser });
+  ])(
+    "sends a signed-in user to the map when there is %s",
+    async (_case, params) => {
+      getAuthState.mockResolvedValue({
+        status: "signed-in",
+        user: signedInUser,
+      });
 
-    await expect(renderPage(params)).rejects.toThrow("NEXT_REDIRECT");
+      await expect(renderPage(params)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith("/");
-  });
+      expect(redirect).toHaveBeenCalledWith("/play");
+    },
+  );
 
   it("shows the form when the session check fails, keeping the destination", async () => {
     getAuthState.mockResolvedValue({ status: "unavailable" });

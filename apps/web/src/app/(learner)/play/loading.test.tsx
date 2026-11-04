@@ -5,10 +5,11 @@ import { axe } from "vitest-axe";
 import PlayLoading from "./loading";
 
 describe("PlayLoading", () => {
-  it("announces that the page is loading", () => {
+  it("announces that the map is loading, with nothing to press", () => {
     render(<PlayLoading />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

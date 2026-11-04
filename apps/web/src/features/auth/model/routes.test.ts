@@ -12,7 +12,9 @@ import {
 
 describe("postAuthRedirectPath", () => {
   it.each([
+    // The home page, asked for explicitly, is kept.
     ["/", "/"],
+    ["/play/coast", "/play/coast"],
     ["/lessons/42?tab=words#top", "/lessons/42?tab=words#top"],
     // Only the auth pages themselves are excluded, not similar paths.
     ["/sign-in-help", "/sign-in-help"],
@@ -37,8 +39,8 @@ describe("postAuthRedirectPath", () => {
     ["a percent-encoded path", "/%73ign-in"],
     ["a percent-encoded uppercase path", "/%53IGN-UP"],
     ["dot segments", "/lessons/../forgot-password"],
-  ])("falls back to / for %s", (_case, next) => {
-    expect(postAuthRedirectPath(next)).toBe("/");
+  ])("falls back to the map for %s", (_case, next) => {
+    expect(postAuthRedirectPath(next)).toBe("/play");
   });
 
   it.each([
@@ -47,8 +49,8 @@ describe("postAuthRedirectPath", () => {
     ["a protocol-relative URL", "//evil.com"],
     ["an API path", "/api/v1/auth/me"],
     ["a repeated parameter", ["/a", "/b"]],
-  ])("falls back to / when the destination is %s", (_case, next) => {
-    expect(postAuthRedirectPath(next)).toBe("/");
+  ])("falls back to the map when the destination is %s", (_case, next) => {
+    expect(postAuthRedirectPath(next)).toBe("/play");
   });
 });
 
@@ -59,9 +61,13 @@ describe("authPageHref", () => {
     );
   });
 
+  it("carries the home page as ?next=, since it is not the default", () => {
+    expect(authPageHref(SIGN_UP_PATH, "/")).toBe("/sign-up?next=%2F");
+  });
+
   it.each([
     ["missing", undefined],
-    ["the default", "/"],
+    ["the default", "/play"],
     ["an absolute URL", "https://evil.com"],
     ["a protocol-relative URL", "//evil.com"],
     ["an API path", "/api/v1/auth/me"],

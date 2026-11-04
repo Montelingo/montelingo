@@ -12,7 +12,8 @@ export type Progress = {
 
 /**
  * What `getProgress()` resolves to. A failure is a value, not a throw, so the
- * content can still render, with every place in the error state.
+ * content can still render, with every place in the error state. (A `401` is
+ * thrown: signed out is not a failure to read progress.)
  */
 export type ProgressResult =
   | { status: "ready"; progress: Progress }

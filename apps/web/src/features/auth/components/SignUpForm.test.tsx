@@ -73,7 +73,7 @@ function flushPromises() {
   });
 }
 
-function renderForm(redirectTo = "/") {
+function renderForm(redirectTo = "/play") {
   const view = render(<SignUpForm redirectTo={redirectTo} />);
   return { ...view, user: userEvent.setup() };
 }
@@ -123,7 +123,7 @@ describe("SignUpForm", () => {
 
   it("keeps the submit button disabled in the server HTML, until hydration", () => {
     const container = document.createElement("div");
-    container.innerHTML = renderToString(<SignUpForm redirectTo="/" />);
+    container.innerHTML = renderToString(<SignUpForm redirectTo="/play" />);
 
     expect(
       within(container).getByRole("button", { name: "Create account" }),
@@ -279,14 +279,28 @@ describe("SignUpForm", () => {
     });
 
     it.each([
-      ["the default", "/"],
+      ["the default", "/play"],
       ["an absolute URL", "https://evil.com/phish"],
       ["a backslash host", "/\\evil.com"],
       ["the sign-up page", "/sign-up"],
       ["the forgot-password page", "/Forgot-Password/"],
-    ])("goes home when the destination is %s", async (_case, redirectTo) => {
+    ])(
+      "goes to the map when the destination is %s",
+      async (_case, redirectTo) => {
+        signUpAndSignIn.mockResolvedValue(user);
+        const { user: actor } = renderForm(redirectTo);
+
+        await fillAndSubmit(actor);
+
+        await waitFor(() => {
+          expect(router.replace).toHaveBeenCalledWith("/play");
+        });
+      },
+    );
+
+    it("goes home when that is the destination asked for", async () => {
       signUpAndSignIn.mockResolvedValue(user);
-      const { user: actor } = renderForm(redirectTo);
+      const { user: actor } = renderForm("/");
 
       await fillAndSubmit(actor);
 
