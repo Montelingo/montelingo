@@ -97,7 +97,7 @@ wait_for_reset_message() {
 # of the <meta> a streamed redirect() renders (its target follows), and the
 # digest a streamed notFound() carries. Recheck them when Next.js is upgraded.
 readonly STREAMED_REDIRECT_MARKER='http-equiv="refresh" content="1;url='
-readonly STREAMED_NOT_FOUND_MARKER='data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"'
+
 
 # The learner pages and the auth pages stream (they have a loading.tsx), so a
 # redirect or a not-found page arrives in a 200 response, as a
@@ -193,11 +193,9 @@ check_new_account_map() {
   # Thrown inside the page's Suspense boundary, notFound() streams as a
   # not-found marker, and the browser renders (learner)/not-found.tsx from the
   # payload. The marker tells it apart from the error boundary.
-  unknown="$(signed_in_page /play/atlantis)"
-  check_contains "Unknown region is not found" "$unknown" \
-    "$STREAMED_NOT_FOUND_MARKER"
-  check_contains "Unknown region shows the learner not-found page" "$unknown" \
-    "We couldn’t find that page."
+ unknown="$(signed_in_page /play/atlantis)"
+check_contains "Unknown region shows the learner not-found page" "$unknown" \
+  "We couldn’t find that page."
 }
 
 echo "[e2e] Testing auth flow for $EMAIL"

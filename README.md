@@ -143,6 +143,7 @@ pnpm run lint:api           # ruff check
 pnpm run typecheck:api      # mypy
 pnpm run test:api           # pytest
 pnpm run db:upgrade         # alembic upgrade head
+pnpm run db:seed            # upgrade the schema, then safely upsert content data
 pnpm run db:check           # alembic check (drift detection)
 ```
 

@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: runtime
-    command: alembic -c apps/api/alembic.ini upgrade head
+    command: sh -c 'alembic -c apps/api/alembic.ini upgrade head && python apps/api/scripts/seed_content.py'
     env_file:
       - path: .env
         required: false
