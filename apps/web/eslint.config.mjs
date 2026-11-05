@@ -77,7 +77,30 @@ export default tseslint.config(
                 "!@/features/*/edge",
               ],
               message:
-                "Import another feature through its public API (@/features/<name>, @/features/<name>/server for server-only code, or @/features/<name>/edge for middleware), not its internals.",
+                "Import another feature through its public API (@/features/<name>, @/features/<name>/server for server-only code, or @/features/<name>/edge for pure functions and constants), not its internals.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The auth barrel also exports the sign-in forms and the browser API
+    // client, so a feature module that reaches the browser would pull them in
+    // with it. The typescript-eslint version of the rule, so a type-only
+    // import, which the build erases, stays allowed.
+    files: ["src/features/**/*.{ts,tsx}"],
+    ignores: ["src/features/auth/**"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/features/auth",
+              allowTypeImports: true,
+              message:
+                "Other features import auth from @/features/auth/edge (pure functions and constants, safe in the browser) or @/features/auth/server (server-only code), never the barrel, which also exports the forms and the browser API client.",
             },
           ],
         },

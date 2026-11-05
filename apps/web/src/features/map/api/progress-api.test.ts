@@ -1,4 +1,8 @@
-import { type ApiClient, createApiClient } from "@app/api-client";
+import {
+  type ApiClient,
+  ApiClientError,
+  createApiClient,
+} from "@app/api-client";
 // What cookies() throws while Next.js prerenders a route, to mark it dynamic.
 // Imported from Next.js's internals because the error is not public API.
 import { DynamicServerError } from "next/dist/client/components/hooks-server-context";
@@ -120,6 +124,43 @@ describe("fetchProgress", () => {
       expect.anything(),
     );
   });
+
+  it("throws a 401, unlogged, so the loaders can send the learner to sign in", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(401, {
+        error: {
+          code: "authentication_error",
+          message: "Authentication required.",
+          request_id: "req-1",
+          details: null,
+        },
+      }),
+    );
+
+    const result = fetchProgress();
+
+    await expect(result).rejects.toBeInstanceOf(ApiClientError);
+    await expect(result).rejects.toMatchObject({ status: 401 });
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it.each([403, 404, 500, 503])(
+    "returns an error result for any other failed status (%s)",
+    async (status) => {
+      fetchMock.mockResolvedValue(
+        jsonResponse(status, {
+          error: {
+            code: "some_error",
+            message: "Something went wrong.",
+            request_id: "req-1",
+            details: null,
+          },
+        }),
+      );
+
+      await expect(fetchProgress()).resolves.toEqual({ status: "error" });
+    },
+  );
 
   it("returns an error result when the API cannot be reached", async () => {
     fetchMock.mockRejectedValue(new TypeError("fetch failed"));

@@ -6,13 +6,16 @@ import { cache } from "react";
 
 import { getApiClient } from "@/lib/api";
 
+import { isSignedOut } from "../errors";
 import { type ProgressResult, toProgress } from "../model/progress";
 import { progressSchema } from "../schemas";
 
 /**
- * The signed-in account's state for every region and location. Never throws
- * for a failed call: it returns `{ status: "error" }` and logs the failure, so
- * the content still renders, with every place in the error state.
+ * The signed-in account's state for every region and location. A failed call
+ * returns `{ status: "error" }` and logs the failure, so the content still
+ * renders, with every place in the error state. The exception is `401`: the
+ * learner is signed out, not missing progress, so it is thrown for the loaders
+ * to send them to sign in (`redirectOnSignedOut()`).
  *
  * Wrapped in React `cache()`, so one server render makes one call. Never call
  * it inside a cached scope (`unstable_cache`, `"use cache"`): the result
@@ -33,6 +36,9 @@ export async function fetchProgress(): Promise<ProgressResult> {
   } catch (error) {
     // Next.js signals such as "this route is dynamic" must reach Next.js.
     unstable_rethrow(error);
+    if (isSignedOut(error)) {
+      throw error;
+    }
     logProgressFailure(error);
     return { status: "error" };
   }

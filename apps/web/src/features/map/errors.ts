@@ -1,5 +1,7 @@
 import { ApiClientError, ApiNetworkError } from "@app/api-client";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+
+import { signInHref } from "@/features/auth/edge";
 
 // Server-side only in practice: exported from ./server, not ./index, because it
 // pulls in the API client. A client `error.tsx` cannot use it either: in
@@ -22,6 +24,26 @@ export function notFoundOnMissingContent(error: unknown): void {
     error.error.error.code === "content_not_found"
   ) {
     notFound();
+  }
+}
+
+/**
+ * True when the API answered `401`: the session ended, so the learner is
+ * signed out. `play/layout.tsx` checks the session on full loads only, so a
+ * session that ends mid-visit shows up here, on a page's own data request.
+ */
+export function isSignedOut(error: unknown): boolean {
+  return error instanceof ApiClientError && error.status === 401;
+}
+
+/**
+ * Calls Next's `redirect()` to the sign-in page when the API answered `401`,
+ * returning to `returnTo` after signing in. Returns for every other error, so
+ * the caller rethrows it: a `catch` that ends here must never swallow one.
+ */
+export function redirectOnSignedOut(error: unknown, returnTo: string): void {
+  if (isSignedOut(error)) {
+    redirect(signInHref(returnTo));
   }
 }
 

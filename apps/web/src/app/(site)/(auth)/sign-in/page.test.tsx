@@ -125,13 +125,19 @@ describe("SignInPage", () => {
     ["an auth page", { next: "/sign-up" }],
     ["an encoded auth page with a slash", { next: "/%73ign-in/" }],
     ["the reset-password page", { next: "/reset-password?token=abc" }],
-  ])("sends a signed-in user home when there is %s", async (_case, params) => {
-    getAuthState.mockResolvedValue({ status: "signed-in", user: signedInUser });
+  ])(
+    "sends a signed-in user to the map when there is %s",
+    async (_case, params) => {
+      getAuthState.mockResolvedValue({
+        status: "signed-in",
+        user: signedInUser,
+      });
 
-    await expect(renderPage(params)).rejects.toThrow("NEXT_REDIRECT");
+      await expect(renderPage(params)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith("/");
-  });
+      expect(redirect).toHaveBeenCalledWith("/play");
+    },
+  );
 
   // Someone who reset another account's password while signed in here.
   it("shows a signed-in user the form with a notice, without redirecting", async () => {
