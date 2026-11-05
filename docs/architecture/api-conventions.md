@@ -74,3 +74,21 @@ Every route declares `operation_id` explicitly. Never rely on FastAPI's auto-gen
 ### Test-only routes
 
 Demo endpoints do not ship in the production router. Tests that need routes to exercise shared contract behavior override the shared `app` fixture and include test-only routers on it (see [modular-monolith rules §5.1](../fastapi-modular-monolith.md#51-layout-and-fixtures)).
+
+## Map state
+
+The backend is the source of truth for map states. The frontend
+must never calculate or override them.
+
+`GET /api/v1/progress` returns the state of each region and
+location for the current learning profile.
+
+Location states:
+
+- `locked` — cannot be opened.
+- `available` — openable, not yet started.
+- `in-progress` — started but not completed.
+- `completed` — completed and remains openable.
+
+A region is `locked` if all its locations are locked,
+`completed` if all are completed, and `available` otherwise.
