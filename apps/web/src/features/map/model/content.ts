@@ -5,6 +5,13 @@ import type { Schemas } from "@app/api-client";
 // only see these. Ids are the content slugs (`coast`, `kotor`), except a
 // word's, which is its UUID.
 
+/**
+ * The language of the words and chapter titles, Montenegrin in Latin script,
+ * for the `lang` of the elements that show them, so a screen reader speaks
+ * them in the right voice. The rest of the learner area is in English.
+ */
+export const CONTENT_LANG = "sr-Latn-ME";
+
 export type Region = {
   id: string;
   name: string;
@@ -46,7 +53,10 @@ export type Chapter = {
   words: readonly Word[];
 };
 
-/** A location with its chapters, in recording order. */
+/**
+ * A location with its chapters in recording order (by `position`), and each
+ * chapter's words in recording order too (by `number`).
+ */
 export type LocationDetail = {
   id: string;
   name: string;
@@ -87,12 +97,15 @@ function toWord(data: Schemas["Word"]): Word {
   };
 }
 
+// The chapters and their words are put in the recording list's order (ADR
+// 0005). The API already sends them that way; sorting here means no screen
+// depends on it. Each sort is of a new array from map(), not of `data`.
 function toChapter(data: Schemas["Chapter"]): Chapter {
   return {
     id: data.id,
     title: data.title,
     position: data.position,
-    words: data.words.map(toWord),
+    words: data.words.map(toWord).sort((a, b) => a.number - b.number),
   };
 }
 
@@ -103,6 +116,8 @@ export function toLocationDetail(
     id: data.id,
     name: data.name,
     regionId: data.region_id,
-    chapters: data.chapters.map(toChapter),
+    chapters: data.chapters
+      .map(toChapter)
+      .sort((a, b) => a.position - b.position),
   };
 }
