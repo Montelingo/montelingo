@@ -91,8 +91,8 @@ def test_words_nfc_unique_and_notes() -> None:
 
     by_number = {word.number: word for word in words}
 
-    assert by_number[30].text == "zvijezda"
-    assert by_number[30].note == "morska zvijezda"
+    assert by_number[30].text == "morska zvijezda"
+    assert by_number[30].note is None
     assert by_number[86].text == "zmaj"
     assert by_number[86].note == "igračka koja leti"
 
@@ -140,14 +140,14 @@ def test_loader_accepts_changed_word_text_and_note() -> None:
     word = content_data["chapters"][2]["words"][-1]
     assert word["number"] == 30
 
-    word["text"] = "morska zvijezda"
+    word["text"] = "zvjezdača"
     word["note"] = "životinja u moru"
 
     content = parse_content(content_data)
     words = [entry for chapter in content.chapters for entry in chapter.words]
     updated = next(entry for entry in words if entry.number == 30)
 
-    assert updated.text == "morska zvijezda"
+    assert updated.text == "zvjezdača"
     assert updated.note == "životinja u moru"
 
 
@@ -233,6 +233,7 @@ def test_repeated_word_with_identical_notes_is_rejected() -> None:
     first = data["chapters"][2]["words"][-1]
     second = data["chapters"][3]["words"][0]
 
+    first["note"] = "životinja u moru"
     second["text"] = first["text"]
     second["note"] = first["note"]
 
