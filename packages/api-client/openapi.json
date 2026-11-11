@@ -949,6 +949,7 @@
             "name": "location_id",
             "required": true,
             "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
               "title": "Location Id",
               "type": "string"
             }
@@ -1083,6 +1084,7 @@
             "name": "region_id",
             "required": true,
             "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
               "title": "Region Id",
               "type": "string"
             }

@@ -16,6 +16,7 @@
     "typecheck:api": "uv run --project apps/api mypy --config-file apps/api/pyproject.toml apps/api/app apps/api/scripts",
     "test:api": "uv run --project apps/api pytest apps/api/tests -q",
     "db:upgrade": "uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head",
+    "db:seed": "pnpm db:upgrade && uv run --project apps/api python apps/api/scripts/seed_content.py",
     "db:check": "uv run --project apps/api alembic -c apps/api/alembic.ini check",
     "format:docs": "prettier --write \"**/*.md\"",
     "format:check:docs": "prettier --check \"**/*.md\"",
