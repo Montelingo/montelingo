@@ -41,6 +41,7 @@ class SqlAlchemyLearningProfileRepository:
 
 
 class ProgressRepository(Protocol):
+    async def get_location_progress(self, learning_profile_id: UUID) -> list[LocationProgress]: ...
     async def read_map(
         self,
         learning_profile_id: UUID,
@@ -117,3 +118,11 @@ class SqlAlchemyProgressRepository:
         )
 
         return content, progress
+
+    async def get_location_progress(self, learning_profile_id: UUID) -> list[LocationProgress]:
+        result = await self.session.scalars(
+            select(LocationProgress).where(
+                LocationProgress.learning_profile_id == learning_profile_id
+            )
+        )
+        return list(result)
