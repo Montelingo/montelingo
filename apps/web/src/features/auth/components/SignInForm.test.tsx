@@ -74,7 +74,7 @@ function flushPromises() {
   });
 }
 
-function renderForm(redirectTo = "/", notice: SignInNotice | null = null) {
+function renderForm(redirectTo = "/play", notice: SignInNotice | null = null) {
   const view = render(<SignInForm redirectTo={redirectTo} notice={notice} />);
   return { ...view, user: userEvent.setup() };
 }
@@ -117,7 +117,7 @@ describe("SignInForm", () => {
   it("keeps the submit button disabled in the server HTML, until hydration", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(
-      <SignInForm redirectTo="/" notice={null} />,
+      <SignInForm redirectTo="/play" notice={null} />,
     );
 
     expect(
@@ -322,15 +322,29 @@ describe("SignInForm", () => {
     });
 
     it.each([
-      ["the default", "/"],
+      ["the default", "/play"],
       ["an absolute URL", "https://evil.com/phish"],
       ["a protocol-relative URL", "//evil.com"],
       ["an API path", "/api/v1/auth/me"],
       ["the sign-in page", "/sign-in"],
       ["an encoded sign-up page", "/%73ign-up/"],
-    ])("goes home when the destination is %s", async (_case, redirectTo) => {
+    ])(
+      "goes to the map when the destination is %s",
+      async (_case, redirectTo) => {
+        signIn.mockResolvedValue(user);
+        const { user: actor } = renderForm(redirectTo);
+
+        await fillAndSubmit(actor);
+
+        await waitFor(() => {
+          expect(router.replace).toHaveBeenCalledWith("/play");
+        });
+      },
+    );
+
+    it("goes home when that is the destination asked for", async () => {
       signIn.mockResolvedValue(user);
-      const { user: actor } = renderForm(redirectTo);
+      const { user: actor } = renderForm("/");
 
       await fillAndSubmit(actor);
 
