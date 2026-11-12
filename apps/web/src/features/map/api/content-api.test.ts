@@ -299,6 +299,43 @@ describe("fetchLocation", () => {
     });
   });
 
+  it("puts the chapters and their words in recording order, whatever order they came in", async () => {
+    // A chapter at `position`, its words numbered as listed.
+    const chapter = (position: number, numbers: readonly number[]) => ({
+      id: `chapter-${position}`,
+      title: `Chapter ${position}`,
+      position,
+      words: numbers.map((number) => makeWord({ number })),
+    });
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        200,
+        makeLocation({
+          chapters: [
+            chapter(15, [143, 141, 142]),
+            chapter(11, [101, 103, 102]),
+            chapter(18, [172, 171]),
+            chapter(14, [131]),
+          ],
+        }),
+      ),
+    );
+
+    const { chapters } = await fetchLocation("budva");
+
+    expect(
+      chapters.map(({ position, words }) => [
+        position,
+        words.map(({ number }) => number),
+      ]),
+    ).toEqual([
+      [11, [101, 102, 103]],
+      [14, [131]],
+      [15, [141, 142, 143]],
+      [18, [171, 172]],
+    ]);
+  });
+
   it("rejects a word id that is not a UUID", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse(

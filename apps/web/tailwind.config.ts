@@ -175,6 +175,15 @@ const config: Config = {
         // Tailwind's md breakpoint (768px) is wider than the portrait tablet,
         // so the grid relies on this rule, not on breakpoints.
         tiles: "repeat(auto-fill, minmax(min(100%, 13rem), 1fr))",
+        // The same rule with columns of at least 10rem, for a place's word
+        // cards, which carry one word instead of a title and a badge, so a
+        // group of 10 takes three rows in portrait and two in landscape. With
+        // the same gutters and gap:
+        // - portrait: 696 px; 4 columns need 4·160 + 3·16 = 688 ✓
+        //   (5 would need 864)
+        // - landscape: 1085 px; 6 columns need 6·160 + 5·16 = 1040 ✓
+        //   (7 would need 1216, more than max-w-learner's 1152 too)
+        words: "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
       },
       keyframes: {
         // A locked card's answer to a tap: a small shake.
