@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LocationDetail, RegionDetail } from "../model/content";
 import type { ProgressResult } from "../model/progress";
 import {
+  makeLocationDetail,
   newAccountProgress,
   seedRegionDetail,
   seedRegions,
@@ -38,18 +39,6 @@ const navigation = vi.hoisted(() => ({
   }),
 }));
 vi.mock("next/navigation", () => navigation);
-
-function makeLocationDetail(
-  overrides: Partial<LocationDetail> = {},
-): LocationDetail {
-  return {
-    id: "budva",
-    name: "Budva",
-    regionId: "coast",
-    chapters: [{ id: "the-sea", title: "The sea", position: 1, words: [] }],
-    ...overrides,
-  };
-}
 
 // What an adapter throws once the session has ended.
 function signedOutError(): ApiClientError {

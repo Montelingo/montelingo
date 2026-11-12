@@ -86,7 +86,10 @@ export async function loadRegionName(regionId: string): Promise<string> {
  * both are open (`available`, `in-progress`, `completed`, or `active`).
  * Otherwise it redirects: a locked region to the map, a locked location to its
  * region, each with a notice that says why, and a state that is not known
- * (`loading` or `error`) to the region, whose screen offers a retry.
+ * (`loading` or `error`) to the region, whose screen offers a retry. The API
+ * looks places up by their exact ids, so with the region check below, the
+ * URL's parent, where the learner area's Back goes, is always the location's
+ * region.
  *
  * Call it outside any try/catch: `notFound()` and `redirect()` throw.
  */

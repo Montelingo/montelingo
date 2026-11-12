@@ -4,6 +4,8 @@
 // loaders and the location gate, and the error mapping, which need the API
 // client, are server-only and exported from ./server.
 export { LocationPicker } from "./components/LocationPicker";
+export { LocationScreen } from "./components/LocationScreen";
+export { LocationScreenSkeleton } from "./components/LocationScreenSkeleton";
 export { MapHome } from "./components/MapHome";
 export { MapHomeSkeleton } from "./components/MapHomeSkeleton";
 export { RegionPicker } from "./components/RegionPicker";
