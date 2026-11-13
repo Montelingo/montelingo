@@ -1,16 +1,18 @@
+"""Pure domain rules for calculating map availability."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.modules.content.domain import Content
+from app.modules.content import Content
 from app.modules.progress.schemas import MapState
 
 
 @dataclass(frozen=True, slots=True)
 class LocationProgressRecord:
-    """Progress for one location, already scoped to a learning profile."""
+    """Progress for one location, scoped to a learning profile."""
 
     location_slug: str
     started_at: datetime | None = None
@@ -29,7 +31,8 @@ def calculate_map_states(
     content: Content,
     progress: Iterable[LocationProgressRecord],
 ) -> MapStates:
-    """Calculate every map state without database access or side effects."""
+    """Calculate map states without database access or side effects."""
+
     progress_by_slug = {row.location_slug: row for row in progress}
 
     location_states: dict[str, MapState] = {}
