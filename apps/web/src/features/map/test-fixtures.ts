@@ -16,7 +16,7 @@ import type { ProgressResult } from "./model/progress";
 // (apps/api/app/modules/content/data/content.json): three regions in content
 // order, 6, 5 and 6 locations, and Budva, first on the coast, as the start;
 // and the word groups of three places: Podgorica (four), Ulcinj (two, with
-// the seed's notes) and Tivat (one). Imported by tests only.
+// the seed's one note, on word 86) and Tivat (one). Imported by tests only.
 
 const SEED_REGIONS = [
   {
@@ -152,7 +152,7 @@ const SEED_PLACES = {
           "meduza",
           "kornjača",
           "morski konjić",
-          ["zvijezda", "morska zvijezda"],
+          "morska zvijezda",
         ]),
       },
       {

@@ -26,7 +26,7 @@ function openPlace(
 const tivat = openPlace("coast", seedLocationDetail("tivat"));
 // Four groups, 40 words.
 const podgorica = openPlace("central", seedLocationDetail("podgorica"));
-// Two groups, with the seed's two notes.
+// Two groups, with the seed's one note: word 86, "zmaj".
 const ulcinj = openPlace("coast", seedLocationDetail("ulcinj"));
 
 // Tivat, its first word (41, "avion") with a picture, as phase 2 will send.
@@ -60,7 +60,7 @@ function wordsIn(groupTitle: string) {
   );
 }
 
-// A word card's name, the word then its note: "zvijezda, morska zvijezda".
+// A word card's name, the word then its note: "zmaj, igračka koja leti".
 // Name computations differ in the space they put before the note, which
 // sits in a part of the caption only screen readers get (Testing Library
 // adds one), so any space around the comma is allowed.
@@ -164,10 +164,9 @@ describe("LocationScreen", () => {
     expect(games.closest("[lang]")).toBeNull();
   });
 
-  it.each([
-    ["zvijezda", "morska zvijezda"],
-    ["zmaj", "igračka koja leti"],
-  ])("says the note of %s after the word, without showing it", (word, note) => {
+  it("says a word's note after the word, without showing it", () => {
+    const word = "zmaj";
+    const note = "igračka koja leti";
     renderScreen(ulcinj);
 
     const card = screen.getByRole("figure", { name: wordAndNote(word, note) });
@@ -273,7 +272,7 @@ describe("LocationScreen", () => {
   it.each<[string, LocationScreenData]>([
     ["a town with one group", tivat],
     ["a town with four groups", podgorica],
-    ["words with notes", ulcinj],
+    ["a word with a note", ulcinj],
     ["a word with an image", tivatWithPicture],
   ])("has no accessibility violations for %s", async (_case, data) => {
     const { container } = renderScreen(data);
