@@ -12,9 +12,11 @@ import {
 } from "vitest";
 import { axe } from "vitest-axe";
 
+import { errorResponse, serveApi } from "../test-api";
 import RegionPage, { generateMetadata } from "./page";
 
-// The real loaders and the map's notFound() mapping run, over a fake API.
+// The real loaders and the map's notFound() mapping run, over the fake API
+// in ../test-api.ts.
 const fetchMock = vi.hoisted(() =>
   vi.fn<(request: Request) => Promise<Response>>(),
 );
@@ -40,90 +42,6 @@ vi.mock("next/navigation", async (importOriginal) => ({
   // history.replaceState().
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function errorResponse(status: number, code: string): Response {
-  return jsonResponse(status, {
-    error: { code, message: "API message", request_id: "req-1", details: null },
-  });
-}
-
-function makeLocationSummary(id: string, name: string, regionId: string) {
-  return { id, name, region_id: regionId, chapter_count: 10, word_count: 100 };
-}
-
-const REGIONS: Record<string, unknown> = {
-  coast: {
-    id: "coast",
-    name: "Obala",
-    locations: [
-      ["budva", "Budva"],
-      ["kotor", "Kotor"],
-      ["ulcinj", "Ulcinj"],
-      ["herceg-novi", "Herceg Novi"],
-      ["tivat", "Tivat"],
-      ["bar", "Bar"],
-    ].map(([id = "", name = ""]) => makeLocationSummary(id, name, "coast")),
-  },
-  central: {
-    id: "central",
-    name: "Centralna Crna Gora",
-    locations: [
-      ["podgorica", "Podgorica"],
-      ["cetinje", "Cetinje"],
-      ["niksic", "Nikšić"],
-      ["danilovgrad", "Danilovgrad"],
-      ["skadar-lake", "Skadarsko jezero"],
-    ].map(([id = "", name = ""]) => makeLocationSummary(id, name, "central")),
-  },
-};
-
-// A new account: the coast and Budva open, everything else locked.
-const NEW_ACCOUNT_PROGRESS = {
-  regions: [
-    { id: "coast", state: "available" },
-    { id: "central", state: "locked" },
-    { id: "north", state: "locked" },
-  ],
-  locations: [
-    { id: "budva", state: "available" },
-    ...["kotor", "ulcinj", "herceg-novi", "tivat", "bar"].map((id) => ({
-      id,
-      state: "locked",
-    })),
-  ],
-};
-
-type ProgressAnswer = "new-account" | "failed" | "empty" | "signed-out";
-
-function serveApi(progress: ProgressAnswer = "new-account") {
-  fetchMock.mockImplementation((request) => {
-    const { pathname } = new URL(request.url);
-    if (pathname === "/api/v1/progress") {
-      return Promise.resolve(
-        {
-          "new-account": jsonResponse(200, NEW_ACCOUNT_PROGRESS),
-          failed: errorResponse(500, "internal_server_error"),
-          empty: jsonResponse(200, { regions: [], locations: [] }),
-          "signed-out": errorResponse(401, "authentication_error"),
-        }[progress],
-      );
-    }
-    const regionId = /^\/api\/v1\/regions\/([^/]+)$/.exec(pathname)?.[1];
-    const region = regionId === undefined ? undefined : REGIONS[regionId];
-    return Promise.resolve(
-      region === undefined
-        ? errorResponse(404, "content_not_found")
-        : jsonResponse(200, region),
-    );
-  });
-}
 
 function pageProps(
   regionId: string,
@@ -165,7 +83,7 @@ let consoleError: MockInstance<typeof console.error>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  serveApi();
+  serveApi(fetchMock);
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -243,7 +161,7 @@ describe("RegionPage", () => {
   });
 
   it("stays on the region when progress failed, its places not loaded, with a retry", async () => {
-    serveApi("failed");
+    serveApi(fetchMock, "failed");
 
     await renderPage("coast");
 
@@ -258,7 +176,7 @@ describe("RegionPage", () => {
   });
 
   it("stays on a region whose state is still loading", async () => {
-    serveApi("empty");
+    serveApi(fetchMock, "empty");
 
     await renderPage("central");
 
@@ -272,7 +190,7 @@ describe("RegionPage", () => {
   });
 
   it("sends a learner whose session ended mid-visit to sign in, then back to the region", async () => {
-    serveApi("signed-out");
+    serveApi(fetchMock, "signed-out");
 
     await expect(RegionPage(pageProps("coast"))).rejects.toThrow(
       "NEXT_REDIRECT",

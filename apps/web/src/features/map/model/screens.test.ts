@@ -4,6 +4,7 @@ import {
   makeLocation,
   makeRegion,
   newAccountProgress,
+  seedLocationDetail,
   seedRegionDetail,
   seedRegions,
 } from "../test-fixtures";
@@ -213,6 +214,19 @@ describe("toLocationScreen", () => {
 
     expect(screen.region.state).toBe("loading");
     expect(screen.location.state).toBe("loading");
+  });
+
+  it("keeps the chapters and their words in the order they came in", () => {
+    // In recording order, as getLocation() returns every location.
+    const podgorica = seedLocationDetail("podgorica");
+
+    const screen = toLocationScreen(
+      seedRegionDetail("central"),
+      podgorica,
+      newAccountProgress(),
+    );
+
+    expect(screen.location.chapters).toEqual(podgorica.chapters);
   });
 });
 

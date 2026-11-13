@@ -22,6 +22,21 @@ describe("RegionScreenSkeleton", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
+  // The skeleton's primitives hide themselves, and a block of its own hides
+  // itself, so a layout wrapper needs no aria-hidden of its own.
+  it("hides every block, so screen readers hear only the status", () => {
+    const { container } = render(<RegionScreenSkeleton />);
+
+    const status = screen.getByRole("status");
+    const leaves = Array.from(container.querySelectorAll("*")).filter(
+      (element) => element.childElementCount === 0 && element !== status,
+    );
+    expect(leaves.length).toBeGreaterThan(0);
+    for (const leaf of leaves) {
+      expect(leaf.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = render(<RegionScreenSkeleton />);
 
