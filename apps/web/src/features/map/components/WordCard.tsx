@@ -10,14 +10,14 @@ type WordCardProps = {
 
 // One word of a place: its picture and the word, to look at, not to press
 // (the games arrive in phase 2). A word's note says which meaning is meant
-// ("morska zvijezda", a sea star, for "zvijezda"): it is heard after the word
-// but not shown, so the card shows one word. The picture is decorative: the
-// word carries the meaning.
+// ("igračka koja leti", a flying toy, for "zmaj", a kite): it is heard after
+// the word but not shown, so the card shows one word. The picture is
+// decorative: the word carries the meaning.
 export function WordCard({ word }: WordCardProps) {
   const captionId = useId();
   return (
     // Named by its caption, so the name has one source: the word, then the
-    // note in a part only screen readers get, "zvijezda, morska zvijezda".
+    // note in a part only screen readers get, "zmaj, igračka koja leti".
     <figure
       aria-labelledby={captionId}
       lang={CONTENT_LANG}
