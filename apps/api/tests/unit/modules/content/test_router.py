@@ -13,6 +13,8 @@ from app.modules.content import domain
 from app.modules.content.router import get_content_service
 from app.modules.progress import get_learning_profile
 from app.modules.progress.models import LearningProfile
+from app.modules.progress.router import get_progress_service
+from app.modules.progress.schemas import LocationState, ProgressState, RegionState
 
 MAP_ROUTES = [
     "/api/v1/regions",
@@ -30,7 +32,8 @@ def signed_in(client: TestClient) -> Iterator[None]:
         created_at=datetime(2026, 10, 18, tzinfo=UTC),
     )
     client.app.dependency_overrides[get_learning_profile] = lambda: LearningProfile(
-        user_id=UUID("7d3c6a8e-1f4b-4c2a-9e5d-2b8f0a6c4d1e")
+        id=UUID("7d3c6a8e-1f4b-4c2a-9e5d-2b8f0a6c4d1e"),
+        user_id=UUID("7d3c6a8e-1f4b-4c2a-9e5d-2b8f0a6c4d1e"),
     )
     yield
     client.app.dependency_overrides.pop(get_current_user, None)
@@ -66,9 +69,34 @@ def test_content_routes_are_implemented(client: TestClient, signed_in: None, pat
         client.app.dependency_overrides.pop(get_content_service, None)
 
 
-def test_progress_returns_the_starting_state(client: TestClient, signed_in: None) -> None:
-    response = client.get("/api/v1/progress")
-    assert response.status_code == 200
-    body = response.json()
-    assert {"id": "budva", "state": "available"} in body["locations"]
-    assert {"id": "coast", "state": "available"} in body["regions"]
+def test_progress_returns_the_starting_state(
+    client: TestClient,
+    signed_in: None,
+) -> None:
+    class FakeProgressService:
+        async def get_state(self, learning_profile_id: UUID) -> ProgressState:
+            assert isinstance(learning_profile_id, UUID)
+
+            return ProgressState(
+                regions=[
+                    RegionState(id="coast", state="available"),
+                    RegionState(id="north", state="locked"),
+                ],
+                locations=[
+                    LocationState(id="budva", state="available"),
+                    LocationState(id="kotor", state="locked"),
+                ],
+            )
+
+    client.app.dependency_overrides[get_progress_service] = lambda: FakeProgressService()
+
+    try:
+        response = client.get("/api/v1/progress")
+
+        assert response.status_code == 200
+        body = response.json()
+
+        assert {"id": "budva", "state": "available"} in body["locations"]
+        assert {"id": "coast", "state": "available"} in body["regions"]
+    finally:
+        client.app.dependency_overrides.pop(get_progress_service, None)

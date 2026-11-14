@@ -1,37 +1,27 @@
+"""Services for reading map availability and learning progress."""
+
 from __future__ import annotations
 
-from app.modules.content import Content
+from uuid import UUID
 
+from .domain import calculate_map_states
+from .repository import ProgressRepository
 from .schemas import LocationState, ProgressState, RegionState
 
 
-class ProgressService:
-    """Map state for the current learning profile.
+class DatabaseProgressService:
+    """Calculate map states from content and one learning profile's progress."""
 
-    Until #66, every profile gets the phase 1 starting state, read from the
-    content data file: the starting location and its region are `available`,
-    everything else is `locked`. #66 replaces this with the unlock rule over
-    the profile's `location_progress` rows.
-    """
+    def __init__(self, repository: ProgressRepository) -> None:
+        self.repository = repository
 
-    def __init__(self, content: Content) -> None:
-        self.content = content
+    async def get_state(self, learning_profile_id: UUID) -> ProgressState:
+        content, progress = await self.repository.read_map(learning_profile_id)
+        states = calculate_map_states(content, progress)
 
-    def get_state(self) -> ProgressState:
-        start = next(loc for loc in self.content.locations if loc.is_starting)
         return ProgressState(
-            regions=[
-                RegionState(
-                    id=region.slug,
-                    state="available" if region.slug == start.region_slug else "locked",
-                )
-                for region in self.content.regions
-            ],
+            regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
             locations=[
-                LocationState(
-                    id=location.slug,
-                    state="available" if location.slug == start.slug else "locked",
-                )
-                for location in self.content.locations
+                LocationState(id=slug, state=state) for slug, state in states.locations.items()
             ],
         )
