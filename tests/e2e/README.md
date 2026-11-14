@@ -38,3 +38,29 @@ Optional variables for `auth.sh`: `WEB_URL` (default `http://localhost:3000`),
 `MAILPIT_URL` (default `http://localhost:8025`), `MAX_ATTEMPTS` (default `30`),
 `SLEEP_SECONDS` (default `2`), and `E2E_REQUIRE_MAP` (default `0`; `1` fails
 instead of skipping the map checks).
+
+## Browser tests (Playwright)
+
+[`playwright.config.ts`](playwright.config.ts) runs the specs in
+[`browser/`](browser/) in Chromium against an already running stack, in two
+projects sized to the smallest supported learner tablet (iPad mini 6, 744 × 1133
+CSS px, touch): `tablet-portrait` and `tablet-landscape`. Every spec runs in
+both. [`sign-in.spec.ts`](browser/sign-in.spec.ts) proves the setup: the sign-in
+page loads with its heading and button.
+
+```bash
+docker compose up --build -d --wait
+pnpm install
+pnpm --filter @montelingo/e2e exec playwright install chromium
+pnpm e2e:browser
+pnpm e2e:browser --project=tablet-portrait   # one project only
+docker compose down -v
+```
+
+Optional variable: `WEB_URL` (default `http://localhost:3000`). On a failed
+test Playwright keeps a trace in `tests/e2e/test-results/`; open it with
+`pnpm --filter @montelingo/e2e exec playwright show-trace <trace.zip>`.
+
+The `e2e.yml` workflow runs the browser tests after `smoke.sh` and `auth.sh`. On
+failure it uploads the Playwright traces and HTML report (`e2e-playwright`)
+alongside the Compose logs (`e2e-compose-logs`).
