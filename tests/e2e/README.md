@@ -48,6 +48,13 @@ CSS px, touch): `tablet-portrait` and `tablet-landscape`. Every spec runs in
 both. [`sign-in.spec.ts`](browser/sign-in.spec.ts) proves the setup: the sign-in
 page loads with its heading and button.
 
+[`budva-journey.spec.ts`](browser/budva-journey.spec.ts) is the phase 1 happy
+path. It signs up a new account through the form, signs out, signs in, lands on
+`/play`, opens Obala, opens Budva, and checks that the "Na plaži" chapter lists
+its 10 words in recording order. Each run signs up a fresh account. Sign-up is
+limited to 10 an hour per IP. If repeated local runs hit that, run
+`docker compose restart api` to reset the in-memory limiter.
+
 ```bash
 docker compose up --build -d --wait
 pnpm install
