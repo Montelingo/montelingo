@@ -6,10 +6,6 @@ import type {
   RegionDetail,
   Word,
 } from "./model/content";
-import type {
-  LocationPickerLocation,
-  RegionPickerRegion,
-} from "./model/map-state";
 import type { ProgressResult } from "./model/progress";
 
 // Test data for the map feature's tests, mirroring the content seed
@@ -303,6 +299,24 @@ export function seedRegionDetail(regionId: SeedRegionId): RegionDetail {
   };
 }
 
+/** Every seed region with its locations, in content order, as `loadMap()` reads them. */
+export function seedRegionDetails(): RegionDetail[] {
+  return SEED_REGIONS.map(({ id }) => seedRegionDetail(id));
+}
+
+/** Everything open: every region and place `available`, as a preview might. */
+export function allOpenProgress(): ProgressResult {
+  return {
+    status: "ready",
+    progress: {
+      regions: SEED_REGIONS.map(({ id }) => ({ id, state: "available" })),
+      locations: SEED_REGIONS.flatMap(({ locations }) =>
+        locations.map(([id]) => ({ id, state: "available" as const })),
+      ),
+    },
+  };
+}
+
 /** A new account's progress: the coast and Budva open, everything else locked. */
 export function newAccountProgress(): ProgressResult {
   return {
@@ -319,30 +333,5 @@ export function newAccountProgress(): ProgressResult {
         })),
       ),
     },
-  };
-}
-
-export function makeRegionPickerRegion(
-  overrides: Partial<RegionPickerRegion> = {},
-): RegionPickerRegion {
-  return {
-    id: "coast",
-    name: "Obala",
-    state: "available",
-    href: "/play/coast",
-    ...overrides,
-  };
-}
-
-export function makeLocationPickerLocation(
-  overrides: Partial<LocationPickerLocation> = {},
-): LocationPickerLocation {
-  return {
-    id: "budva",
-    name: "Budva",
-    state: "available",
-    href: "/play/coast/budva",
-    isNext: false,
-    ...overrides,
   };
 }

@@ -1,9 +1,6 @@
-import { PickerScreenSkeleton } from "./PickerScreenSkeleton";
+import { MapScreenSkeleton } from "./MapScreenSkeleton";
 
-// A region has five or six locations; six fills two rows on a tablet either way.
-const LOCATION_COUNT = 6;
-
-/** Stands in for RegionScreen while a region loads. */
+/** Stands in for RegionScreen while /play/<region> loads. */
 export function RegionScreenSkeleton() {
-  return <PickerScreenSkeleton cardCount={LOCATION_COUNT} />;
+  return <MapScreenSkeleton />;
 }

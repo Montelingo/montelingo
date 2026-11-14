@@ -40,8 +40,7 @@ function apiRegion(
   };
 }
 
-// The coast and the centre, from the content seed. The north is never asked
-// for: it is only ever locked.
+// The three regions, from the content seed.
 const REGIONS: Record<string, Schemas["RegionDetail"]> = {
   coast: apiRegion("coast", "Obala", [
     ["budva", "Budva"],
@@ -57,6 +56,14 @@ const REGIONS: Record<string, Schemas["RegionDetail"]> = {
     ["niksic", "Nikšić"],
     ["danilovgrad", "Danilovgrad"],
     ["skadar-lake", "Skadarsko jezero"],
+  ]),
+  north: apiRegion("north", "Sjever i planine", [
+    ["durmitor", "Durmitor / Žabljak"],
+    ["kolasin", "Kolašin"],
+    ["berane", "Berane"],
+    ["bijelo-polje", "Bijelo Polje"],
+    ["pljevlja", "Pljevlja"],
+    ["rozaje", "Rožaje"],
   ]),
 };
 
@@ -166,9 +173,9 @@ function progressResponse(progress: ProgressAnswer): Response {
 }
 
 /**
- * Makes `fetchMock` answer like the API: progress as `progress` says, and a
- * region or place by its exact id, as the API does, or `404` for one it does
- * not have.
+ * Makes `fetchMock` answer like the API: progress as `progress` says, the
+ * list of regions, and a region or place by its exact id, as the API does, or
+ * `404` for one it does not have.
  */
 export function serveApi(
   fetchMock: Mock<(request: Request) => Promise<Response>>,
@@ -178,6 +185,18 @@ export function serveApi(
     const { pathname } = new URL(request.url);
     if (pathname === "/api/v1/progress") {
       return Promise.resolve(progressResponse(progress));
+    }
+    if (pathname === "/api/v1/regions") {
+      return Promise.resolve(
+        jsonResponse(200, {
+          items: Object.values(REGIONS).map(({ id, name, locations }) => ({
+            id,
+            name,
+            location_count: locations.length,
+          })),
+          page: { has_more: false, next_cursor: null },
+        }),
+      );
     }
     const [, kind, id] =
       /^\/api\/v1\/(regions|locations)\/([^/]+)$/.exec(pathname) ?? [];

@@ -90,6 +90,22 @@ const config: Config = {
           edge: colors.amber[500],
           ink: colors.amber[950],
         },
+        // The map's chrome (top bar, side panel, bottom nav), from the
+        // designers' Figma palette. ink on cream, white, yellow, yellow-soft,
+        // land and fog, and muted on cream, white and fog, are AA.
+        kid: {
+          ink: "#2B2D42",
+          muted: "#4A5068",
+          cream: "#FFF7E6",
+          yellow: "#FFC93C",
+          "yellow-soft": "#FFF1C7",
+          coral: "#FF6B4A",
+          land: "#C6EA82",
+          fog: "#F3F6FB",
+          line: "#D9DEE8",
+          green: "#5DBB63",
+          sea: "#5CC8E8",
+        },
         // PlaceholderArt palettes: background, pattern, and initial.
         art: {
           1: {
@@ -137,6 +153,8 @@ const config: Config = {
       spacing: {
         ...touchSizes,
         gutter: GUTTER,
+        // The map chrome's big play button.
+        "touch-xl": "4.5rem",
       },
       // Tailwind 3.4 derives these from `spacing` too; listed so the touch
       // sizes do not depend on that.
@@ -157,6 +175,20 @@ const config: Config = {
       borderRadius: {
         tile: "1.25rem",
         badge: "9999px",
+        // The map chrome's rounded cards and chips.
+        "kid-sm": "1.125rem",
+        kid: "1.25rem",
+        "kid-md": "1.375rem",
+        "kid-lg": "1.75rem",
+        "kid-xl": "2rem",
+      },
+      borderWidth: {
+        3: "3px",
+      },
+      // The map chrome's "raised" look: a hard ink shadow straight below.
+      boxShadow: {
+        "raised-4": "0 4px 0 0 #2B2D42",
+        "raised-6": "0 6px 0 0 #2B2D42",
       },
       aspectRatio: {
         tile: "4 / 3",

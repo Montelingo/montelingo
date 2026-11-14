@@ -21,8 +21,15 @@ export function LearnerShell({
   children,
 }: LearnerShellProps) {
   return (
-    <div className="flex flex-1 flex-col gap-4 pb-safe-b pl-safe-l pr-safe-r pt-safe-t">
-      <nav aria-label="Learner" className="flex items-center justify-between">
+    // A map screen (data-map-screen) brings its own top bar and bottom nav,
+    // so this Back and Home bar is dropped there (display: none, so it is
+    // gone for screen readers and the keyboard too).
+    <div className="flex flex-1 flex-col gap-4 pb-safe-b pl-safe-l pr-safe-r pt-safe-t [&:has([data-map-screen])>nav]:hidden">
+      {/* Above the page, so a full-screen map can lie under it. */}
+      <nav
+        aria-label="Learner"
+        className="relative z-10 flex items-center justify-between"
+      >
         <BackControl homeHref={homeHref} exitHref={exitHref} />
         <HomeControl homeHref={homeHref} />
       </nav>

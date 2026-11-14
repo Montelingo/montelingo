@@ -13,6 +13,7 @@ import {
 import { axe } from "vitest-axe";
 
 import PlayPage, { metadata } from "./page";
+import { errorResponse, serveApi } from "./test-api";
 
 // The real loaders run, over a fake API.
 const fetchMock = vi.hoisted(() =>
@@ -25,63 +26,12 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => window.location.pathname,
   // The URL as it is now, like Next.js, whose router follows
   // history.replaceState().
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-const REGIONS = [
-  { id: "coast", name: "Obala", location_count: 6 },
-  { id: "central", name: "Centralna Crna Gora", location_count: 5 },
-  { id: "north", name: "Sjever i planine", location_count: 6 },
-];
-
-// A new account: the coast open, the other regions locked.
-const NEW_ACCOUNT_PROGRESS = {
-  regions: [
-    { id: "coast", state: "available" },
-    { id: "central", state: "locked" },
-    { id: "north", state: "locked" },
-  ],
-  locations: [{ id: "budva", state: "available" }],
-};
-
-function serveApi({ progressStatus = 200 } = {}) {
-  fetchMock.mockImplementation((request) => {
-    const { pathname } = new URL(request.url);
-    if (pathname === "/api/v1/regions") {
-      return Promise.resolve(
-        jsonResponse(200, {
-          items: REGIONS,
-          page: { has_more: false, next_cursor: null },
-        }),
-      );
-    }
-    if (pathname === "/api/v1/progress") {
-      return Promise.resolve(
-        progressStatus === 200
-          ? jsonResponse(200, NEW_ACCOUNT_PROGRESS)
-          : jsonResponse(progressStatus, {
-              error: {
-                code: "internal_server_error",
-                message: "An unexpected error occurred.",
-                request_id: "req-1",
-                details: null,
-              },
-            }),
-      );
-    }
-    return Promise.resolve(jsonResponse(404, {}));
-  });
-}
 
 // Puts the page's URL in the browser, which useSearchParams() reads.
 function visit(path: string, { notice }: { notice?: string | string[] } = {}) {
@@ -108,7 +58,7 @@ let consoleError: MockInstance<typeof console.error>;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  serveApi();
+  serveApi(fetchMock);
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -119,24 +69,24 @@ afterEach(() => {
 
 describe("PlayPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Your map");
+    expect(metadata.title).toBe("Mapa");
   });
 
   it("shows the three regions in order, with only the coast open for a new account", async () => {
     await renderPage();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Your map" }),
+      screen.getByRole("heading", { level: 1, name: "Mapa" }),
     ).toBeInTheDocument();
-    const cards = within(
-      screen.getByRole("list", { name: "Regions" }),
+    const regions = within(
+      screen.getByRole("group", { name: "Mapa Crne Gore" }),
     ).getAllByRole("link");
-    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
-      "Obala, Open",
-      "Centralna Crna Gora, Locked",
-      "Sjever i planine, Locked",
+    expect(regions.map((link) => link.getAttribute("aria-label"))).toEqual([
+      "Obala, otvoreno",
+      "Centralna Crna Gora, zaključano",
+      "Sjever i planine, zaključano",
     ]);
-    expect(cards[0]).toHaveAttribute("href", "/play/coast");
+    expect(regions[0]).toHaveAttribute("href", "/play/coast");
   });
 
   it("says why the learner was sent back from a locked region", async () => {
@@ -163,12 +113,12 @@ describe("PlayPage", () => {
   });
 
   it("still shows the regions when progress fails, with a retry", async () => {
-    serveApi({ progressStatus: 500 });
+    serveApi(fetchMock, "failed");
 
     await renderPage();
 
     expect(
-      screen.getByRole("link", { name: "Obala, Not loaded" }),
+      screen.getByRole("link", { name: "Obala, nije učitano" }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByRole("button", { name: "Try again" }),
@@ -176,7 +126,7 @@ describe("PlayPage", () => {
   });
 
   it("sends a learner whose session ended mid-visit to sign in", async () => {
-    serveApi({ progressStatus: 401 });
+    serveApi(fetchMock, "signed-out");
 
     // The real redirect(): sign-in returns to the map by default.
     await expect(
@@ -189,16 +139,7 @@ describe("PlayPage", () => {
 
   it("lets a failed region list reach the error boundary", async () => {
     fetchMock.mockImplementation(() =>
-      Promise.resolve(
-        jsonResponse(500, {
-          error: {
-            code: "internal_server_error",
-            message: "An unexpected error occurred.",
-            request_id: "req-1",
-            details: null,
-          },
-        }),
-      ),
+      Promise.resolve(errorResponse(500, "internal_server_error")),
     );
 
     await expect(

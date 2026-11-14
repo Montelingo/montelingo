@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none"><g id="decorations-coast">
+<g id="decoration-coast-boat-1">
+<path id="decoration-coast-boat-1-shape" d="M529.248 827.76H572.448L566.688 836.4H533.568L529.248 827.76Z" fill="white" stroke="#2B2D42" stroke-width="1.08" />
+<path id="decoration-coast-boat-1-shape-2" d="M550.56 827.76V794.64" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-boat-1-shape-3" d="M552.288 796.08L568.128 824.88H552.288V796.08Z" fill="white" stroke="#2B2D42" stroke-width="0.72" />
+<path id="decoration-coast-boat-1-shape-4" d="M549.408 800.4L536.448 824.88H549.408V800.4Z" fill="#FF5A5F" />
+</g>
+<g id="decoration-coast-boat-2">
+<path id="decoration-coast-boat-2-shape" d="M729.768 944.256H686.568L692.328 952.896H725.448L729.768 944.256Z" fill="white" stroke="#2B2D42" stroke-width="1.08" />
+<path id="decoration-coast-boat-2-shape-2" d="M708.24 944.4V911.28" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-boat-2-shape-3" d="M706.728 912.576L690.888 941.376H706.728V912.576Z" fill="white" stroke="#2B2D42" stroke-width="0.72" />
+<path id="decoration-coast-boat-2-shape-4" d="M709.608 916.896L722.568 941.376H709.608V916.896Z" fill="#FF5A5F" />
+</g>
+<g id="decoration-coast-boat-3">
+<path id="decoration-coast-boat-3-shape" d="M423.048 732.216H466.248L460.488 740.856H427.368L423.048 732.216Z" fill="white" stroke="#2B2D42" stroke-width="1.08" />
+<path id="decoration-coast-boat-3-shape-2" d="M444.72 732V698.88" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-boat-3-shape-3" d="M446.088 700.536L461.928 729.336H446.088V700.536Z" fill="white" stroke="#2B2D42" stroke-width="0.72" />
+<path id="decoration-coast-boat-3-shape-4" d="M443.208 704.856L430.248 729.336H443.208V704.856Z" fill="#FF5A5F" />
+</g>
+<g id="decoration-coast-fish-1">
+<path id="decoration-coast-fish-1-shape" d="M509.808 795.936L521.328 787.296L519.888 795.936L521.328 804.576L509.808 795.936Z" fill="#FFB13C" stroke="#2B2D42" stroke-width="2.16" stroke-linejoin="round" />
+<path id="decoration-coast-fish-1-shape-2" d="M496.56 806.88C505.308 806.88 512.4 802.045 512.4 796.08C512.4 790.115 505.308 785.28 496.56 785.28C487.812 785.28 480.72 790.115 480.72 796.08C480.72 802.045 487.812 806.88 496.56 806.88Z" fill="#FFB13C" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-fish-1-shape-3" d="M490.8 796.8C492.788 796.8 494.4 795.188 494.4 793.2C494.4 791.212 492.788 789.6 490.8 789.6C488.812 789.6 487.2 791.212 487.2 793.2C487.2 795.188 488.812 796.8 490.8 796.8Z" fill="white" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-fish-1-shape-4" d="M490.08 794.64C490.875 794.64 491.52 793.995 491.52 793.2C491.52 792.405 490.875 791.76 490.08 791.76C489.285 791.76 488.64 792.405 488.64 793.2C488.64 793.995 489.285 794.64 490.08 794.64Z" fill="#2B2D42" />
+<path id="decoration-coast-fish-1-shape-5" d="M485.328 799.536C487.272 801.48 489.144 801.696 491.088 800.256" stroke="#2B2D42" stroke-width="1.44" stroke-linecap="round" />
+</g>
+<g id="decoration-coast-fish-2">
+<path id="decoration-coast-fish-2-shape" d="M599.736 907.248L588.216 898.608L589.656 907.248L588.216 915.888L599.736 907.248Z" fill="#FF7EB6" stroke="#2B2D42" stroke-width="2.16" stroke-linejoin="round" />
+<path id="decoration-coast-fish-2-shape-2" d="M612.48 917.76C621.228 917.76 628.32 912.925 628.32 906.96C628.32 900.995 621.228 896.16 612.48 896.16C603.732 896.16 596.64 900.995 596.64 906.96C596.64 912.925 603.732 917.76 612.48 917.76Z" fill="#FF7EB6" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-fish-2-shape-3" d="M618.24 907.68C620.228 907.68 621.84 906.068 621.84 904.08C621.84 902.092 620.228 900.48 618.24 900.48C616.252 900.48 614.64 902.092 614.64 904.08C614.64 906.068 616.252 907.68 618.24 907.68Z" fill="white" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-fish-2-shape-4" d="M618.96 905.52C619.755 905.52 620.4 904.875 620.4 904.08C620.4 903.285 619.755 902.64 618.96 902.64C618.165 902.64 617.52 903.285 617.52 904.08C617.52 904.875 618.165 905.52 618.96 905.52Z" fill="#2B2D42" />
+<path id="decoration-coast-fish-2-shape-5" d="M624.216 910.848C622.272 912.792 620.4 913.008 618.456 911.568" stroke="#2B2D42" stroke-width="1.44" stroke-linecap="round" />
+</g>
+<g id="decoration-coast-fish-3">
+<path id="decoration-coast-fish-3-shape" d="M423.264 652.368L434.784 643.728L433.344 652.368L434.784 661.008L423.264 652.368Z" fill="#FFD93C" stroke="#2B2D42" stroke-width="2.16" stroke-linejoin="round" />
+<path id="decoration-coast-fish-3-shape-2" d="M410.16 662.88C418.908 662.88 426 658.045 426 652.08C426 646.115 418.908 641.28 410.16 641.28C401.412 641.28 394.32 646.115 394.32 652.08C394.32 658.045 401.412 662.88 410.16 662.88Z" fill="#FFD93C" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-fish-3-shape-3" d="M404.4 652.8C406.388 652.8 408 651.188 408 649.2C408 647.212 406.388 645.6 404.4 645.6C402.412 645.6 400.8 647.212 400.8 649.2C400.8 651.188 402.412 652.8 404.4 652.8Z" fill="white" stroke="#2B2D42" stroke-width="1.44" />
+<path id="decoration-coast-fish-3-shape-4" d="M403.68 650.64C404.475 650.64 405.12 649.995 405.12 649.2C405.12 648.405 404.475 647.76 403.68 647.76C402.885 647.76 402.24 648.405 402.24 649.2C402.24 649.995 402.885 650.64 403.68 650.64Z" fill="#2B2D42" />
+<path id="decoration-coast-fish-3-shape-5" d="M398.784 655.968C400.728 657.912 402.6 658.128 404.544 656.688" stroke="#2B2D42" stroke-width="1.44" stroke-linecap="round" />
+</g>
+<g id="decoration-coast-turtle">
+<path id="decoration-coast-turtle-shape" d="M395.04 819.84C398.619 819.84 401.52 817.906 401.52 815.52C401.52 813.134 398.619 811.2 395.04 811.2C391.461 811.2 388.56 813.134 388.56 815.52C388.56 817.906 391.461 819.84 395.04 819.84Z" fill="#7BD389" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-2" d="M420.96 819.84C424.539 819.84 427.44 817.906 427.44 815.52C427.44 813.134 424.539 811.2 420.96 811.2C417.381 811.2 414.48 813.134 414.48 815.52C414.48 817.906 417.381 819.84 420.96 819.84Z" fill="#7BD389" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-3" d="M395.04 840C398.619 840 401.52 838.066 401.52 835.68C401.52 833.294 398.619 831.36 395.04 831.36C391.461 831.36 388.56 833.294 388.56 835.68C388.56 838.066 391.461 840 395.04 840Z" fill="#7BD389" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-4" d="M420.96 840C424.539 840 427.44 838.066 427.44 835.68C427.44 833.294 424.539 831.36 420.96 831.36C417.381 831.36 414.48 833.294 414.48 835.68C414.48 838.066 417.381 840 420.96 840Z" fill="#7BD389" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-5" d="M429.6 832.8C433.576 832.8 436.8 829.577 436.8 825.6C436.8 821.624 433.576 818.4 429.6 818.4C425.624 818.4 422.4 821.624 422.4 825.6C422.4 829.577 425.624 832.8 429.6 832.8Z" fill="#7BD389" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-6" d="M431.76 824.88C432.555 824.88 433.2 824.235 433.2 823.44C433.2 822.645 432.555 822 431.76 822C430.965 822 430.32 822.645 430.32 823.44C430.32 824.235 430.965 824.88 431.76 824.88Z" fill="#2B2D42" />
+<path id="decoration-coast-turtle-shape-7" d="M408 840C418.339 840 426.72 833.553 426.72 825.6C426.72 817.647 418.339 811.2 408 811.2C397.661 811.2 389.28 817.647 389.28 825.6C389.28 833.553 397.661 840 408 840Z" fill="#3FA052" stroke="#2B2D42" stroke-width="2.16" />
+<path id="decoration-coast-turtle-shape-8" d="M399.36 819.84L408 815.52L416.64 819.84V831.36L408 835.68L399.36 831.36V819.84Z" stroke="#2B2D42" stroke-width="1.44" stroke-linejoin="round" />
+</g>
+</g>
+</svg>

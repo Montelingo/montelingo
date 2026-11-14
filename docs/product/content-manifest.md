@@ -13,7 +13,7 @@ This is the approved list of regions, locations and chapters for phase 1. The vo
 
 The language review changed `TODO: no words / the words listed in #NN`.
 
-**Status: frozen.** The 17 location IDs and 30 chapter IDs below must not change (SVG map contract §21). The final map uses them as `region-<id>` and `location-<id>`. Renaming an ID means a new sign-off from Product, Frontend and Design.
+**Status: frozen.** The 17 location IDs and 30 chapter IDs below must not change ([SVG map contract](map-contract.md)). The final map uses them as `region-<id>` and `location-<id>`. Renaming an ID means a new sign-off from Product, Frontend and Design.
 
 ## Starting location
 
@@ -21,7 +21,7 @@ The starting location is **Budva** (`budva`). In phase 1 it is the only `availab
 
 ## Regions and locations
 
-IDs use English kebab-case, as the SVG map contract §4 requires.
+IDs use English kebab-case, as the [SVG map contract](map-contract.md) requires.
 
 | Region              | ID        | Locations (ID)                                                                                                                                   | Chapters | Words   |
 | ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ------- |

@@ -1,11 +1,10 @@
 import { PLAY_PATH } from "@/features/auth/edge";
 
-import type { LocationDetail, Region, RegionDetail } from "./content";
+import type { LocationDetail, RegionDetail } from "./content";
 import {
   isOpenState,
-  type LocationPickerLocation,
+  type MapLocationLink,
   type MapElementState,
-  type RegionPickerRegion,
 } from "./map-state";
 import { withMapNotice } from "./notices";
 import { locationPath, regionPath } from "./paths";
@@ -24,7 +23,7 @@ type RegionWithState = WithState<Pick<RegionDetail, "id" | "name">>;
 /** The region screen: the region itself and its locations, in content order. */
 export type RegionScreenData = {
   region: RegionWithState;
-  locations: LocationPickerLocation[];
+  locations: MapLocationLink[];
 };
 
 /** A location's screen: the location with its chapters, and its region. */
@@ -33,17 +32,7 @@ export type LocationScreenData = {
   location: WithState<LocationDetail>;
 };
 
-/** Every region as a card on the map, in content order. */
-export function toRegionPickerRegions(
-  regions: readonly Region[],
-  progress: ProgressResult,
-): RegionPickerRegion[] {
-  return joinProgress({ regions, locations: [] }, progress).regions.map(
-    ({ id, name, state }) => ({ id, name, state, href: regionPath(id) }),
-  );
-}
-
-/** A region and its locations as cards, the next place marked. */
+/** A region and its locations, each with its state, the next place marked. */
 export function toRegionScreen(
   region: RegionDetail,
   progress: ProgressResult,
@@ -104,7 +93,7 @@ const REGION_LOCKED_PATH = withMapNotice(PLAY_PATH, "region-locked");
 /**
  * Where a region screen sends the learner instead, or `null` to stay. Only
  * `locked` leaves: while the state is `loading` or `error` the screen still
- * renders, since its cards reveal nothing, and offers a retry.
+ * renders, since its places reveal nothing, and offers a retry.
  */
 export function lockedRegionRedirect(
   regionState: MapElementState,

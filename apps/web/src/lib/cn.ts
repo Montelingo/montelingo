@@ -8,14 +8,24 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      spacing: ["touch", "touch-lg", "gutter"],
+      spacing: ["touch", "touch-lg", "touch-xl", "gutter"],
       padding: ["safe-t", "safe-r", "safe-b", "safe-l"],
-      borderRadius: ["tile", "badge"],
+      borderRadius: [
+        "tile",
+        "badge",
+        "kid-sm",
+        "kid",
+        "kid-md",
+        "kid-lg",
+        "kid-xl",
+      ],
+      borderWidth: ["3"],
     },
     classGroups: {
       animate: [{ animate: ["wiggle", "locked-flash"] }],
       aspect: [{ aspect: ["tile"] }],
       "max-w": [{ "max-w": ["learner"] }],
+      shadow: [{ shadow: ["raised-4", "raised-6"] }],
     },
   },
 });
