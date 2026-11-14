@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import scripts.seed_content as seed_script
 from app.modules.content.domain import Chapter as ChapterData
 from app.modules.content.domain import Content, Region, Word
 from app.modules.content.domain import Location as LocationData
 from app.modules.content.models import Chapter, Location, VocabularyItem
+from app.modules.progress.models import LearningProfile, LocationProgress
+from app.modules.users.models import User
 from scripts.seed_content import seed_content
 
 pytestmark = pytest.mark.integration
@@ -18,6 +24,7 @@ def content(
     renamed_word: bool = False,
     moved_start: bool = False,
     two_chapters: bool = False,
+    removed_locations: frozenset[str] = frozenset(),
 ) -> Content:
     regions = (Region(slug="coast", name="Obala"),)
     locations = (
@@ -54,8 +61,12 @@ def content(
     return Content(
         starting_location="kotor" if moved_start else "budva",
         regions=regions,
-        locations=locations,
-        chapters=tuple(chapters),
+        locations=tuple(
+            location for location in locations if location.slug not in removed_locations
+        ),
+        chapters=tuple(
+            chapter for chapter in chapters if chapter.location_slug not in removed_locations
+        ),
     )
 
 
@@ -103,3 +114,59 @@ async def test_seed_reports_removed_chapter_without_deleting_it(
     assert counts.stale == 2
     assert remaining is not None
     assert remaining.id == removed.id
+
+
+def _borrowed(session: AsyncSession) -> seed_script.SessionFactory:
+    """Run the seed command in the test session, so its writes are rolled back."""
+
+    @asynccontextmanager
+    async def borrowed_session() -> AsyncIterator[AsyncSession]:
+        yield session
+
+    return borrowed_session
+
+
+async def _location(session: AsyncSession, slug: str) -> Location | None:
+    return await session.scalar(select(Location).where(Location.slug == slug))
+
+
+async def _progress_on(session: AsyncSession, location: Location) -> LearningProfile:
+    user = User(email="seed-progress@example.com", password_hash="hash")
+    session.add(user)
+    await session.flush()
+    profile = LearningProfile(user_id=user.id)
+    session.add(profile)
+    await session.flush()
+    session.add(LocationProgress(learning_profile_id=profile.id, location_id=location.id))
+    await session.flush()
+    return profile
+
+
+async def test_seed_command_keeps_removed_location_with_progress(
+    db_session: AsyncSession,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    await seed_content(db_session, content(two_chapters=True))
+    kotor = await _location(db_session, "kotor")
+    assert kotor is not None
+    profile = await _progress_on(db_session, kotor)
+
+    exit_code = await seed_script.run(
+        content(two_chapters=True, removed_locations=frozenset({"kotor"})),
+        _borrowed(db_session),
+    )
+
+    remaining = await _location(db_session, "kotor")
+    chapter = await db_session.scalar(select(Chapter).where(Chapter.slug == "kotor-basics"))
+    progress = (
+        await db_session.scalars(
+            select(LocationProgress).where(LocationProgress.location_id == kotor.id)
+        )
+    ).all()
+    assert remaining is not None
+    assert remaining.id == kotor.id
+    assert chapter is not None
+    assert [row.learning_profile_id for row in progress] == [profile.id]
+    # Kotor, its chapter and its word are reported, nothing is inserted or updated.
+    assert capsys.readouterr().out.splitlines() == ["seed: inserted=0 updated=0 stale=3"]
+    assert exit_code == 1
