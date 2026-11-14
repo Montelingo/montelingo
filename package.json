@@ -22,6 +22,8 @@
     "format:check:docs": "prettier --check \"**/*.md\"",
     "e2e:smoke": "bash tests/e2e/smoke.sh",
     "e2e:auth": "bash tests/e2e/auth.sh",
+    "e2e:browser": "pnpm --filter @montelingo/e2e test",
+    "typecheck:e2e": "pnpm --filter @montelingo/e2e typecheck",
     "check:web": "pnpm format:check:web && pnpm lint:web && pnpm typecheck:web && pnpm test:web && pnpm build:web",
     "check:api": "uv lock --check && pnpm format:check:api && pnpm lint:api && pnpm typecheck:api && pnpm test:api",
     "check:contract": "pnpm contract:check && pnpm typecheck:api-client",

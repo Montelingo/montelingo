@@ -52,6 +52,9 @@ jobs:
       - name: Type-check
         run: pnpm run typecheck:web
 
+      - name: Type-check E2E tests
+        run: pnpm run typecheck:e2e
+
       - name: Unit tests
         run: pnpm run test:web
 
