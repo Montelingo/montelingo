@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import pytest
 from sqlalchemy import select
@@ -25,10 +24,10 @@ def content(
     renamed_word: bool = False,
     moved_start: bool = False,
     two_chapters: bool = False,
-    without_kotor: bool = False,
+    removed_locations: frozenset[str] = frozenset(),
 ) -> Content:
     regions = (Region(slug="coast", name="Obala"),)
-    locations: tuple[LocationData, ...] = (
+    locations = (
         LocationData(
             slug="budva",
             name="Budva",
@@ -42,8 +41,6 @@ def content(
             is_starting=moved_start,
         ),
     )
-    if without_kotor:
-        locations = tuple(location for location in locations if location.slug != "kotor")
     chapters = [
         ChapterData(
             slug="budva-basics",
@@ -64,8 +61,12 @@ def content(
     return Content(
         starting_location="kotor" if moved_start else "budva",
         regions=regions,
-        locations=locations,
-        chapters=tuple(chapters),
+        locations=tuple(
+            location for location in locations if location.slug not in removed_locations
+        ),
+        chapters=tuple(
+            chapter for chapter in chapters if chapter.location_slug not in removed_locations
+        ),
     )
 
 
@@ -115,49 +116,48 @@ async def test_seed_reports_removed_chapter_without_deleting_it(
     assert remaining.id == removed.id
 
 
-class _NoopEngine:
-    async def dispose(self) -> None:
-        pass
-
-
-def _run_command_in(monkeypatch: pytest.MonkeyPatch, session: AsyncSession, data: Content) -> None:
-    """Point the seed command at the test session so its writes are rolled back."""
+def _borrowed(session: AsyncSession) -> seed_script.SessionFactory:
+    """Run the seed command in the test session, so its writes are rolled back."""
 
     @asynccontextmanager
     async def borrowed_session() -> AsyncIterator[AsyncSession]:
         yield session
 
-    def session_factory(
-        *_args: Any, **_kwargs: Any
-    ) -> Callable[[], AbstractAsyncContextManager[AsyncSession]]:
-        return borrowed_session
+    return borrowed_session
 
-    monkeypatch.setattr(seed_script, "load_content", lambda: data)
-    monkeypatch.setattr(seed_script, "create_async_engine", lambda _url: _NoopEngine())
-    monkeypatch.setattr(seed_script, "async_sessionmaker", session_factory)
+
+async def _location(session: AsyncSession, slug: str) -> Location | None:
+    return await session.scalar(select(Location).where(Location.slug == slug))
+
+
+async def _progress_on(session: AsyncSession, location: Location) -> LearningProfile:
+    user = User(email="seed-progress@example.com", password_hash="hash")
+    session.add(user)
+    await session.flush()
+    profile = LearningProfile(user_id=user.id)
+    session.add(profile)
+    await session.flush()
+    session.add(LocationProgress(learning_profile_id=profile.id, location_id=location.id))
+    await session.flush()
+    return profile
 
 
 async def test_seed_command_keeps_removed_location_with_progress(
     db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    await seed_content(db_session, content())
-    kotor = await db_session.scalar(select(Location).where(Location.slug == "kotor"))
+    await seed_content(db_session, content(two_chapters=True))
+    kotor = await _location(db_session, "kotor")
     assert kotor is not None
-    user = User(email="seed-progress@example.com", password_hash="hash")
-    db_session.add(user)
-    await db_session.flush()
-    profile = LearningProfile(user_id=user.id)
-    db_session.add(profile)
-    await db_session.flush()
-    db_session.add(LocationProgress(learning_profile_id=profile.id, location_id=kotor.id))
-    await db_session.flush()
+    profile = await _progress_on(db_session, kotor)
 
-    _run_command_in(monkeypatch, db_session, content(without_kotor=True))
-    exit_code = await seed_script.run()
+    exit_code = await seed_script.run(
+        content(two_chapters=True, removed_locations=frozenset({"kotor"})),
+        _borrowed(db_session),
+    )
 
-    remaining = await db_session.scalar(select(Location).where(Location.slug == "kotor"))
+    remaining = await _location(db_session, "kotor")
+    chapter = await db_session.scalar(select(Chapter).where(Chapter.slug == "kotor-basics"))
     progress = (
         await db_session.scalars(
             select(LocationProgress).where(LocationProgress.location_id == kotor.id)
@@ -165,6 +165,8 @@ async def test_seed_command_keeps_removed_location_with_progress(
     ).all()
     assert remaining is not None
     assert remaining.id == kotor.id
+    assert chapter is not None
     assert [row.learning_profile_id for row in progress] == [profile.id]
-    assert "stale=1" in capsys.readouterr().out
+    # Kotor, its chapter and its word are reported, nothing is inserted or updated.
+    assert capsys.readouterr().out.splitlines() == ["seed: inserted=0 updated=0 stale=3"]
     assert exit_code == 1
