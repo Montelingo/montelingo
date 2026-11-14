@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
@@ -173,15 +175,24 @@ async def seed_content(session: AsyncSession, content: Content) -> SeedCounts:
     return counts
 
 
-async def run() -> int:
-    content = load_content()
-    engine = create_async_engine(get_settings().database_url)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
-    try:
-        async with session_factory() as session:
-            counts = await seed_content(session, content)
-    finally:
-        await engine.dispose()
+SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+
+
+async def run(
+    content: Content | None = None,
+    session_factory: SessionFactory | None = None,
+) -> int:
+    if content is None:
+        content = load_content()
+    if session_factory is None:
+        engine = create_async_engine(get_settings().database_url)
+        try:
+            return await run(content, async_sessionmaker(engine, expire_on_commit=False))
+        finally:
+            await engine.dispose()
+
+    async with session_factory() as session:
+        counts = await seed_content(session, content)
 
     print(f"seed: inserted={counts.inserted} updated={counts.updated} stale={counts.stale}")
     return 1 if counts.stale else 0
