@@ -5,16 +5,16 @@ type SkeletonCardProps = {
   children: ReactNode;
 };
 
-// A picture card's box while it loads, such as a TileCard's: the same edge
-// and the picture's aspect ratio, then the card's own text area, so the block
+// A word card's box while it loads: the same edge, radius and inset picture
+// in the picture's aspect ratio, then the card's own text area, so the block
 // is the card's size. It grows to its grid item's height, like the card.
 export function SkeletonCard({ children }: SkeletonCardProps) {
   return (
     <div
       aria-hidden="true"
-      className="flex flex-1 animate-pulse flex-col overflow-hidden rounded-tile border-2 border-surface-sunken bg-surface"
+      className="flex flex-1 animate-pulse flex-col overflow-hidden rounded-kid-lg border-3 border-kid-line bg-white shadow-raised-line-4"
     >
-      <div className="aspect-tile w-full bg-surface-sunken" />
+      <div className="m-2 mb-0 aspect-tile rounded-kid bg-surface-sunken" />
       {children}
     </div>
   );

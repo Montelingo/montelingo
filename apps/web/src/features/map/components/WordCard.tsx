@@ -1,6 +1,8 @@
 import { useId } from "react";
 
 import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
+import { cn } from "@/lib/cn";
+import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG, type Word } from "../model/content";
 
@@ -18,20 +20,29 @@ export function WordCard({ word }: WordCardProps) {
   return (
     // Named by its caption, so the name has one source: the word, then the
     // note in a part only screen readers get, "zmaj, igračka koja leti".
+    // The Figma word card: a white card with a grey raised edge, the picture
+    // inset with its own corners, and the word below. The sound button comes
+    // with audio, and the "learned" check with the lesson's state (#141).
     <figure
       aria-labelledby={captionId}
       lang={CONTENT_LANG}
-      className="flex flex-1 flex-col overflow-hidden rounded-tile border-2 border-surface-sunken bg-surface shadow-sm"
+      className="flex flex-1 flex-col overflow-hidden rounded-kid-lg border-3 border-kid-line bg-white shadow-raised-line-4"
     >
-      <div aria-hidden="true" className="aspect-tile w-full">
+      <div
+        aria-hidden="true"
+        className="m-2 mb-0 aspect-tile overflow-hidden rounded-kid"
+      >
         {word.imageUrl !== null ? (
-          // eslint-disable-next-line @next/next/no-img-element -- next/image needs every image host in next.config's remotePatterns, and there is no media host until phase 2 (ADR 0005: image_url is null)
+          // Word images are same-origin static files, already WebP at their
+          // final size (public/media/words), so next/image would add nothing.
+          // Square pictures in a 4:3 tile: contain, so none is cropped.
+          // eslint-disable-next-line @next/next/no-img-element -- see above
           <img
             src={word.imageUrl}
             alt=""
             loading="lazy"
             decoding="async"
-            className="block size-full object-cover"
+            className="block size-full object-contain"
           />
         ) : (
           // Keyed on the recording number, the word's id in every environment.
@@ -40,7 +51,10 @@ export function WordCard({ word }: WordCardProps) {
       </div>
       <figcaption
         id={captionId}
-        className="break-words p-3 text-lg font-bold leading-snug text-ink"
+        className={cn(
+          fredoka.className,
+          "break-words px-3 pb-3 pt-2 text-center text-xl font-semibold leading-snug text-kid-ink",
+        )}
       >
         {word.text}
         {word.note !== null ? (
