@@ -4,7 +4,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import { toMapData } from "../model/map-view";
-import { newAccountProgress, seedRegionDetails } from "../test-fixtures";
+import {
+  currentPath,
+  newAccountProgress,
+  seedRegionDetails,
+} from "../test-fixtures";
 import { LevelCard } from "./LevelCard";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
@@ -80,15 +84,31 @@ describe("LevelCard", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("closes by dropping the place from the URL", async () => {
+  it("closes by going back, when it was opened on this page", async () => {
     const user = userEvent.setup();
-    renderAt("/play/coast?place=budva");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    window.history.replaceState(null, "", "/play/coast");
+    window.history.pushState(
+      { levelCardOpenedHere: true },
+      "",
+      "/play/coast?place=budva",
+    );
+    render(<LevelCard regions={map.regions} places={map.places} />);
 
     await user.click(screen.getByRole("button", { name: "Zatvori" }));
 
-    expect(`${window.location.pathname}${window.location.search}`).toBe(
-      "/play/coast",
-    );
+    // One Back then leaves the page: the card added no entry of its own.
+    expect(back).toHaveBeenCalledOnce();
+    back.mockRestore();
+  });
+
+  it("closes a card opened by a link by dropping only the place", async () => {
+    const user = userEvent.setup();
+    renderAt("/play/coast?place=budva&from=link");
+
+    await user.click(screen.getByRole("button", { name: "Zatvori" }));
+
+    expect(currentPath()).toBe("/play/coast?from=link");
     expect(router.replace).not.toHaveBeenCalled();
   });
 

@@ -14,13 +14,15 @@ lowercase-hyphen id and no transforms, so every coordinate is absolute in the
 - public/maps/decorations-<region>.svg and places-<region>.svg: a region's
   decorations and its places' buildings, shown when the map zooms to it.
 - src/features/map/model/map-geometry.ts: where the app draws what changes
-  with state or language: each place's dot (whole map) and its marker, name
-  and hit area (zoomed in, sized for that zoom), each region's outline, name
-  and zoomed view, the title and the neighbours' names.
+  with state or language: each place's dot (on the whole map, and its
+  marker's spot zoomed in) and, sized for its region's zoom, its marker, its
+  name pill and its card (the building and name together); each region's
+  outline, name point and focus (what the screen must show whole); the
+  country's focus; the base art's box; and the sea's and neighbours' names.
 
-Everything the app draws itself is left out of the art: markers, label
-pills, region chips, completed flags, hit areas, the guide eagle, the rewards
-and every outlined text, which is English in the export.
+Everything the app draws itself is left out of the art: markers, name pills,
+region chips, completed flags, the guide eagle, the rewards and every
+outlined text, which is English in the export.
 """
 
 from __future__ import annotations
@@ -32,11 +34,13 @@ import random
 import re
 import sys
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from math import cos, pi, sin
 from pathlib import Path
 
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry.base import BaseGeometry
 from shapely.ops import nearest_points, unary_union
 
 SVG_NS = "http://www.w3.org/2000/svg"
@@ -78,7 +82,7 @@ HIDDEN_ART = {"tivat"}
 #
 # The map's coast is drawn freely, so the fit puts the towns around the Bay of
 # Kotor and Ulcinj a little off: theirs are set by hand along the coast, where
-# they are on the map's bay. Herceg Novi at its mouth; Tivat on the south
+# they are on the map's bay. Herceg Novi at its mouth; Tivat on the east
 # shore of Tivat's bay; Kotor at the far end of its inlet; Ulcinj 70% of the
 # way from Bar to the Bojana, at the border.
 COASTAL_TOWNS = {
@@ -153,10 +157,7 @@ def main(export_path: Path) -> None:
             shapes[region] = shape.difference(lake)
     move_strips(shapes)
     country = polygon_of(by_id["country-outline"])
-    left, top, right, bottom = country.bounds
-    geometry["focus"] = focus_box(
-        {"x": left, "y": top, "width": right - left, "height": bottom - top}
-    )
+    geometry["focus"] = focus_box(bounds_box(country))
     shapes = naturalise(shapes, keep=[country.exterior, lake.boundary])
     for region, shape in shapes.items():
         redraw_region(by_id[f"region-{region}-shape"], shape)
@@ -174,6 +175,10 @@ def main(export_path: Path) -> None:
     )
     names = place_names()
     region_names = place_names("regions")
+    # Each region's places are laid out once every region's dots are known:
+    # zoomed in, the other regions' towns still show as dots.
+    prepared: dict[str, tuple[ET.Element, dict, dict, RegionRoom]] = {}
+    all_dots: dict[str, tuple[float, float]] = {}
     for region in regions:
         group = by_id[f"region-{region}"]
         shape = shapes[region]
@@ -230,9 +235,7 @@ def main(export_path: Path) -> None:
                 # Nothing is drawn: only the place's marker and name.
                 art = {"x": dot[0], "y": dot[1], "width": 0, "height": 0}
             arts[location] = art
-        left, top, right, bottom = shape.bounds
-        shape_box = {"x": left, "y": top, "width": right - left, "height": bottom - top}
-        region_box = union([shape_box, *arts.values()])
+        region_box = union([bounds_box(shape), *arts.values()])
         view = zoom_view(region_box)
         scale = min(1.0, view["width"] / VIEW_BOX[2] * ZOOMED_SIZE)
 
@@ -256,18 +259,32 @@ def main(export_path: Path) -> None:
             "focus": focus_box(region_box),
             "scale": r2(scale),
         }
+        prepared[region] = (
+            places,
+            arts,
+            dots,
+            RegionRoom(
+                radius=radius * scale,
+                scale=scale,
+                blockers=unary_union([others, neighbours]),
+            ),
+        )
+        all_dots.update(dots)
+
+        # Places, fog, decorations and chips are drawn in their own layers.
+        for child in list(group):
+            child_id = child.get("id") or ""
+            if child_id.startswith(("location-", "overlay-fog-", "status-region-", "decorations-")):
+                group.remove(child)
+
+    for region, (places, arts, dots, room) in prepared.items():
         laid_out = layout_places(
             arts,
             dots,
             names,
-            radius * scale,
-            scale,
-            unary_union([others, neighbours]),
-            movable=set(arts) - MOVED_TOWNS,
+            room,
+            other_dots=[dot for location, dot in all_dots.items() if location not in dots],
         )
-        # A town that moved to fit is on the whole map where it is zoomed in.
-        for location, placed in laid_out.items():
-            dots[location] = (placed["marker"]["cx"], placed["marker"]["cy"])
         for location, placed in laid_out.items():
             if location not in HIDDEN_ART:
                 illustration = find(places, f"illustration-{location}")
@@ -275,7 +292,7 @@ def main(export_path: Path) -> None:
                 art = placed["art"]
                 shrink(
                     illustration,
-                    scale,
+                    room.scale,
                     (
                         art["x"] + art["width"] / 2 - (drawn["x"] + drawn["width"] / 2),
                         art["y"] + art["height"] / 2 - (drawn["y"] + drawn["height"] / 2),
@@ -288,12 +305,6 @@ def main(export_path: Path) -> None:
                 "dot": {"cx": r2(dots[location][0]), "cy": r2(dots[location][1])},
                 **placed,
             }
-
-        # Places, fog, decorations and chips are drawn in their own layers.
-        for child in list(group):
-            child_id = child.get("id") or ""
-            if child_id.startswith(("location-", "overlay-fog-", "status-region-", "decorations-")):
-                group.remove(child)
 
     replace_neighbours(by_id, tree_map, country, geometry["neighbours"], bay_water)
     remove_ids(tree_map, REMOVED_IDS)
@@ -471,9 +482,11 @@ BAY_TRACE = [
     (386, 495), (372, 506), (340, 492), (300, 482), (260, 472), (200, 466), (150, 456),
     (110, 447), (88, 455), (80, 470), (-60, 475),
 ]
-# Where the trace's mouth (0, 395) goes on the map, and its scale: true to
-# the map's coast from west to east (Herceg Novi to Kotor), but taller than
-# life, since the map squashes the coast from north to south.
+# The trace's mouth, on Herceg Novi's shore: its y in the real map's pixels.
+BAY_MOUTH_Y = 395
+# Where the trace's mouth (0, BAY_MOUTH_Y) goes on the map, and its scale:
+# true to the map's coast from west to east (Herceg Novi to Kotor), but
+# taller than life, since the map squashes the coast from north to south.
 BAY_ORIGIN = (526, 648)
 BAY_SCALE = (0.22, 0.3)
 # Straits narrower than this, in the map's units, would close under the
@@ -483,7 +496,7 @@ BAY_MIN_WIDTH = 4
 BAY_OLD_CHANNEL = {"x": 528, "y": 630, "width": 112, "height": 58}
 
 
-def reshape_bay(by_id: dict):
+def reshape_bay(by_id: dict) -> tuple[BaseGeometry, BaseGeometry]:
     """Redraws the Bay of Kotor in the country's outline and its shadow, and
     returns the land filled in and the bay's water, for the regions."""
     outline = by_id["country-outline"]
@@ -494,7 +507,7 @@ def reshape_bay(by_id: dict):
     dy = shadow.bounds[1] - country.bounds[1]
     ox, oy = BAY_ORIGIN
     sx, sy = BAY_SCALE
-    water = Polygon([(ox + x * sx, oy + (y - 395) * sy) for x, y in BAY_TRACE]).buffer(
+    water = Polygon([(ox + x * sx, oy + (y - BAY_MOUTH_Y) * sy) for x, y in BAY_TRACE]).buffer(
         BAY_MIN_WIDTH / 2
     )
     filled = country.convex_hull.intersection(box_polygon(BAY_OLD_CHANNEL)).difference(country)
@@ -602,6 +615,12 @@ def mute_element(element: ET.Element) -> None:
         el.attrib.pop("id", None)
 
 
+def bounds_box(shape: BaseGeometry) -> dict[str, float]:
+    """`shape`'s bounding box, as a box."""
+    left, top, right, bottom = shape.bounds
+    return {"x": left, "y": top, "width": right - left, "height": bottom - top}
+
+
 def box_polygon(box: dict[str, float], pad: float = 0) -> Polygon:
     left, top = box["x"] - pad, box["y"] - pad
     right, bottom = box["x"] + box["width"] + pad, box["y"] + box["height"] + pad
@@ -609,7 +628,11 @@ def box_polygon(box: dict[str, float], pad: float = 0) -> Polygon:
 
 
 def replace_neighbours(
-    by_id: dict, tree_map: ET.Element, country, labels: dict, bay_water
+    by_id: dict,
+    tree_map: ET.Element,
+    country: BaseGeometry,
+    labels: dict,
+    bay_water: BaseGeometry,
 ) -> None:
     parts = [by_id[part] for part in NEIGHBOUR_PARTS if part in by_id]
     background = parent_of(tree_map, parts[0])
@@ -699,23 +722,35 @@ BASE_BOX = (
 )
 
 
+# How far inside the export's edges the land is read: its land can stop
+# just short of an edge.
 EDGE_INSET = 3
 
 
-def extruded(land):
+def extruded(land: BaseGeometry) -> BaseGeometry:
     """`land` (inside the export) carried on straight past each edge of the
     export to BASE_BOX's: land where the edge is land, sea where it is sea."""
     _, _, width, height = VIEW_BOX
-    m = BASE_MARGIN
+    margin = BASE_MARGIN
     pieces = [land]
-    # Each edge, read a little inside it (the export's land can stop just
-    # short of its edge), and the strip beyond it it extends into.
-    i = EDGE_INSET
+    # Each edge, read a little inside it, and the strip beyond it it extends
+    # into.
+    inset = EDGE_INSET
     for edge, along_x, low, high in (
-        (((0, i), (width, i)), True, -m, i),
-        (((0, height - i), (width, height - i)), True, height - i, height + m),
-        (((i, 0), (i, height)), False, -m, i),
-        (((width - i, 0), (width - i, height)), False, width - i, width + m),
+        (((0, inset), (width, inset)), True, -margin, inset),
+        (
+            ((0, height - inset), (width, height - inset)),
+            True,
+            height - inset,
+            height + margin,
+        ),
+        (((inset, 0), (inset, height)), False, -margin, inset),
+        (
+            ((width - inset, 0), (width - inset, height)),
+            False,
+            width - inset,
+            width + margin,
+        ),
     ):
         on_edge = land.intersection(LineString(edge))
         for segment in getattr(on_edge, "geoms", [on_edge]):
@@ -729,9 +764,9 @@ def extruded(land):
     # The corners, beyond two edges, take the corner's own land or sea.
     for cx, cy in ((0, 0), (width, 0), (0, height), (width, height)):
         if land.distance(Point(cx, cy)) < EDGE_INSET * 2:
-            x = -m if cx == 0 else width
-            y = -m if cy == 0 else height
-            pieces.append(box_polygon({"x": x, "y": y, "width": m, "height": m}))
+            x = -margin if cx == 0 else width
+            y = -margin if cy == 0 else height
+            pieces.append(box_polygon({"x": x, "y": y, "width": margin, "height": margin}))
     return unary_union([piece.buffer(0.5) for piece in pieces]).buffer(-0.5)
 
 
@@ -855,8 +890,8 @@ def edge_distance(point, a, b) -> float:
     return ((px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2) ** 0.5
 
 
-# The name pill, as the app draws it (MontenegroMap.tsx): the export's height,
-# and a width that grows with the name.
+# The name pill: the export's height, and a width that grows with the name
+# (label_width()), which the app draws as given (MontenegroMap.tsx).
 LABEL_HEIGHT = 28.5
 LABEL_FONT_SIZE = 15
 CONTENT_PATH = WEB_ROOT.parent / "api" / "app" / "modules" / "content" / "data" / "content.json"
@@ -868,70 +903,85 @@ def place_names(kind: str = "locations") -> dict[str, str]:
 
 
 def label_width(name: str, scale: float) -> float:
+    """The name pill's width: Fredoka SemiBold's capitals are about 0.68em
+    wide, with room around them, so long Montenegrin names never spill out."""
     return (len(name) * LABEL_FONT_SIZE * 0.68 + 26) * scale
 
 
 # Where a place's name and building may sit over its marker, as a share of
-# their width to one side, in order of preference: straight above first.
-CARD_SHIFTS = (0, -0.25, 0.25, -0.5, 0.5)
-# How far a place the export put down by eye (not a town set to its real
-# spot) may move to fit, in its marker's radius, all around.
-NUDGES = tuple(
-    (distance * cos(angle * pi / 4), distance * sin(angle * pi / 4))
-    for distance in (0.75, 1.5, 2.25, 3)
-    for angle in range(8)
-)
+# the name's width to one side, in order of preference: straight above
+# first. Under half, so the number always stays under its name.
+CARD_SHIFTS = (0, -0.2, 0.2, -0.4, 0.4)
+# How far a building may sit to one side behind its name, as a share of its
+# own width: never off the name.
+BUILDING_SHIFTS = (0, -0.25, 0.25)
 # How far a name pill comes down over the top of its marker.
 NAME_OVER_MARKER = 3
+# How big another region's town dot is, zoomed in (MontenegroMap.tsx's
+# PlaceDot: a disc of radius 9 and half its 3-wide outline), so no name or
+# building covers it.
+OTHER_DOT_RADIUS = 10.5
+
+# What a spot for a place's name and building costs: covering another
+# place's name, marker or dot costs the most, then a building over another
+# region or country, then sliding the name off straight above, and a
+# building just touching another least.
+COVERED_COST = 100
+OFF_REGION_COST = 300
+SHIFT_COST = 30
+TOUCHING_COST = 2
+
+
+@dataclass(frozen=True)
+class RegionRoom:
+    """What one region's places are laid out in, zoomed in: the marker's
+    radius and the names' scale, in the map's units at its zoom, and what its
+    buildings stay off (the other regions and countries; the sea is fine)."""
+
+    radius: float
+    scale: float
+    blockers: BaseGeometry
 
 
 def layout_places(
     arts: dict[str, dict[str, float]],
     dots: dict[str, tuple[float, float]],
     names: dict[str, str],
-    radius: float,
-    scale: float,
-    blockers,
-    movable: set[str],
+    room: RegionRoom,
+    other_dots: list[tuple[float, float]],
 ) -> dict[str, dict]:
     """One region's places, zoomed in: each place's marker on the very spot of
     its town, and over it its name pill, with its building behind the name.
 
-    Sizes are in the map's units at the region's zoom: `scale` times the size
-    the whole map would draw them. The name and building (the card) go
-    straight above the marker, or a little to one side, to clear every other
-    place's name and marker and to keep the building off `blockers` (the other
-    regions and countries; the sea is fine). A `movable` place, which the
-    export put down by eye, may also move a little, marker and all. Each place
-    is placed twice: the second time around all the others' first places.
+    The markers never move. The name and building (the card) go straight
+    above the marker, or slide a little to one side, to clear every other
+    place's name and marker and the other regions' town dots (`other_dots`),
+    and to keep the building off the room's blockers. Each place is placed
+    twice: the second time around all the others' first places.
     """
-    # The towns set to their real spots first, then the rest around them.
-    order = sorted(arts, key=lambda location: (location in movable, location))
+    markers = {
+        location: {"cx": r2(x), "cy": r2(y), "r": r2(room.radius)}
+        for location, (x, y) in dots.items()
+    }
+    other_dot_boxes = [
+        circle_box({"cx": x, "cy": y, "r": OTHER_DOT_RADIUS}) for x, y in other_dots
+    ]
     placed: dict[str, dict] = {}
     for _ in range(2):
-        for location in order:
+        for location in sorted(arts):
             others = [entry for other, entry in placed.items() if other != location]
-            # Before a place is first placed, its marker is still on its dot.
-            waiting = [
-                circle_box({"cx": x, "cy": y, "r": radius})
-                for other, (x, y) in dots.items()
-                if other != location and other not in placed
-            ]
             placed[location] = best_place(
                 art=arts[location],
-                dot=dots[location],
+                marker=markers[location],
                 name=names.get(location, location),
                 drawn=location not in HIDDEN_ART,
-                nudges=((0.0, 0.0), *NUDGES) if location in movable else ((0.0, 0.0),),
                 solid=[
                     *(label_box_of(entry["label"]) for entry in others),
-                    *(circle_box(entry["marker"]) for entry in others),
-                    *waiting,
+                    *(circle_box(marker) for other, marker in markers.items() if other != location),
+                    *other_dot_boxes,
                 ],
                 buildings=[entry["art"] for entry in others if entry["drawn"]],
-                radius=radius,
-                scale=scale,
-                blockers=blockers,
+                room=room,
             )
     for entry in placed.values():
         entry.pop("drawn")
@@ -941,62 +991,54 @@ def layout_places(
 def best_place(
     *,
     art: dict[str, float],
-    dot: tuple[float, float],
+    marker: dict[str, float],
     name: str,
     drawn: bool,
-    nudges: tuple[tuple[float, float], ...],
     solid: list[dict[str, float]],
     buildings: list[dict[str, float]],
-    radius: float,
-    scale: float,
-    blockers,
+    room: RegionRoom,
 ) -> dict:
-    """The place's best marker, name and building: clear of `solid` (other
-    places' names and markers), its name and marker clear of `buildings`, its
-    building off `blockers`, and as near straight above its dot as can be."""
-    label_height = LABEL_HEIGHT * scale
-    label_width_ = label_width(name, scale)
-    width = max(art["width"], label_width_)
+    """The place's name and building over its `marker`: clear of `solid`
+    (other places' names and markers, and other regions' dots), its name clear
+    of `buildings`, its building off the room's blockers, and as near
+    straight above the marker as can be."""
+    label_height = LABEL_HEIGHT * room.scale
+    pill_width = label_width(name, room.scale)
+    label_cy = marker["cy"] - marker["r"] - label_height / 2 + NAME_OVER_MARKER * room.scale
     best = None
-    for nx, ny in nudges:
-        marker = {"cx": r2(dot[0] + nx * radius), "cy": r2(dot[1] + ny * radius), "r": r2(radius)}
-        marker_box = circle_box(marker)
-        label_cy = marker["cy"] - radius - label_height / 2 + NAME_OVER_MARKER * scale
-        for shift in CARD_SHIFTS:
-            cx = marker["cx"] + shift * width
-            label = {
-                "cx": r2(cx),
-                "cy": r2(label_cy),
-                "width": r2(label_width_),
-                "height": r2(label_height),
-                "fontSize": r2(LABEL_FONT_SIZE * scale),
-            }
-            label_box = label_box_of(label)
+    for shift in CARD_SHIFTS:
+        cx = marker["cx"] + shift * pill_width
+        label = {
+            "cx": r2(cx),
+            "cy": r2(label_cy),
+            "width": r2(pill_width),
+            "height": r2(label_height),
+            "fontSize": r2(LABEL_FONT_SIZE * room.scale),
+        }
+        label_box = label_box_of(label)
+        for building_shift in BUILDING_SHIFTS if drawn else (0,):
             building = {
-                "x": r2(cx - art["width"] / 2),
+                "x": r2(cx + (building_shift - 0.5) * art["width"]),
                 "y": r2(label_cy - art["height"]),
                 "width": art["width"],
                 "height": art["height"],
             }
             card = union([building, label_box]) if drawn else label_box
-            # Its name and marker on anything of another place, or its
-            # building on another's name or marker.
-            covered = sum(
-                overlap(mine, other)
-                for mine in (label_box, marker_box)
-                for other in [*solid, *buildings]
-            ) + sum(overlap(card, other) for other in solid)
+            # Its name on another's building, or its card on another's name,
+            # marker or dot.
+            covered = sum(overlap(label_box, other) for other in buildings) + sum(
+                overlap(card, other) for other in solid
+            )
             touching = sum(overlap(building, other) for other in buildings) if drawn else 0
             off_region = 0.0
             if drawn:
                 shape = box_polygon(building)
-                off_region = shape.intersection(blockers).area / max(shape.area, 0.01)
+                off_region = shape.intersection(room.blockers).area / max(shape.area, 0.01)
             cost = (
-                covered * 100
-                + touching * 2
-                + off_region * 300
-                + abs(shift) * 30
-                + (nx * nx + ny * ny) ** 0.5 * 12
+                covered * COVERED_COST
+                + off_region * OFF_REGION_COST
+                + (abs(shift) + abs(building_shift) / 2) * SHIFT_COST
+                + touching * TOUCHING_COST
             )
             if best is None or cost < best[0]:
                 best = (
@@ -1005,8 +1047,8 @@ def best_place(
                         "art": building if drawn else label_box,
                         "marker": marker,
                         "label": label,
-                        # The building and its name together, which no other
-                        # place covers.
+                        # The building and its name together, which covers no
+                        # other place's name or marker.
                         "card": card,
                         "drawn": drawn,
                     },

@@ -8,10 +8,12 @@ import {
 } from "../test-fixtures";
 import { MAP_GEOMETRY } from "./map-geometry";
 import {
+  type Box,
   currentRegion,
   isFogged,
   levelCardHref,
   mapViewBox,
+  markerBox,
   toMapData,
 } from "./map-view";
 import type { ProgressResult } from "./progress";
@@ -143,17 +145,9 @@ describe("mapViewBox", () => {
 });
 
 describe("MAP_GEOMETRY", () => {
-  type Box = { x: number; y: number; width: number; height: number };
   const overlaps = (a: Box, b: Box) =>
     Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 0 &&
     Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 0;
-  const markerBox = ({ cx, cy, r }: { cx: number; cy: number; r: number }) => ({
-    x: cx - r,
-    y: cy - r,
-    width: 2 * r,
-    height: 2 * r,
-  });
-
   const labelBox = ({
     cx,
     cy,
@@ -164,10 +158,13 @@ describe("MAP_GEOMETRY", () => {
     cy: number;
     width: number;
     height: number;
-  }) => ({ x: cx - width / 2, y: cy - height / 2, width, height });
+  }): Box => ({ x: cx - width / 2, y: cy - height / 2, width, height });
+  // The whole-map dot as MontenegroMap's PlaceDot draws it: a disc of
+  // radius 9 and half its 3-wide outline.
+  const DOT_RADIUS = 10.5;
+  const places = Object.entries(MAP_GEOMETRY.locations);
 
   it("never covers a place's name or marker with another place", () => {
-    const places = Object.entries(MAP_GEOMETRY.locations);
     for (const [id, a] of places) {
       for (const [otherId, b] of places) {
         if (otherId === id || b.regionId !== a.regionId) {
@@ -184,12 +181,37 @@ describe("MAP_GEOMETRY", () => {
     }
   });
 
-  it("puts each place's marker on its town, under its name", () => {
-    for (const { dot, marker, label } of Object.values(
-      MAP_GEOMETRY.locations,
-    )) {
-      expect([marker.cx, marker.cy]).toEqual([dot.cx, dot.cy]);
-      expect(label.cy).toBeLessThan(marker.cy);
+  it("never covers another region's town dot, which shows zoomed in", () => {
+    for (const [id, a] of places) {
+      for (const [otherId, b] of places) {
+        if (b.regionId === a.regionId) {
+          continue;
+        }
+        expect(
+          overlaps(a.card, markerBox({ ...b.dot, r: DOT_RADIUS })),
+          `${id} covers ${otherId}'s dot`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("puts each place's marker on its town, under its own name", () => {
+    for (const [id, { dot, marker, label }] of places) {
+      expect([marker.cx, marker.cy], id).toEqual([dot.cx, dot.cy]);
+      expect(label.cy, id).toBeLessThan(marker.cy);
+      expect(Math.abs(label.cx - marker.cx), id).toBeLessThan(label.width / 2);
+    }
+  });
+
+  it("puts each building behind its own name", () => {
+    for (const [id, { art, label }] of places) {
+      // A place with no building (Tivat) has its name for its art.
+      const hasBuilding = art.height !== label.height;
+      if (hasBuilding) {
+        expect(art.x, id).toBeLessThan(label.cx);
+        expect(art.x + art.width, id).toBeGreaterThan(label.cx);
+        expect(art.y + art.height, id).toBeCloseTo(label.cy, 1);
+      }
     }
   });
 });

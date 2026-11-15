@@ -17,11 +17,12 @@ import { isOpenState, type MapElementState } from "../model/map-state";
 import {
   isFogged,
   levelCardHref,
+  markerBox,
   type MapPlace,
   type MapRegion,
   mapViewBox,
 } from "../model/map-view";
-import { openLevelCard } from "./LevelCard";
+import { openLevelCard } from "./level-card-navigation";
 import { MapBaseImage } from "./MapBaseImage";
 
 // The designers' palette for the map.
@@ -388,12 +389,6 @@ function PlaceDot({ place }: { place: MapPlace }) {
   );
 }
 
-// Fredoka SemiBold's capitals are about 0.68em wide; the pill grows to fit
-// the name, so long Montenegrin names never spill out.
-function textWidth(text: string, fontSize: number): number {
-  return text.length * fontSize * 0.68;
-}
-
 // The size the export draws a name pill and a marker at; zoomed in, the
 // build script makes both smaller in the map's units.
 const BASE_LABEL_HEIGHT = 28.5;
@@ -413,17 +408,10 @@ function Place({ place, geometry, onActivate }: PlaceProps) {
   const scale = label.height / BASE_LABEL_HEIGHT;
   const isOpen = isOpenState(place.state);
   const name = place.name.toLocaleUpperCase(CONTENT_LANG);
-  const pillWidth = textWidth(name, label.fontSize) + 26 * scale;
   // A tap hits what is drawn for the place: its building and name (which
   // can sit to one side, clear of a neighbour), and its marker below them.
   // Two boxes, not one around both, so neighbours never share a spot.
-  const markerBox = {
-    x: marker.cx - marker.r,
-    y: marker.cy - marker.r,
-    width: marker.r * 2,
-    height: marker.r * 2,
-  };
-  const hitBoxes = [card, markerBox];
+  const hitBoxes = [card, markerBox(marker)];
   const accessibleName = [
     place.name,
     STATUS_LABELS[place.state],
@@ -460,9 +448,9 @@ function Place({ place, geometry, onActivate }: PlaceProps) {
           />
         </g>
         <rect
-          x={label.cx - pillWidth / 2}
+          x={label.cx - label.width / 2}
           y={label.cy - label.height / 2}
-          width={pillWidth}
+          width={label.width}
           height={label.height}
           rx={label.height / 2}
           fill="white"

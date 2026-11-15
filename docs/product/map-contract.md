@@ -60,13 +60,13 @@ These follow the server's states (ADR 0005), plus the ones only the screen uses.
 
 The script keeps the art and redraws what changes with state or language. The app draws these itself, so the export's versions are left out:
 
-- Markers, name pills, region chips, completed flags and hit areas.
+- Markers, name pills, region chips and completed flags.
 - Every outlined text, which is English in the export. The app draws Montenegrin.
 - Its own decisions on the export's art:
   - **The whole map and a zoomed region are two levels.** The whole map shows each region's name and a dot per place. A region's screen shows its buildings, markers and names, at a size for that zoom.
   - **Coastal towns sit on the coastline,** just inland of their shore, instead of the export's markers out at sea with leader lines.
-  - **Each town's number is on the town's very spot, with its name just above and its building behind the name.** When towns are close, the name and building slide a little to one side; nothing covers another town's name or number, and a building stays off the other regions. Towns set to their real spots (the coast, Cetinje) keep them; the rest, which the export placed by eye, may move a little to fit.
-  - **Place positions follow real geography where the export's are off.** Herceg Novi is at the mouth of the Bay of Kotor, Tivat on its south shore, and Kotor in its south-east corner (`COASTAL_TOWNS`).
+  - **Each town's number is on the town's very spot, with its name just above and its building behind the name.** The number never moves: the town's dot on the whole map and its number zoomed in are the same point. When towns are close, the name slides to one side by under half its width, so the number stays under it, and the building may sit a quarter of its width to one side behind the name; nothing covers another town's name, number or dot. A building keeps off the other regions where it can, but where Obala is narrow it cannot: Kotor's building stands mostly over Centralna Crna Gora, and Budva's partly.
+  - **Place positions follow real geography where the export's are off.** Herceg Novi is at the mouth of the Bay of Kotor, Tivat on the east shore of Tivat's bay, and Kotor at the far end of its inlet (`COASTAL_TOWNS`).
   - **The region borders are redrawn:** one border per region, gently curved. Obala is the strip along the sea. Skadarsko jezero belongs to Centralna Crna Gora and stops at the Albanian border.
   - **Decorations that are not places are left out:** Perast, Sveti Stefan, Ostrog, the Millennium Bridge, and Tivat's palm island. So are the title box, the rewards and the guide eagle, which come later.
   - **The neighbouring countries are one landscape with no borders between them**, muted and darker, with scenery like Montenegro's.
@@ -75,7 +75,7 @@ The script keeps the art and redraws what changes with state or language. The ap
 
 ## Still open with the designers
 
-- **Tablet sizes.** The previews use iPad 11" (1194 × 834 and 834 × 1194). The app fits the whole country, or the zoomed region, between the top bar, the side panel and the bottom nav on any screen, without scrolling; the muted surroundings fill the rest of the screen.
+- **Tablet sizes.** The previews use iPad 11" (1194 × 834 and 834 × 1194). The app fits the whole country, or the zoomed region, between the top bar, the side panel and the bottom nav on any screen, without scrolling; the muted surroundings fill the rest of the screen. On a short screen (a phone on its side) the next stop card and the level card's picture are left out, so the map has room.
 - **Which completed decorations to show.**
 - **Zoom states for the whole map and a region**, now that the app uses two levels.
 - **Region display names.** The app uses the content's names (Obala, Centralna Crna Gora, Sjever i planine), not the export's English ones (The Coast, The Heartland, The Wild North).

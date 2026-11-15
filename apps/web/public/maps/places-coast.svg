@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none"><g id="location-budva-visual">
-<g id="illustration-budva" transform="translate(681.8 694.02) scale(0.58) translate(-610.54 -754.83)">
+<g id="illustration-budva" transform="translate(687.49 694.03) scale(0.58) translate(-610.54 -754.83)">
 <path id="illustration-budva-shape" d="M618.96 727.68H606V768.72H618.96V727.68Z" fill="white" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-budva-shape-2" d="M603.984 727.68L612.408 716.448L620.832 727.68H603.984Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-budva-shape-3" d="M609.6 740.784V735.672C609.6 734.376 610.68 733.368 611.904 733.368C613.128 733.368 614.208 734.448 614.208 735.672V740.784H609.528H609.6Z" fill="#2B2D42" />
@@ -17,7 +17,7 @@
 <g id="location-tivat-visual">
 </g>
 <g id="location-kotor-visual">
-<g id="illustration-kotor" transform="translate(659.41 630.55) scale(0.58) translate(-648.48 -634.29)">
+<g id="illustration-kotor" transform="translate(645.91 630.56) scale(0.58) translate(-648.48 -634.29)">
 <path id="illustration-kotor-shape" d="M668.64 636.96H627.6V670.8H668.64V636.96Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-kotor-shape-2" d="M631.92 611.04H616.8V670.8H631.92V611.04Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-kotor-shape-3" d="M680.16 611.04H665.04V670.8H680.16V611.04Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
@@ -30,7 +30,7 @@
 </g>
 </g>
 <g id="location-herceg-novi-visual">
-<g id="illustration-herceg-novi" transform="translate(535.0 602.62) scale(0.58) translate(-459.12 -676.56)">
+<g id="illustration-herceg-novi" transform="translate(530.34 602.63) scale(0.58) translate(-459.12 -676.56)">
 <path id="illustration-herceg-novi-shape" d="M419.808 714V691.536H425.424V685.92H431.04V691.536H436.656V685.92H442.272V714H419.808Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-herceg-novi-shape-2" d="M469.92 652.08H447.6V714H469.92V652.08Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-herceg-novi-shape-3" d="M445.08 652.224L459.12 639.12L473.16 652.224H445.08Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
@@ -44,7 +44,7 @@
 </g>
 </g>
 <g id="location-bar-visual">
-<g id="illustration-bar" transform="translate(750.48 780.19) scale(0.58) translate(-749.57 -820.05)">
+<g id="illustration-bar" transform="translate(738.72 780.2) scale(0.58) translate(-749.57 -820.05)">
 <path id="illustration-bar-shape" d="M739.92 856.56C743.664 845.328 743.016 835.968 738.048 828.48M758.64 856.56C753.672 846.552 754.248 837.192 760.512 828.48M747.408 856.56C749.928 844.104 750.504 833.448 749.28 824.736" stroke="#8B5A2B" stroke-width="6.552" stroke-linecap="round" />
 <path id="illustration-bar-shape-2" d="M711.84 822.864C709.32 806.664 716.232 797.88 732.432 796.656C739.92 785.424 749.928 783.552 762.384 791.04C779.88 791.04 787.368 798.528 784.848 813.504C789.816 824.736 783.624 830.352 766.128 830.352C754.896 835.32 744.312 835.32 734.304 830.352C718.104 834.096 710.616 831.576 711.84 822.864Z" fill="#9DB07C" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-bar-shape-3" d="M730.56 811.92C732.946 811.92 734.88 810.953 734.88 809.76C734.88 808.567 732.946 807.6 730.56 807.6C728.174 807.6 726.24 808.567 726.24 809.76C726.24 810.953 728.174 811.92 730.56 811.92Z" fill="#7E9460" />
@@ -59,7 +59,7 @@
 </g>
 </g>
 <g id="location-ulcinj-visual">
-<g id="illustration-ulcinj" transform="translate(830.31 892.95) scale(0.58) translate(-830.64 -891.77)">
+<g id="illustration-ulcinj" transform="translate(830.31 892.96) scale(0.58) translate(-830.64 -891.77)">
 <path id="illustration-ulcinj-shape" d="M789.456 935.76L795.072 911.424L868.08 907.68L871.824 935.76H789.456Z" fill="#E0B886" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-ulcinj-shape-2" d="M802.56 911.424V894.576H834.384V909.552L802.56 911.424Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-ulcinj-shape-3" d="M800.688 894.576L818.472 885.216L836.256 894.576H800.688Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />

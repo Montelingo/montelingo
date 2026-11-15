@@ -84,7 +84,21 @@ export function toMapData(
   };
 }
 
-type Box = { x: number; y: number; width: number; height: number };
+/** A box in the map's units. */
+export type Box = { x: number; y: number; width: number; height: number };
+
+/** The box around a round marker or dot. */
+export function markerBox({
+  cx,
+  cy,
+  r,
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+}): Box {
+  return { x: cx - r, y: cy - r, width: r * 2, height: r * 2 };
+}
 
 /**
  * The part of the map the screen must show whole: the country, or one region

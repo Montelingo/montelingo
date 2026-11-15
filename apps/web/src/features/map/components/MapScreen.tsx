@@ -29,8 +29,9 @@ type MapScreenProps = MapData & {
 };
 
 // The frame MapHome and RegionScreen share (Figma "TM1" and "M1"): the top
-// bar, the side panel on the right from 1024px wide, and the bottom nav (with
-// the next stop above it, below 1024px), around the map's frame: the space
+// bar, the side panel on the right from 1024px wide (scrolling on its own on
+// a short window), and the bottom nav (with the next stop above it, below
+// 1024px and on a screen tall enough), around the map's frame: the space
 // they leave free, where the map fits the country or region whole. The rest
 // of the map's art spills past the frame under them, to the screen's edges,
 // and nothing scrolls. `data-map-screen` tells LearnerShell to drop its own
@@ -55,17 +56,15 @@ export function MapScreen({
       aria-labelledby={titleId}
       className={cn(
         fredoka.className,
-        "fixed inset-0 grid grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-kid-sea lg:grid-cols-[minmax(0,1fr)_auto]",
+        "fixed inset-0 grid grid-rows-map-screen overflow-hidden bg-kid-sea lg:grid-cols-map-screen",
       )}
     >
       <h1 id={titleId} className="sr-only">
         {title}
       </h1>
       <MapTopBar backHref={backHref} region={region} stars={0} hearts={0} />
-      {/* The map's frame. The map comes after the top bar in the reading
-          order, and is drawn under all of the chrome. */}
-      <div className="relative row-start-2 m-3">{children}</div>
-      <div className="pointer-events-none relative z-20 row-start-2 hidden pr-safe-r pt-4 lg:block">
+      <MapFrame>{children}</MapFrame>
+      <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 pr-safe-r pt-4 lg:block">
         <MapSidePanel
           regions={regions}
           currentRegionId={region?.id ?? null}
@@ -80,7 +79,7 @@ export function MapScreen({
       ) : null}
       <div className="pointer-events-none relative z-20 col-span-full flex flex-col gap-3 lg:items-center lg:pb-5">
         {nextPlace !== null ? (
-          <div className="pointer-events-auto px-4 lg:hidden">
+          <div className="pointer-events-auto px-4 short:hidden lg:hidden">
             <NextStopCard place={nextPlace} />
           </div>
         ) : null}
@@ -89,4 +88,11 @@ export function MapScreen({
       <LevelCard regions={regions} places={places} />
     </section>
   );
+}
+
+// The space the chrome leaves free, where the map fits the country or region
+// whole. It comes after the top bar in the reading order, and the map's art
+// spills past it under all of the chrome to the screen's edges.
+function MapFrame({ children }: { children: ReactNode }) {
+  return <div className="relative row-start-2 m-3">{children}</div>;
 }

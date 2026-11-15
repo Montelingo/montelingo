@@ -335,3 +335,8 @@ export function newAccountProgress(): ProgressResult {
     },
   };
 }
+
+/** Where the browser is now: the path, query and hash, as a test sets them. */
+export function currentPath(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}

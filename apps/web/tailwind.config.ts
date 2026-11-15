@@ -216,6 +216,21 @@ const config: Config = {
         // - landscape: 1085 px; 6 columns need 6·160 + 5·16 = 1040 ✓
         //   (7 would need 1216, more than max-w-learner's 1152 too)
         words: "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
+        // The map screen (MapScreen): the map's frame, and the side panel from
+        // 1024px wide.
+        "map-screen": "minmax(0, 1fr) auto",
+      },
+      gridTemplateRows: {
+        // The map screen: the top bar, the map's frame (which may shrink to
+        // nothing rather than push the bottom nav off the screen), and the
+        // bottom nav.
+        "map-screen": "auto minmax(0, 1fr) auto",
+      },
+      screens: {
+        // A screen too short for the map's extras (a phone on its side): the
+        // level card leaves out its picture and the map leaves out the next
+        // stop card, so the map and the card still fit without scrolling.
+        short: { raw: "(max-height: 32rem)" },
       },
       keyframes: {
         // A locked card's answer to a tap: a small shake.

@@ -8,6 +8,7 @@ import { toMapData } from "../model/map-view";
 import { MAP_NOTICES, type MapNotice, withMapNotice } from "../model/notices";
 import { toRegionScreen } from "../model/screens";
 import {
+  currentPath,
   newAccountProgress,
   seedRegionDetail,
   seedRegionDetails,
@@ -97,9 +98,7 @@ describe("RegionScreen", () => {
     expect(budva).toHaveAttribute("href", "/play/coast?place=budva");
     await user.click(budva);
 
-    expect(`${window.location.pathname}${window.location.search}`).toBe(
-      "/play/coast?place=budva",
-    );
+    expect(currentPath()).toBe("/play/coast?place=budva");
     expect(router.push).not.toHaveBeenCalled();
   });
 
