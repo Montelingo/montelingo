@@ -25,13 +25,16 @@ export function WordCard({ word }: WordCardProps) {
     >
       <div aria-hidden="true" className="aspect-tile w-full">
         {word.imageUrl !== null ? (
-          // eslint-disable-next-line @next/next/no-img-element -- next/image needs every image host in next.config's remotePatterns, and there is no media host until phase 2 (ADR 0005: image_url is null)
+          // Word images are same-origin static files, already WebP at their
+          // final size (public/media/words), so next/image would add nothing.
+          // Square pictures in a 4:3 tile: contain, so none is cropped.
+          // eslint-disable-next-line @next/next/no-img-element -- see above
           <img
             src={word.imageUrl}
             alt=""
             loading="lazy"
             decoding="async"
-            className="block size-full object-cover"
+            className="block size-full object-contain"
           />
         ) : (
           // Keyed on the recording number, the word's id in every environment.
