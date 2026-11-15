@@ -1,23 +1,40 @@
-import type { MapNotice } from "../model/notices";
-import { needsProgressRetry, type RegionScreenData } from "../model/screens";
-import { LocationPicker } from "./LocationPicker";
-import { PickerScreen } from "./PickerScreen";
+import { PLAY_PATH } from "@/features/auth/edge";
 
-type RegionScreenProps = RegionScreenData & {
+import type { RegionMapData } from "../model/map-view";
+import type { MapNotice } from "../model/notices";
+import { needsProgressRetry } from "../model/screens";
+import { MapScreen } from "./MapScreen";
+import { MontenegroMap } from "./MontenegroMap";
+
+type RegionScreenProps = RegionMapData & {
   /** Why the learner was sent here, from the page's `?notice=`. */
   notice: MapNotice | null;
 };
 
-// A region, /play/<region>: its locations, open or not, to pick from.
-export function RegionScreen({ region, locations, notice }: RegionScreenProps) {
+// A region, /play/<region>: the same map, zoomed to the region. Back leads to
+// the whole map.
+export function RegionScreen({
+  region,
+  regions,
+  places,
+  notice,
+}: RegionScreenProps) {
+  const regionPlaces = places.filter(({ regionId }) => regionId === region.id);
   return (
-    <PickerScreen
+    <MapScreen
       title={region.name}
-      subtitle="Pick a place to explore."
+      regions={regions}
+      places={places}
+      focusRegionId={region.id}
+      backHref={PLAY_PATH}
       notice={notice}
-      needsProgressRetry={needsProgressRetry([region, ...locations])}
+      needsProgressRetry={needsProgressRetry([region, ...regionPlaces])}
     >
-      <LocationPicker locations={locations} />
-    </PickerScreen>
+      <MontenegroMap
+        regions={regions}
+        places={places}
+        focusRegionId={region.id}
+      />
+    </MapScreen>
   );
 }

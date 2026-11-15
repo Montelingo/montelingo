@@ -15,6 +15,7 @@ Turborepo; root `package.json` scripts wrap each app's commands (see
 - [Frontend architecture conventions](docs/frontend-architecture.md)
 - [API conventions](docs/architecture/api-conventions.md)
 - [Deployment: staging on Hetzner with Compose and Caddy](docs/deployment.md)
+- [SVG map contract](docs/product/map-contract.md) and the [content manifest](docs/product/content-manifest.md)
 - Architecture decision records:
   - [ADR 0001: Monorepo without a heavyweight orchestrator](docs/adr/0001-monorepo-without-heavyweight-orchestrator.md)
   - [ADR 0002: OpenAPI contract and client generation](docs/adr/0002-openapi-contract-and-client-generation.md)
@@ -53,7 +54,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │       │   ├── app/        # App Router (layout, page, globals.css, /api/* proxy route)
 │       │   ├── features/   # feature slices (health: API adapter, model, UI, tests)
 │       │   ├── components/ # shared, domain-free UI primitives (form fields)
-│       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn)
+│       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn, fonts)
 │       ├── Dockerfile
 │       ├── eslint.config.mjs
 │       ├── next.config.ts

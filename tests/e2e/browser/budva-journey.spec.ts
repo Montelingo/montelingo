@@ -51,28 +51,43 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL("/play");
+    // The map's heading is for screen readers; the map shows its own title.
     await expect(
-      page.getByRole("heading", { level: 1, name: "Your map" }),
-    ).toBeVisible();
+      page.getByRole("heading", { level: 1, name: "Mapa" }),
+    ).toBeAttached();
   });
 
   await test.step("open Obala", async () => {
-    // A card is named "<name>, <status>", so the name is matched at the start.
-    await page
-      .getByRole("list", { name: "Regions" })
-      .getByRole("link", { name: /^Obala,/ })
-      .click();
+    // On the map, a region is a link named "<name>, <status>", so the name
+    // is matched at the start. Its shape is long and thin, so it is opened
+    // with the keyboard rather than a tap in the middle of its box, which
+    // can fall on the sea or the next region.
+    const map = page.getByRole("group", { name: "Mapa Crne Gore" });
+    const obala = map.getByRole("link", { name: /^Obala,/ });
+    await obala.focus();
+    await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL("/play/coast");
     await expect(
       page.getByRole("heading", { level: 1, name: "Obala" }),
-    ).toBeVisible();
+    ).toBeAttached();
+  });
+
+  await test.step("open Budva's level card", async () => {
+    // A tap on an open place opens its level card, over the region's map.
+    await page
+      .getByRole("group", { name: "Mjesta" })
+      .getByRole("link", { name: /^Budva,/ })
+      .click();
+
+    await expect(page).toHaveURL("/play/coast?place=budva");
+    await expect(page.getByRole("dialog", { name: "Budva" })).toBeVisible();
   });
 
   await test.step("open Budva", async () => {
     await page
-      .getByRole("list", { name: "Places" })
-      .getByRole("link", { name: /^Budva,/ })
+      .getByRole("dialog", { name: "Budva" })
+      .getByRole("link", { name: "Kreni!" })
       .click();
 
     await expect(page).toHaveURL("/play/coast/budva");

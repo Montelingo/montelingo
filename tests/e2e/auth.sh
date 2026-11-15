@@ -167,25 +167,26 @@ check_new_account_map() {
     return 0
   fi
   check_in_order "Map shows the three regions in order" "$(signed_in_page /play)" \
-    'aria-label="Obala, Open"' \
-    'aria-label="Centralna Crna Gora, Locked"' \
-    'aria-label="Sjever i planine, Locked"'
+    'aria-label="Obala, otvoreno"' \
+    'aria-label="Centralna Crna Gora, zaključano"' \
+    'aria-label="Sjever i planine, zaključano"'
   coast="$(signed_in_page /play/coast)"
   check_in_order "Coast shows its six places, Budva next" "$coast" \
-    'aria-label="Budva, Open, Next stop"' \
-    'aria-label="Kotor, Locked"' \
-    'aria-label="Ulcinj, Locked"' \
-    'aria-label="Herceg Novi, Locked"' \
-    'aria-label="Tivat, Locked"' \
-    'aria-label="Bar, Locked"'
+    'aria-label="Budva, otvoreno, sljedeće mjesto"' \
+    'aria-label="Kotor, zaključano"' \
+    'aria-label="Ulcinj, zaključano"' \
+    'aria-label="Herceg Novi, zaključano"' \
+    'aria-label="Tivat, zaključano"' \
+    'aria-label="Bar, zaključano"'
+  # The coast's six places, and the two other regions, still on its map.
   cards="$(grep --only-matching --extended-regexp \
-    'aria-label="[^"]+, (Locked|Open|Current|In progress|Done|Loading|Not loaded)[^"]*"' \
+    'aria-label="[^"]+, (zaključano|otvoreno|odabrano|u toku|završeno|učitava se|nije učitano)[^"]*"' \
     <<<"$coast" | wc -l | tr -d ' ')"
-  if [[ "$cards" != "6" ]]; then
-    echo "[e2e] Coast shows its six places: expected 6 cards, got $cards" >&2
+  if [[ "$cards" != "8" ]]; then
+    echo "[e2e] Coast shows its six places and two other regions: expected 8, got $cards" >&2
     exit 1
   fi
-  check_contains "Budva links to its place" "$coast" 'href="/play/coast/budva"'
+  check_contains "Budva opens its level card" "$coast" 'href="/play/coast?place=budva"'
   check_page_redirect "Locked region leads back to the map" "/play/central" \
     "/play?notice=region-locked"
   check_contains "Map says why after a locked region" \

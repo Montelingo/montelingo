@@ -11,8 +11,9 @@ import {
 } from "../test-fixtures";
 import {
   assertLocationOpen,
+  loadMap,
+  loadRegionMap,
   loadRegionName,
-  loadRegionPicker,
   loadRegionScreen,
 } from "./screens-api";
 
@@ -75,21 +76,36 @@ beforeEach(() => {
   adapters.getProgress.mockResolvedValue(newAccountProgress());
 });
 
-describe("loadRegionPicker", () => {
-  it("joins the regions with progress, in content order", async () => {
-    const regions = await loadRegionPicker();
+describe("loadMap", () => {
+  beforeEach(() => {
+    adapters.getRegion.mockImplementation((regionId) =>
+      Promise.resolve(
+        seedRegionDetail(regionId as "coast" | "central" | "north"),
+      ),
+    );
+  });
 
+  it("loads every region with its places, joined with progress, in content order", async () => {
+    const { regions, places } = await loadMap();
+
+    expect(adapters.getRegion.mock.calls.map(([id]) => id)).toEqual([
+      "coast",
+      "central",
+      "north",
+    ]);
     expect(regions.map(({ id, state }) => [id, state])).toEqual([
       ["coast", "available"],
       ["central", "locked"],
       ["north", "locked"],
     ]);
+    expect(places).toHaveLength(17);
+    expect(places.find(({ isNext }) => isNext)?.id).toBe("budva");
   });
 
-  it("still loads the regions when progress failed", async () => {
+  it("still loads the map when progress failed", async () => {
     adapters.getProgress.mockResolvedValue({ status: "error" });
 
-    const regions = await loadRegionPicker();
+    const { regions } = await loadMap();
 
     expect(regions.map(({ state }) => state)).toEqual([
       "error",
@@ -98,23 +114,80 @@ describe("loadRegionPicker", () => {
     ]);
   });
 
-  it("lets a content failure reach the error boundary", async () => {
-    adapters.listRegions.mockRejectedValue(new Error("API unavailable"));
+  it.each(["listRegions", "getRegion"] as const)(
+    "lets a failure of %s reach the error boundary",
+    async (adapter) => {
+      adapters[adapter].mockRejectedValue(new Error("API unavailable"));
 
-    await expect(loadRegionPicker()).rejects.toThrow("API unavailable");
-    expect(navigation.redirect).not.toHaveBeenCalled();
-  });
+      await expect(loadMap()).rejects.toThrow("API unavailable");
+      expect(navigation.redirect).not.toHaveBeenCalled();
+    },
+  );
 
-  it.each(["listRegions", "getProgress"] as const)(
+  it.each(["listRegions", "getProgress", "getRegion"] as const)(
     "sends the learner to sign in when %s finds the session ended",
     async (adapter) => {
       adapters[adapter].mockRejectedValue(signedOutError());
 
-      await expect(loadRegionPicker()).rejects.toThrow("NEXT_REDIRECT");
+      await expect(loadMap()).rejects.toThrow("NEXT_REDIRECT");
       // The map is where sign-in returns by default, so there is no ?next=.
       expect(navigation.redirect).toHaveBeenCalledWith("/sign-in");
     },
   );
+
+  it("returns to the screen it was loaded for after sign-in", async () => {
+    adapters.getProgress.mockRejectedValue(signedOutError());
+
+    await expect(loadMap("/play/coast")).rejects.toThrow("NEXT_REDIRECT");
+    expect(navigation.redirect).toHaveBeenCalledWith(
+      "/sign-in?next=%2Fplay%2Fcoast",
+    );
+  });
+});
+
+describe("loadRegionMap", () => {
+  beforeEach(() => {
+    adapters.getRegion.mockImplementation((regionId) =>
+      Promise.resolve(
+        seedRegionDetail(regionId as "coast" | "central" | "north"),
+      ),
+    );
+  });
+
+  it("loads the region, gated, with the whole map", async () => {
+    const { region, regions, places } = await loadRegionMap("coast");
+
+    expect(region).toEqual({ id: "coast", name: "Obala", state: "available" });
+    expect(regions).toHaveLength(3);
+    expect(places).toHaveLength(17);
+  });
+
+  it("redirects to sign in once when the session has ended", async () => {
+    adapters.getProgress.mockRejectedValue(signedOutError());
+    adapters.listRegions.mockRejectedValue(signedOutError());
+
+    await expect(loadRegionMap("coast")).rejects.toThrow("NEXT_REDIRECT");
+    expect(navigation.redirect).toHaveBeenCalledTimes(1);
+    expect(navigation.redirect).toHaveBeenCalledWith(
+      "/sign-in?next=%2Fplay%2Fcoast",
+    );
+  });
+
+  it("is not found for an unknown region, whatever else fails", async () => {
+    adapters.getRegion.mockRejectedValue(new NotFoundSignal());
+    adapters.getProgress.mockRejectedValue(new Error("API unavailable"));
+
+    await expect(loadRegionMap("atlantis")).rejects.toBeInstanceOf(
+      NotFoundSignal,
+    );
+  });
+
+  it("sends a locked region back to the map, which says why", async () => {
+    await expect(loadRegionMap("central")).rejects.toThrow("NEXT_REDIRECT");
+    expect(navigation.redirect).toHaveBeenCalledWith(
+      "/play?notice=region-locked",
+    );
+  });
 });
 
 describe("loadRegionScreen", () => {

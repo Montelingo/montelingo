@@ -11,8 +11,8 @@ import { ScreenNotice } from "./ScreenNotice";
 const STILL_NOT_LOADED = "Still not loaded. Try again in a moment.";
 
 // Shown when the server has not given a place its state: progress failed, or
-// had no entry for it. The cards still show every place, marked "Not loaded"
-// or "Loading", and nothing can be opened until progress loads. Like
+// had no entry for it. The map still shows every place, marked "nije učitano"
+// or "učitava se", and nothing can be opened until progress loads. Like
 // (learner)/error.tsx, it puts the problem on our side, never on the learner
 // or their device. Retrying refreshes the route, which reads progress again.
 export function ProgressErrorNotice() {
