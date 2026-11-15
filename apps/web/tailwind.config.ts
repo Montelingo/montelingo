@@ -189,6 +189,8 @@ const config: Config = {
       boxShadow: {
         "raised-4": "0 4px 0 0 #2B2D42",
         "raised-6": "0 6px 0 0 #2B2D42",
+        // A word card's softer raised edge, in kid-line grey.
+        "raised-line-4": "0 4px 0 0 #D9DEE8",
       },
       aspectRatio: {
         tile: "4 / 3",
