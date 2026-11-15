@@ -5,7 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { PLAY_PATH } from "@/features/auth/edge";
 
 import { redirectOnSignedOut } from "../errors";
-import type { RegionPickerRegion } from "../model/map-state";
+import type { Region } from "../model/content";
+import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
 import { locationPath, regionPath } from "../model/paths";
 import {
   closedLocationRedirect,
@@ -13,9 +14,9 @@ import {
   lockedRegionRedirect,
   type RegionScreenData,
   toLocationScreen,
-  toRegionPickerRegions,
   toRegionScreen,
 } from "../model/screens";
+import type { ProgressResult } from "../model/progress";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
 
@@ -33,15 +34,55 @@ import { getProgress } from "./progress-api";
 // its metadata share one call each.
 
 /**
- * The map: every region, with its state and link. Redirects to sign in when
- * the session has ended.
+ * The whole map: every region with its places, each with its state and link.
+ * Redirects to sign in when the session has ended.
  */
-export async function loadRegionPicker(): Promise<RegionPickerRegion[]> {
-  const [regions, progress] = await signedIn(PLAY_PATH, [
+export async function loadMap(returnTo: string = PLAY_PATH): Promise<MapData> {
+  const [regions, progress] = await signedIn(returnTo, [
     listRegions(),
     getProgress(),
   ]);
-  return toRegionPickerRegions(regions, progress);
+  return mapOf(returnTo, regions, progress);
+}
+
+// Every region's places, joined with progress into the whole map.
+async function mapOf(
+  returnTo: string,
+  regions: readonly Region[],
+  progress: ProgressResult,
+): Promise<MapData> {
+  const details = await signedIn(
+    returnTo,
+    regions.map(({ id }) => getRegion(id)),
+  );
+  return toMapData(details, progress);
+}
+
+/**
+ * A region's map screen: the region and the whole map to zoom into. Calls
+ * `notFound()` for an unknown region, redirects to sign in (once) when the
+ * session has ended, and redirects a locked region to the map, with a notice
+ * that says why, like `loadRegionScreen()`.
+ *
+ * Call it outside any try/catch: `notFound()` and `redirect()` throw.
+ */
+export async function loadRegionMap(regionId: string): Promise<RegionMapData> {
+  const returnTo = regionPath(regionId);
+  // The region first, so an unknown one is not found whatever else fails.
+  const [region, regions, progress] = await signedIn(returnTo, [
+    getRegion(regionId),
+    listRegions(),
+    getProgress(),
+  ]);
+  const screen = toRegionScreen(region, progress);
+  const leaveTo = lockedRegionRedirect(screen.region.state);
+  if (leaveTo !== null) {
+    redirect(leaveTo);
+  }
+  return {
+    region: screen.region,
+    ...(await mapOf(returnTo, regions, progress)),
+  };
 }
 
 /**

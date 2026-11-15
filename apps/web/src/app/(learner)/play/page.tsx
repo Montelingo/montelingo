@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 import { MapHome, parseMapNotice } from "@/features/map";
-import { loadRegionPicker } from "@/features/map/server";
+import { loadMap } from "@/features/map/server";
 
 export const metadata: Metadata = {
-  title: "Your map",
+  title: "Mapa",
 };
 
 type PlayPageProps = {
@@ -13,7 +13,7 @@ type PlayPageProps = {
 
 export default async function PlayPage({ searchParams }: PlayPageProps) {
   const { notice } = await searchParams;
-  const regions = await loadRegionPicker();
+  const map = await loadMap();
 
-  return <MapHome regions={regions} notice={parseMapNotice(notice)} />;
+  return <MapHome {...map} notice={parseMapNotice(notice)} />;
 }

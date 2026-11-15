@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { parseMapNotice, RegionScreen } from "@/features/map";
-import { loadRegionName, loadRegionScreen } from "@/features/map/server";
+import { loadRegionMap, loadRegionName } from "@/features/map/server";
 
 type RegionPageProps = {
   params: Promise<{ regionId: string }>;
@@ -26,6 +26,6 @@ export default async function RegionPage({
 }: RegionPageProps) {
   const { regionId } = await params;
   const { notice } = await searchParams;
-  const screen = await loadRegionScreen(regionId);
+  const screen = await loadRegionMap(regionId);
   return <RegionScreen {...screen} notice={parseMapNotice(notice)} />;
 }

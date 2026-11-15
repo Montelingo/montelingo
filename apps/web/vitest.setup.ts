@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup } from "@testing-library/react";
-import { afterEach, expect } from "vitest";
+import { afterEach, expect, vi } from "vitest";
 import type { AxeMatchers } from "vitest-axe/matchers";
 import * as axeMatchers from "vitest-axe/matchers";
 
@@ -17,3 +17,15 @@ declare module "vitest" {
 afterEach(() => {
   cleanup();
 });
+
+// next/font is compiled by Next.js and has no runtime under Vitest. The font
+// loader returns the class name a component would put on its element.
+vi.mock("next/font/local", () => ({
+  default: () => ({ className: "font-fredoka", style: {} }),
+}));
+
+// jsdom has no canvas: getContext() logs "not implemented" and returns nothing.
+// axe asks for one to measure SVG text, so answer the same nothing quietly.
+if (typeof HTMLCanvasElement !== "undefined") {
+  HTMLCanvasElement.prototype.getContext = () => null;
+}
