@@ -22,6 +22,7 @@ Turborepo; root `package.json` scripts wrap each app's commands (see
   - [ADR 0003: Upgrade the web app to React 19](docs/adr/0003-react-19.md)
   - [ADR 0004: Session-based authentication](docs/adr/0004-session-based-authentication.md)
   - [ADR 0005: Content model and map state](docs/adr/0005-content-model-and-map-state.md)
+  - [ADR 0006: Lessons and games](docs/adr/0006-lessons-and-games.md)
 
 All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 `pnpm format:check:docs` to check; CI runs the check).
