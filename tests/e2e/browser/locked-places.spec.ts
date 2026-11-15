@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
+import { setUpProfileAndOpenMap } from "./profile";
+
 // For local repeated runs, provide an existing account via E2E_EMAIL and
 // E2E_PASSWORD. CI without those variables still verifies new-account state.
 test("locked regions and places cannot be opened, including by URL (#104)", async ({
@@ -29,7 +31,8 @@ test("locked regions and places cannot be opened, including by URL (#104)", asyn
       await page.getByRole("button", { name: "Create account" }).click();
     }
 
-    await expect(page).toHaveURL("/play");
+    await expect(page).toHaveURL(/\/play(\/welcome)?$/);
+    await setUpProfileAndOpenMap(page);
     await expect(
       page.getByRole("heading", { level: 1, name: "Mapa" }),
     ).toBeAttached();
