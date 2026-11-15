@@ -9,8 +9,13 @@ Add a word's number here when its image file is added.
 
 from __future__ import annotations
 
-WORD_IMAGES: frozenset[int] = frozenset(range(1, 11))
-"""Recording numbers of the words that have an image (Na plaži, #127)."""
+WORD_IMAGES: frozenset[int] = frozenset(
+    [
+        *range(1, 11),  # Na plaži (Budva), #127
+        *range(61, 71),  # Ljeto i odjeća (Budva)
+    ]
+)
+"""Recording numbers of the words that have an image."""
 
 
 def word_image_url(number: int) -> str | None:
