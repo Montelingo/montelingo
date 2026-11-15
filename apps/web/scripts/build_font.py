@@ -15,14 +15,15 @@ the app uses (500 and 600), at normal width:
   which Fredoka does not have and Montenegrin needs. They are built from the
   font's own parts, as it builds its other accented letters: C and c with the
   caron of Š and š; C, S and Z and c, s and z with the acute of É and é; Đ is
-  Ð (Eth), the same shape; đ is d with Fredoka's hyphen, thinner, across its
-  stem.
+  Ð (Eth), the same glyph; đ is d with Fredoka's hyphen, thinner, across its
+  stem. Each is kerned as its base letter is.
 
 The font's own name, copyright and licence stay in each file.
 """
 
 from __future__ import annotations
 
+import copy
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -125,9 +126,17 @@ def add_missing_letters(font: TTFont) -> None:
                 (letter.accent, (1, 0, 0, 1, dx + shift, dy)),
             ],
         )
-    # Đ is Ð: the same letter in Montenegrin and in Icelandic.
-    add_glyph(font, "Dcroat", 0x0110, "Eth", [("Eth", (1, 0, 0, 1, 0, 0))])
+    # Đ is Ð, the same letter in Montenegrin and in Icelandic: the same glyph,
+    # with its spacing.
+    for table in font["cmap"].tables:
+        if table.isUnicode():
+            table.cmap[0x0110] = "Eth"
     add_dcroat(font, glyphs)
+    # Each new letter is spaced as its base letter is, on either side of a
+    # pair, as Fredoka's own Š and Ž are spaced as S and Z.
+    for name, letter in ACCENTED.items():
+        copy_spacing(font, name, letter.base)
+    copy_spacing(font, "dcroat", "d")
 
 
 def add_dcroat(font: TTFont, glyphs: Glyphs) -> None:
@@ -149,6 +158,47 @@ def add_dcroat(font: TTFont, glyphs: Glyphs) -> None:
         "d",
         [("d", (1, 0, 0, 1, 0, 0)), ("hyphen", (scale_x, 0, 0, scale_y, dx, dy))],
     )
+
+
+def copy_spacing(font: TTFont, glyph: str, like: str) -> None:
+    """Gives `glyph` the kerning and glyph class `like` has: it pairs as `like`
+    does, first or second. New glyphs come last in the glyph order, so adding
+    them at the end of each list keeps it sorted by glyph id, as OpenType
+    requires."""
+    gdef = font["GDEF"].table if "GDEF" in font else None
+    if gdef is not None and gdef.GlyphClassDef is not None:
+        classes = gdef.GlyphClassDef.classDefs
+        if like in classes:
+            classes[glyph] = classes[like]
+    for lookup in font["GPOS"].table.LookupList.Lookup:
+        for subtable in lookup.SubTable:
+            if lookup.LookupType == 9:
+                subtable = subtable.ExtSubTable
+            if subtable.LookupType != 2:
+                continue
+            covered = subtable.Coverage.glyphs
+            if subtable.Format == 1:
+                if like in covered:
+                    pair_set = copy.deepcopy(subtable.PairSet[covered.index(like)])
+                    covered.append(glyph)
+                    subtable.PairSet.append(pair_set)
+                    subtable.PairSetCount = len(subtable.PairSet)
+                for pair_set in subtable.PairSet:
+                    records = pair_set.PairValueRecord
+                    for record in [r for r in records if r.SecondGlyph == like]:
+                        added = copy.deepcopy(record)
+                        added.SecondGlyph = glyph
+                        records.append(added)
+                    pair_set.PairValueCount = len(records)
+            else:
+                if like in covered:
+                    covered.append(glyph)
+                    first = subtable.ClassDef1.classDefs
+                    if like in first:
+                        first[glyph] = first[like]
+                second = subtable.ClassDef2.classDefs
+                if like in second:
+                    second[glyph] = second[like]
 
 
 def accent_offset(font: TTFont, glyph: str, accent: str) -> tuple[float, float]:
