@@ -18,10 +18,10 @@ afterEach(() => {
   cleanup();
 });
 
-// next/font is compiled by Next.js and has no runtime under Vitest. Every font
+// next/font is compiled by Next.js and has no runtime under Vitest. The font
 // loader returns the class name a component would put on its element.
-vi.mock("next/font/google", () => ({
-  Fredoka: () => ({ className: "font-fredoka", style: {} }),
+vi.mock("next/font/local", () => ({
+  default: () => ({ className: "font-fredoka", style: {} }),
 }));
 
 // jsdom has no canvas: getContext() logs "not implemented" and returns nothing.
