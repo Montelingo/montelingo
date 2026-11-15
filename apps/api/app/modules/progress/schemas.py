@@ -27,6 +27,16 @@ class ProgressState(ApiSchema):
     locations: list[LocationState]
 
 
+# A chapter's lesson and games (ADR 0006). The server decides them; the
+# frontend never computes a lock.
+LessonState = Literal["todo", "done"]
+GameId = Literal["memory", "match"]
+GameStatus = Literal["locked", "available", "completed"]
+
+# The fixed set of games, in the order every chapter lists them.
+GAME_IDS: tuple[GameId, ...] = get_args(GameId)
+
+
 # The child's profile on the learning profile (#117). The bands and buddies are
 # the ones in Figma "1 · Welcome & Auth" (A5, A6).
 AgeBand = Literal["3-4", "5-6", "7"]

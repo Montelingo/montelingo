@@ -1,4 +1,4 @@
-"""Pure domain rules for map availability and the child profile."""
+"""Pure domain rules for map availability, chapter state and the child profile."""
 
 from __future__ import annotations
 
@@ -10,9 +10,13 @@ from app.modules.content import Content
 from app.modules.progress.schemas import (
     AGE_BANDS,
     AVATARS,
+    GAME_IDS,
     NAME_MAX_LENGTH,
     AgeBand,
     Avatar,
+    GameId,
+    GameStatus,
+    LessonState,
     MapState,
 )
 
@@ -80,6 +84,51 @@ def calculate_map_states(
         regions=region_states,
         locations=location_states,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class GameState:
+    """One game of a chapter and whether the child may play it."""
+
+    id: GameId
+    state: GameStatus
+
+
+@dataclass(frozen=True, slots=True)
+class ChapterState:
+    """A chapter's lesson and its games, with the games in `GAME_IDS` order."""
+
+    id: str
+    lesson: LessonState
+    games: tuple[GameState, ...]
+
+
+def calculate_chapter_state(
+    chapter_slug: str,
+    lesson_completed_at: datetime | None,
+    completed_games: Iterable[GameId],
+) -> ChapterState:
+    """Calculate one chapter's state without database access or side effects.
+
+    The lesson unlocks the games (ADR 0006): every game is `locked` until the
+    lesson is `done`, then `available`, and `completed` once it has a result.
+    A recorded result always counts as `completed`.
+    """
+
+    lesson: LessonState = "done" if lesson_completed_at is not None else "todo"
+    completed = set(completed_games)
+
+    games: list[GameState] = []
+    for game_id in GAME_IDS:
+        if game_id in completed:
+            state: GameStatus = "completed"
+        elif lesson == "done":
+            state = "available"
+        else:
+            state = "locked"
+        games.append(GameState(id=game_id, state=state))
+
+    return ChapterState(id=chapter_slug, lesson=lesson, games=tuple(games))
 
 
 class InvalidChildProfile(ValueError):
