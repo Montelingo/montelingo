@@ -335,6 +335,108 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "Profile": {
+        "description": "The current account's child profile. Fields stay null until it is set up.",
+        "properties": {
+          "age_band": {
+            "anyOf": [
+              {
+                "enum": [
+                  "3-4",
+                  "5-6",
+                  "7"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Band"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fox",
+                  "bear",
+                  "bunny",
+                  "frog",
+                  "owl",
+                  "cat"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "name",
+          "age_band",
+          "avatar",
+          "is_complete"
+        ],
+        "title": "Profile",
+        "type": "object"
+      },
+      "ProfileUpdate": {
+        "description": "Sets the whole profile. The name is trimmed before its length is checked.",
+        "properties": {
+          "age_band": {
+            "enum": [
+              "3-4",
+              "5-6",
+              "7"
+            ],
+            "title": "Age Band",
+            "type": "string"
+          },
+          "avatar": {
+            "enum": [
+              "fox",
+              "bear",
+              "bunny",
+              "frog",
+              "owl",
+              "cat"
+            ],
+            "title": "Avatar",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "age_band",
+          "avatar"
+        ],
+        "title": "ProfileUpdate",
+        "type": "object"
+      },
       "ProgressState": {
         "properties": {
           "locations": {
@@ -1000,6 +1102,116 @@
         "summary": "Get Location",
         "tags": [
           "content"
+        ]
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "operationId": "profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Get Profile",
+        "tags": [
+          "profile"
+        ]
+      },
+      "put": {
+        "operationId": "profile_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "profile"
         ]
       }
     },

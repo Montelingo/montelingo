@@ -157,6 +157,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["profile_get"];
+        /** Update Profile */
+        put: operations["profile_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/progress": {
         parameters: {
             query?: never;
@@ -344,6 +362,38 @@ export interface components {
              * Format: email
              */
             email: string;
+        };
+        /**
+         * Profile
+         * @description The current account's child profile. Fields stay null until it is set up.
+         */
+        Profile: {
+            /** Age Band */
+            age_band: ("3-4" | "5-6" | "7") | null;
+            /** Avatar */
+            avatar: ("fox" | "bear" | "bunny" | "frog" | "owl" | "cat") | null;
+            /** Is Complete */
+            is_complete: boolean;
+            /** Name */
+            name: string | null;
+        };
+        /**
+         * ProfileUpdate
+         * @description Sets the whole profile. The name is trimmed before its length is checked.
+         */
+        ProfileUpdate: {
+            /**
+             * Age Band
+             * @enum {string}
+             */
+            age_band: "3-4" | "5-6" | "7";
+            /**
+             * Avatar
+             * @enum {string}
+             */
+            avatar: "fox" | "bear" | "bunny" | "frog" | "owl" | "cat";
+            /** Name */
+            name: string;
         };
         /** ProgressState */
         ProgressState: {
@@ -817,6 +867,104 @@ export interface operations {
             };
             /** @description Validation failed */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    profile_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

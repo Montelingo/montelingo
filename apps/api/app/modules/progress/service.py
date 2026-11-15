@@ -1,12 +1,15 @@
-"""Services for reading map availability and learning progress."""
+"""Services for map availability, learning progress and the child profile."""
 
 from __future__ import annotations
 
 from uuid import UUID
 
-from .domain import calculate_map_states
-from .repository import ProgressRepository
-from .schemas import LocationState, ProgressState, RegionState
+from app.core.errors import ApiError, ErrorCode
+from app.db.transaction import TransactionManager
+
+from .domain import ChildProfile, InvalidChildProfile, calculate_map_states
+from .repository import ChildProfileRepository, ProgressRepository
+from .schemas import AgeBand, Avatar, LocationState, Profile, ProgressState, RegionState
 
 
 class DatabaseProgressService:
@@ -25,3 +28,60 @@ class DatabaseProgressService:
                 LocationState(id=slug, state=state) for slug, state in states.locations.items()
             ],
         )
+
+
+def _profile(profile: ChildProfile) -> Profile:
+    return Profile(
+        name=profile.name,
+        age_band=profile.age_band,
+        avatar=profile.avatar,
+        is_complete=profile.is_complete,
+    )
+
+
+def _missing_profile() -> ApiError:
+    return ApiError(
+        ErrorCode.UNEXPECTED_ERROR,
+        "Learning profile is missing for the current user.",
+        status_code=500,
+    )
+
+
+class ChildProfileService:
+    """Read and set the child profile of one learning profile.
+
+    Callers pass the current account's learning profile ID, so an account only
+    ever reads or writes its own profile.
+    """
+
+    def __init__(
+        self,
+        repository: ChildProfileRepository,
+        transaction_manager: TransactionManager,
+    ) -> None:
+        self.repository = repository
+        self.transaction_manager = transaction_manager
+
+    async def get(self, learning_profile_id: UUID) -> Profile:
+        profile = await self.repository.get(learning_profile_id)
+        if profile is None:
+            raise _missing_profile()
+        return _profile(profile)
+
+    async def set_up(
+        self,
+        learning_profile_id: UUID,
+        *,
+        name: str,
+        age_band: AgeBand,
+        avatar: Avatar,
+    ) -> Profile:
+        try:
+            profile = ChildProfile.set_up(name=name, age_band=age_band, avatar=avatar)
+        except InvalidChildProfile as error:
+            # The request schema checks the same rules, so this is a second line of defence.
+            raise ApiError(ErrorCode.VALIDATION_ERROR, str(error), status_code=422) from error
+        async with self.transaction_manager.transaction():
+            if not await self.repository.save(learning_profile_id, profile):
+                raise _missing_profile()
+        return _profile(profile)
