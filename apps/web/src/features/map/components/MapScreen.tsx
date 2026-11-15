@@ -40,6 +40,7 @@ export function MapScreen({
   title,
   regions,
   places,
+  explorer,
   focusRegionId,
   backHref,
   notice,
@@ -69,6 +70,7 @@ export function MapScreen({
           regions={regions}
           currentRegionId={region?.id ?? null}
           nextPlace={nextPlace}
+          explorer={explorer}
         />
       </div>
       {notice !== null || needsProgressRetry ? (

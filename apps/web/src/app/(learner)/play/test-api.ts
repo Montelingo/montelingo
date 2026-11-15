@@ -173,9 +173,10 @@ function progressResponse(progress: ProgressAnswer): Response {
 }
 
 /**
- * Makes `fetchMock` answer like the API: progress as `progress` says, the
- * list of regions, and a region or place by its exact id, as the API does, or
- * `404` for one it does not have.
+ * Makes `fetchMock` answer like the API: progress as `progress` says, a child
+ * profile that is not set up yet (or `401` when signed out), the list of
+ * regions, and a region or place by its exact id, as the API does, or `404`
+ * for one it does not have.
  */
 export function serveApi(
   fetchMock: Mock<(request: Request) => Promise<Response>>,
@@ -183,6 +184,19 @@ export function serveApi(
 ): void {
   fetchMock.mockImplementation((request) => {
     const { pathname } = new URL(request.url);
+    if (pathname === "/api/v1/profile") {
+      // A profile not set up yet; a session that ended is signed out here too.
+      return Promise.resolve(
+        progress === "signed-out"
+          ? errorResponse(401, "authentication_error")
+          : jsonResponse(200, {
+              name: null,
+              age_band: null,
+              avatar: null,
+              is_complete: false,
+            }),
+      );
+    }
     if (pathname === "/api/v1/progress") {
       return Promise.resolve(progressResponse(progress));
     }

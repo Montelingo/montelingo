@@ -150,6 +150,33 @@ describe("MapHome", () => {
     expect(within(panel).getAllByText("Još zaključano")).toHaveLength(2);
   });
 
+  it("shows the placeholder explorer until the profile is set up", () => {
+    renderHome();
+
+    const panel = screen.getByRole("complementary", { name: "Regije" });
+    expect(within(panel).getByText("Istraživač")).toBeInTheDocument();
+  });
+
+  it("shows the child's name and title once the profile is set up", () => {
+    renderHome({
+      ...newAccount,
+      explorer: {
+        name: "Mia",
+        avatar: "owl",
+        title: "Istraživač · 5–6 godina",
+      },
+    });
+
+    const panel = screen.getByRole("complementary", { name: "Regije" });
+    expect(within(panel).getByText("Mia")).toBeInTheDocument();
+    expect(
+      within(panel).getByText("Istraživač · 5–6 godina"),
+    ).toBeInTheDocument();
+    expect(
+      panel.querySelector('img[src="/learner/avatar-owl.svg"]'),
+    ).not.toBeNull();
+  });
+
   it("opens the next stop's level card from its play button", () => {
     renderHome();
 

@@ -3,6 +3,8 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 
 import { PLAY_PATH } from "@/features/auth/edge";
+import { type Profile, toExplorer } from "@/features/profile";
+import { getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";
 import type { Region } from "../model/content";
@@ -38,24 +40,32 @@ import { getProgress } from "./progress-api";
  * Redirects to sign in when the session has ended.
  */
 export async function loadMap(returnTo: string = PLAY_PATH): Promise<MapData> {
-  const [regions, progress] = await signedIn(returnTo, [
+  const [regions, progress, profile] = await signedIn(returnTo, [
     listRegions(),
     getProgress(),
+    getProfile(),
   ]);
-  return mapOf(returnTo, regions, progress);
+  return mapOf(returnTo, regions, progress, profile);
 }
 
-// Every region's places, joined with progress into the whole map.
+// Every region's places, joined with progress into the whole map, and the
+// child the side panel shows (null until the profile is set up, or when it
+// cannot be read: the panel then shows its placeholder explorer).
 async function mapOf(
   returnTo: string,
   regions: readonly Region[],
   progress: ProgressResult,
+  profile: Profile | null,
 ): Promise<MapData> {
   const details = await signedIn(
     returnTo,
     regions.map(({ id }) => getRegion(id)),
   );
-  return toMapData(details, progress);
+  return toMapData(
+    details,
+    progress,
+    profile === null ? null : toExplorer(profile),
+  );
 }
 
 /**
@@ -69,10 +79,11 @@ async function mapOf(
 export async function loadRegionMap(regionId: string): Promise<RegionMapData> {
   const returnTo = regionPath(regionId);
   // The region first, so an unknown one is not found whatever else fails.
-  const [region, regions, progress] = await signedIn(returnTo, [
+  const [region, regions, progress, profile] = await signedIn(returnTo, [
     getRegion(regionId),
     listRegions(),
     getProgress(),
+    getProfile(),
   ]);
   const screen = toRegionScreen(region, progress);
   const leaveTo = lockedRegionRedirect(screen.region.state);
@@ -81,7 +92,7 @@ export async function loadRegionMap(regionId: string): Promise<RegionMapData> {
   }
   return {
     region: screen.region,
-    ...(await mapOf(returnTo, regions, progress)),
+    ...(await mapOf(returnTo, regions, progress, profile)),
   };
 }
 

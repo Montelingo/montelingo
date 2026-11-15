@@ -1,6 +1,8 @@
 import { ApiClientError } from "@app/api-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Profile } from "@/features/profile";
+
 import type { LocationDetail, RegionDetail } from "../model/content";
 import type { ProgressResult } from "../model/progress";
 import {
@@ -22,6 +24,7 @@ const adapters = vi.hoisted(() => ({
   getRegion: vi.fn<(regionId: string) => Promise<RegionDetail>>(),
   getLocation: vi.fn<(locationId: string) => Promise<LocationDetail>>(),
   getProgress: vi.fn<() => Promise<ProgressResult>>(),
+  getProfile: vi.fn<() => Promise<Profile | null>>(),
 }));
 
 vi.mock("./content-api", () => ({
@@ -30,6 +33,9 @@ vi.mock("./content-api", () => ({
   getLocation: adapters.getLocation,
 }));
 vi.mock("./progress-api", () => ({ getProgress: adapters.getProgress }));
+vi.mock("@/features/profile/server", () => ({
+  getProfile: adapters.getProfile,
+}));
 
 // Like Next.js, notFound() and redirect() throw, so nothing after them runs.
 class NotFoundSignal extends Error {}
@@ -74,6 +80,7 @@ beforeEach(() => {
   );
   adapters.getLocation.mockResolvedValue(makeLocationDetail());
   adapters.getProgress.mockResolvedValue(newAccountProgress());
+  adapters.getProfile.mockResolvedValue(null);
 });
 
 describe("loadMap", () => {
@@ -100,6 +107,50 @@ describe("loadMap", () => {
     ]);
     expect(places).toHaveLength(17);
     expect(places.find(({ isNext }) => isNext)?.id).toBe("budva");
+  });
+
+  it("has the placeholder explorer until the profile is set up", async () => {
+    await expect(loadMap()).resolves.toMatchObject({ explorer: null });
+
+    adapters.getProfile.mockResolvedValue({
+      name: null,
+      ageBand: null,
+      avatar: null,
+      isComplete: false,
+    });
+    await expect(loadMap()).resolves.toMatchObject({ explorer: null });
+  });
+
+  it("shows the child once the profile is set up", async () => {
+    adapters.getProfile.mockResolvedValue({
+      name: "Mia",
+      ageBand: "5-6",
+      avatar: "owl",
+      isComplete: true,
+    });
+
+    await expect(loadMap()).resolves.toMatchObject({
+      explorer: {
+        name: "Mia",
+        avatar: "owl",
+        title: "Istraživač · 5–6 godina",
+      },
+    });
+  });
+
+  it("sends the learner to sign in when only the profile finds the session ended", async () => {
+    adapters.getProfile.mockRejectedValue(
+      new ApiClientError(401, {
+        error: {
+          code: "authentication_error",
+          message: "Authentication required.",
+          request_id: "req-1",
+          details: null,
+        },
+      }),
+    );
+
+    await expect(loadMap()).rejects.toThrow("NEXT_REDIRECT /sign-in");
   });
 
   it("still loads the map when progress failed", async () => {

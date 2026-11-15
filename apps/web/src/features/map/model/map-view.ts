@@ -1,3 +1,5 @@
+import type { Explorer } from "@/features/profile";
+
 import type { RegionDetail } from "./content";
 import { MAP_GEOMETRY } from "./map-geometry";
 import type {
@@ -32,6 +34,8 @@ export type MapRegion = MapRegionLink & {
 export type MapData = {
   regions: MapRegion[];
   places: MapPlace[];
+  /** The child the side panel shows, or `null` for the placeholder explorer. */
+  explorer: Explorer | null;
 };
 
 /** A region's map screen: the zoomed region, and the whole map. */
@@ -47,6 +51,7 @@ export type RegionMapData = MapData & {
 export function toMapData(
   regions: readonly RegionDetail[],
   progress: ProgressResult,
+  explorer: Explorer | null = null,
 ): MapData {
   const joined = joinProgress(
     { regions, locations: regions.flatMap((region) => region.locations) },
@@ -58,6 +63,7 @@ export function toMapData(
   const nextPlace = pickNextPlace(places);
   const orders = new Map<string, number>();
   return {
+    explorer,
     regions: joined.regions.map(({ id, name, state, locations }) => ({
       id,
       name,
