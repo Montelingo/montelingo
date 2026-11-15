@@ -1,4 +1,4 @@
-import type { Explorer } from "@/features/profile";
+import type { Explorer } from "@/features/profile/edge";
 
 import type { RegionDetail } from "./content";
 import { MAP_GEOMETRY } from "./map-geometry";

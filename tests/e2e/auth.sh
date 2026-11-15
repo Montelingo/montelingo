@@ -222,6 +222,20 @@ check_json_email "Authenticated me" "$me_body"
 account_status="$(status_for GET "$WEB_URL/account" --cookie "$COOKIE_JAR")"
 check_status "Account with session" 200 "$account_status"
 
+# A new account sets up the child's profile before the map (#118): /play sends
+# it to the setup, which the script then does through the API.
+check_page_redirect "New account's map leads to the profile setup" "/play" "/play/welcome"
+profile_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --request PUT --cookie "$COOKIE_JAR" \
+  --header "Origin: $ORIGIN" --header "Content-Type: application/json" \
+  --data '{"name":"Mia","age_band":"5-6","avatar":"fox"}' \
+  "$WEB_URL/api/v1/profile")"
+if [[ "$profile_status" != "200" ]]; then
+  echo "[e2e] Profile setup: PUT /api/v1/profile answered $profile_status, not 200" >&2
+  exit 1
+fi
+echo "[e2e] Profile setup: OK"
+
 check_new_account_map
 
 redirect_location="$(curl --silent --output /dev/null --write-out '%{redirect_url}' \

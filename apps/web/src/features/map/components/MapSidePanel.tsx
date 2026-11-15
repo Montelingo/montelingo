@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { avatarSrc, type Explorer } from "@/features/profile";
+import { avatarSrc, type Explorer } from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";

@@ -1,7 +1,7 @@
 import { ApiClientError } from "@app/api-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Profile } from "@/features/profile";
+import type { Profile } from "@/features/profile/edge";
 
 import type { LocationDetail, RegionDetail } from "../model/content";
 import type { ProgressResult } from "../model/progress";
