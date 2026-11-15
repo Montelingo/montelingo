@@ -32,7 +32,29 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
     await page.getByLabel("Confirm password").fill(password);
     await page.getByRole("button", { name: "Create account" }).click();
 
-    // Signing up also signs in and goes to the map.
+    // Signing up also signs in, and a new account sets up the child first.
+    await expect(page).toHaveURL("/play/welcome");
+  });
+
+  await test.step("set up the child's profile (#118)", async () => {
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Ko istražuje?" }),
+    ).toBeVisible();
+    await page.getByLabel("Ime djeteta").fill("Mia");
+    await page.getByRole("radio", { name: "Sova" }).check({ force: true });
+    await page.getByRole("button", { name: "Dalje" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Koliko godina ima Mia?" }),
+    ).toBeVisible();
+    await page.getByRole("radio", { name: /^5–6/ }).check({ force: true });
+    await page.getByRole("button", { name: "Dalje" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Spremni za istraživanje!" }),
+    ).toBeVisible();
+    await expect(page.getByText("Prva stanica: Budva, Obala.")).toBeVisible();
+    await page.getByRole("button", { name: "Krenimo!" }).click();
     await expect(page).toHaveURL("/play");
   });
 
