@@ -3,7 +3,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 
 import { PLAY_PATH } from "@/features/auth/edge";
-import { type Profile, toExplorer } from "@/features/profile";
+import { type Profile, toExplorer } from "@/features/profile/edge";
 import { getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";

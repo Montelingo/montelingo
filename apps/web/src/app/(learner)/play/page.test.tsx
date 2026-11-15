@@ -137,6 +137,16 @@ describe("PlayPage", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
+  it("sends a child whose profile is not set up to the setup first", async () => {
+    serveApi(fetchMock, "new-account", "not-set-up");
+
+    await expect(
+      PlayPage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toMatchObject({
+      digest: expect.stringContaining(";/play/welcome;") as unknown,
+    });
+  });
+
   it("lets a failed region list reach the error boundary", async () => {
     fetchMock.mockImplementation(() =>
       Promise.resolve(errorResponse(500, "internal_server_error")),
