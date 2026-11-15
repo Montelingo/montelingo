@@ -1,25 +1,28 @@
-import type { RegionPickerRegion } from "../model/map-state";
+import type { MapData } from "../model/map-view";
 import type { MapNotice } from "../model/notices";
 import { needsProgressRetry } from "../model/screens";
-import { PickerScreen } from "./PickerScreen";
-import { RegionPicker } from "./RegionPicker";
+import { MapScreen } from "./MapScreen";
+import { MontenegroMap } from "./MontenegroMap";
 
-type MapHomeProps = {
-  regions: readonly RegionPickerRegion[];
+type MapHomeProps = MapData & {
   /** Why the learner was sent here, from the page's `?notice=`. */
   notice: MapNotice | null;
 };
 
-// The learner's home, /play: every region, open or not, to pick from.
-export function MapHome({ regions, notice }: MapHomeProps) {
+// The learner's home, /play: the whole country, every place on it. Back leads
+// out of the learner area, to where adults find their account.
+export function MapHome({ regions, places, notice }: MapHomeProps) {
   return (
-    <PickerScreen
-      title="Your map"
-      subtitle="Pick a region to explore."
+    <MapScreen
+      title="Mapa"
+      regions={regions}
+      places={places}
+      focusRegionId={null}
+      backHref="/"
       notice={notice}
-      needsProgressRetry={needsProgressRetry(regions)}
+      needsProgressRetry={needsProgressRetry([...regions, ...places])}
     >
-      <RegionPicker regions={regions} />
-    </PickerScreen>
+      <MontenegroMap regions={regions} places={places} />
+    </MapScreen>
   );
 }

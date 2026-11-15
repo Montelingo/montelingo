@@ -34,27 +34,22 @@ export type ServerMapState = Extract<
   "locked" | "available" | "in-progress" | "completed"
 >;
 
-// The SVG map contract §19: what the map component is given and calls back.
+// A region or place on the map: its content id and the state to draw it in.
 type MapElement = { readonly id: string; readonly state: MapElementState };
 
 export type MapRegionState = MapElement;
 
 export type MapLocationState = MapElement;
 
-export type OnRegionSelect = (regionId: string) => void;
+// What the map draws for each element: its id and state, plus the name to show
+// and the link that opens it.
 
-export type OnLocationSelect = (locationId: string) => void;
-
-// What the card screens draw for each element: the contract's id and state,
-// plus the name to show and the link that opens it. The SVG map can take the
-// same items and ignore what it does not need.
-
-export type RegionPickerRegion = MapRegionState & {
+export type MapRegionLink = MapRegionState & {
   readonly name: string;
   readonly href: string;
 };
 
-export type LocationPickerLocation = MapLocationState & {
+export type MapLocationLink = MapLocationState & {
   readonly name: string;
   readonly href: string;
   /** The next place to go (`pickNextPlace()`); at most one per region. */

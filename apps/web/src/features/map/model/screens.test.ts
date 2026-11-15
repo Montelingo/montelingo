@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   makeLocation,
-  makeRegion,
   newAccountProgress,
   seedLocationDetail,
   seedRegionDetail,
-  seedRegions,
 } from "../test-fixtures";
 import { MAP_ELEMENT_STATES, type MapElementState } from "./map-state";
 import type { ProgressResult } from "./progress";
@@ -15,7 +13,6 @@ import {
   lockedRegionRedirect,
   needsProgressRetry,
   toLocationScreen,
-  toRegionPickerRegions,
   toRegionScreen,
 } from "./screens";
 
@@ -30,51 +27,6 @@ const UNKNOWN = ["loading", "error"] as const;
 function pairs<A, B>(as: readonly A[], bs: readonly B[]): [A, B][] {
   return as.flatMap((a) => bs.map((b): [A, B] => [a, b]));
 }
-
-describe("toRegionPickerRegions", () => {
-  it("gives a new account the coast, with the other regions locked, in content order", () => {
-    expect(toRegionPickerRegions(seedRegions(), newAccountProgress())).toEqual([
-      { id: "coast", name: "Obala", state: "available", href: "/play/coast" },
-      {
-        id: "central",
-        name: "Centralna Crna Gora",
-        state: "locked",
-        href: "/play/central",
-      },
-      {
-        id: "north",
-        name: "Sjever i planine",
-        state: "locked",
-        href: "/play/north",
-      },
-    ]);
-  });
-
-  it("puts every region in the error state when progress failed", () => {
-    const regions = toRegionPickerRegions(seedRegions(), { status: "error" });
-
-    expect(regions.map(({ state }) => state)).toEqual([
-      "error",
-      "error",
-      "error",
-    ]);
-  });
-
-  it("gives a region progress does not cover the loading state", () => {
-    const regions = toRegionPickerRegions(
-      [makeRegion({ id: "coast" }), makeRegion({ id: "east", name: "East" })],
-      {
-        status: "ready",
-        progress: {
-          regions: [{ id: "coast", state: "completed" }],
-          locations: [],
-        },
-      },
-    );
-
-    expect(regions.map(({ state }) => state)).toEqual(["completed", "loading"]);
-  });
-});
 
 describe("toRegionScreen", () => {
   it("opens Budva for a new account and marks it as the next place", () => {

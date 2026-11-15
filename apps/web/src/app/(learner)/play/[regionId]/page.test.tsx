@@ -37,7 +37,8 @@ const navigation = vi.hoisted(() => ({
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
   ...navigation,
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => window.location.pathname,
   // The URL as it is now, like Next.js, whose router follows
   // history.replaceState().
   useSearchParams: () => new URLSearchParams(window.location.search),
@@ -76,7 +77,7 @@ async function renderPage(
 }
 
 function places() {
-  return within(screen.getByRole("list", { name: "Places" }));
+  return within(screen.getByRole("group", { name: "Mjesta" }));
 }
 
 let consoleError: MockInstance<typeof console.error>;
@@ -104,16 +105,16 @@ describe("RegionPage", () => {
         .getAllByRole("link")
         .map((card) => card.getAttribute("aria-label")),
     ).toEqual([
-      "Budva, Open, Next stop",
-      "Kotor, Locked",
-      "Ulcinj, Locked",
-      "Herceg Novi, Locked",
-      "Tivat, Locked",
-      "Bar, Locked",
+      "Budva, otvoreno, sljedeće mjesto",
+      "Kotor, zaključano",
+      "Ulcinj, zaključano",
+      "Herceg Novi, zaključano",
+      "Tivat, zaključano",
+      "Bar, zaključano",
     ]);
     expect(
-      places().getByRole("link", { name: "Budva, Open, Next stop" }),
-    ).toHaveAttribute("href", "/play/coast/budva");
+      places().getByRole("link", { name: "Budva, otvoreno, sljedeće mjesto" }),
+    ).toHaveAttribute("href", "/play/coast?place=budva");
     expect(navigation.redirect).not.toHaveBeenCalled();
   });
 
@@ -168,7 +169,7 @@ describe("RegionPage", () => {
     expect(navigation.redirect).not.toHaveBeenCalled();
     expect(places().getAllByRole("link")).toHaveLength(6);
     expect(
-      places().getByRole("link", { name: "Budva, Not loaded" }),
+      places().getByRole("link", { name: "Budva, nije učitano" }),
     ).toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByRole("button", { name: "Try again" }),
@@ -185,7 +186,7 @@ describe("RegionPage", () => {
       screen.getByRole("heading", { level: 1, name: "Centralna Crna Gora" }),
     ).toBeInTheDocument();
     expect(
-      places().getByRole("link", { name: "Podgorica, Loading" }),
+      places().getByRole("link", { name: "Podgorica, učitava se" }),
     ).toHaveAttribute("aria-disabled", "true");
   });
 

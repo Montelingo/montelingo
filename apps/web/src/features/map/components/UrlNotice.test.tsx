@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import { MAP_NOTICES } from "../model/notices";
+import { currentPath } from "../test-fixtures";
 import { UrlNotice } from "./UrlNotice";
 
 // Like Next.js, whose router follows history.replaceState(), useSearchParams()
@@ -15,10 +16,6 @@ const message = MAP_NOTICES["region-locked"];
 
 function visit(path: string) {
   window.history.replaceState(null, "", path);
-}
-
-function currentPath() {
-  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
 async function waitForAnnouncement() {

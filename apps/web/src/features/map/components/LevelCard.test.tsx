@@ -1,0 +1,120 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
+
+import { toMapData } from "../model/map-view";
+import {
+  currentPath,
+  newAccountProgress,
+  seedRegionDetails,
+} from "../test-fixtures";
+import { LevelCard } from "./LevelCard";
+
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
+
+// jsdom has no modal dialogs: showModal() and close() open and close it, and
+// close() fires `close`, as a browser does.
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
+  };
+});
+
+const map = toMapData(seedRegionDetails(), newAccountProgress());
+
+function renderAt(url: string) {
+  window.history.replaceState(null, "", url);
+  return render(<LevelCard regions={map.regions} places={map.places} />);
+}
+
+afterEach(() => {
+  vi.clearAllMocks();
+  window.history.replaceState(null, "", "/");
+});
+
+describe("LevelCard", () => {
+  it("shows nothing without a place in the URL", () => {
+    renderAt("/play/coast");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens an open place's card, named by the place", () => {
+    renderAt("/play/coast?place=budva");
+
+    const card = screen.getByRole("dialog", { name: "Budva" });
+    expect(card).toHaveAttribute("open");
+    expect(card).toHaveTextContent("Obala · mjesto 1");
+  });
+
+  it("shows the place's stars, none earned yet", () => {
+    renderAt("/play/coast?place=budva");
+
+    expect(
+      screen.getByRole("img", { name: "0 od 3 zvjezdice" }),
+    ).toBeInTheDocument();
+  });
+
+  it("leads Kreni! into the place", () => {
+    renderAt("/play/coast?place=budva");
+
+    expect(screen.getByRole("link", { name: "Kreni!" })).toHaveAttribute(
+      "href",
+      "/play/coast/budva",
+    );
+  });
+
+  it.each([
+    ["a locked place", "kotor"],
+    ["an unknown place", "atlantis"],
+  ])("ignores %s in the URL", (_case, id) => {
+    renderAt(`/play/coast?place=${id}`);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closes by going back, when it was opened on this page", async () => {
+    const user = userEvent.setup();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    window.history.replaceState(null, "", "/play/coast");
+    window.history.pushState(
+      { levelCardOpenedHere: true },
+      "",
+      "/play/coast?place=budva",
+    );
+    render(<LevelCard regions={map.regions} places={map.places} />);
+
+    await user.click(screen.getByRole("button", { name: "Zatvori" }));
+
+    // One Back then leaves the page: the card added no entry of its own.
+    expect(back).toHaveBeenCalledOnce();
+    back.mockRestore();
+  });
+
+  it("closes a card opened by a link by dropping only the place", async () => {
+    const user = userEvent.setup();
+    renderAt("/play/coast?place=budva&from=link");
+
+    await user.click(screen.getByRole("button", { name: "Zatvori" }));
+
+    expect(currentPath()).toBe("/play/coast?from=link");
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { container } = renderAt("/play/coast?place=budva");
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
