@@ -24,7 +24,9 @@ The font's own name, copyright and licence stay in each file.
 from __future__ import annotations
 
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any, NamedTuple
 
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
@@ -44,18 +46,31 @@ UNICODES = (
     "U+2C60-2C7F,U+A720-A7FF,U+FEFF,U+FFFD"
 )
 
-# The letters Fredoka lacks, each as (base, accent, the letter whose accent it
-# copies, that letter's base): the accent sits over the new base where it sits
-# over the model's, centred the same way.
+# A glyph set: glyph names to drawable glyphs (TTFont.getGlyphSet()).
+Glyphs = Mapping[str, Any]
+
+
+class Accented(NamedTuple):
+    """A letter Fredoka lacks, made of `base` and `accent`: the accent sits over
+    the base where it sits over `model_base` in `model`, centred the same
+    way."""
+
+    codepoint: int
+    base: str
+    accent: str
+    model: str
+    model_base: str
+
+
 ACCENTED = {
-    "Ccaron": (0x010C, "C", "uni030C", "Scaron", "S"),
-    "ccaron": (0x010D, "c", "uni030C", "scaron", "s"),
-    "Cacute": (0x0106, "C", "acutecomb", "Eacute", "E"),
-    "cacute": (0x0107, "c", "acutecomb", "eacute", "e"),
-    "Sacute": (0x015A, "S", "acutecomb", "Eacute", "E"),
-    "sacute": (0x015B, "s", "acutecomb", "eacute", "e"),
-    "Zacute": (0x0179, "Z", "acutecomb", "Eacute", "E"),
-    "zacute": (0x017A, "z", "acutecomb", "eacute", "e"),
+    "Ccaron": Accented(0x010C, "C", "uni030C", "Scaron", "S"),
+    "ccaron": Accented(0x010D, "c", "uni030C", "scaron", "s"),
+    "Cacute": Accented(0x0106, "C", "acutecomb", "Eacute", "E"),
+    "cacute": Accented(0x0107, "c", "acutecomb", "eacute", "e"),
+    "Sacute": Accented(0x015A, "S", "acutecomb", "Eacute", "E"),
+    "sacute": Accented(0x015B, "s", "acutecomb", "eacute", "e"),
+    "Zacute": Accented(0x0179, "Z", "acutecomb", "Eacute", "E"),
+    "zacute": Accented(0x017A, "z", "acutecomb", "eacute", "e"),
 }
 
 # Montenegrin's letters beyond ASCII, in both alphabets' Latin form; every
@@ -63,7 +78,7 @@ ACCENTED = {
 MONTENEGRIN = "ČčĆćĐđŠšŽžŚśŹź"
 
 # Every letter added: the accented ones, Đ and đ.
-ADDED = (*(codepoint for codepoint, *_ in ACCENTED.values()), 0x0110, 0x0111)
+ADDED = (*(letter.codepoint for letter in ACCENTED.values()), 0x0110, 0x0111)
 
 # đ's bar: from this share of d's width to just past its stem, as thick as
 # this share of the hyphen, centred between the x-height and the ascender.
@@ -73,6 +88,7 @@ BAR_THICKNESS = 0.8
 
 
 def main(source: Path) -> None:
+    """Writes one font file per weight, from the variable font at `source`."""
     for weight in WEIGHTS:
         font = instantiateVariableFont(
             TTFont(source), {"wght": weight, "wdth": 100}, updateFontNames=True
@@ -93,31 +109,37 @@ def main(source: Path) -> None:
 
 
 def add_missing_letters(font: TTFont) -> None:
+    """Adds the letters Fredoka lacks and Montenegrin needs."""
     glyphs = font.getGlyphSet()
-    for name, (codepoint, base, accent, model, model_base) in ACCENTED.items():
-        dx, dy = accent_offset(font, model, accent)
+    for name, letter in ACCENTED.items():
+        dx, dy = accent_offset(font, letter.model, letter.accent)
         # Centre the accent over the new base as over the model's base.
-        shift = centre_x(glyphs, base) - centre_x(glyphs, model_base)
+        shift = centre_x(glyphs, letter.base) - centre_x(glyphs, letter.model_base)
         add_glyph(
             font,
             name,
-            codepoint,
-            base,
-            [(base, (1, 0, 0, 1, 0, 0)), (accent, (1, 0, 0, 1, dx + shift, dy))],
+            letter.codepoint,
+            letter.base,
+            [
+                (letter.base, (1, 0, 0, 1, 0, 0)),
+                (letter.accent, (1, 0, 0, 1, dx + shift, dy)),
+            ],
         )
-
     # Đ is Ð: the same letter in Montenegrin and in Icelandic.
     add_glyph(font, "Dcroat", 0x0110, "Eth", [("Eth", (1, 0, 0, 1, 0, 0))])
+    add_dcroat(font, glyphs)
 
-    d_left, _, d_right, _ = bounds(glyphs, "d")
+
+def add_dcroat(font: TTFont, glyphs: Glyphs) -> None:
+    """Adds đ: d with Fredoka's hyphen, thinner, across its stem, centred
+    between the x-height and the top of the ascender."""
+    d_left, _, d_right, ascender = bounds(glyphs, "d")
     h_left, h_bottom, h_right, h_top = bounds(glyphs, "hyphen")
     bar_left = d_left + (d_right - d_left) * BAR_FROM
     bar_right = d_right + BAR_PAST_STEM
     scale_x = (bar_right - bar_left) / (h_right - h_left)
     scale_y = BAR_THICKNESS
-    x_height = font["OS/2"].sxHeight
-    ascender = bounds(glyphs, "d")[3]
-    bar_centre = (x_height + ascender) / 2
+    bar_centre = (font["OS/2"].sxHeight + ascender) / 2
     dx = bar_left - h_left * scale_x
     dy = bar_centre - (h_bottom + h_top) / 2 * scale_y
     add_glyph(
@@ -162,18 +184,21 @@ def add_glyph(
             table.cmap[codepoint] = name
 
 
-def bounds(glyphs, name: str) -> tuple[float, float, float, float]:
+def bounds(glyphs: Glyphs, name: str) -> tuple[float, float, float, float]:
+    """`name`'s outline's box: left, bottom, right, top."""
     pen = BoundsPen(glyphs)
     glyphs[name].draw(pen)
     return pen.bounds
 
 
-def centre_x(glyphs, name: str) -> float:
+def centre_x(glyphs: Glyphs, name: str) -> float:
+    """The middle of `name`'s outline, across."""
     left, _, right, _ = bounds(glyphs, name)
     return (left + right) / 2
 
 
 def parse_unicodes(ranges: str) -> list[int]:
+    """The codepoints of a CSS unicode-range list, such as "U+0000-00FF,U+20AC"."""
     codepoints: list[int] = []
     for part in ranges.split(","):
         first, _, last = part.removeprefix("U+").partition("-")
