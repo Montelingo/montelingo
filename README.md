@@ -54,7 +54,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │       │   ├── app/        # App Router (layout, page, globals.css, /api/* proxy route)
 │       │   ├── features/   # feature slices (health: API adapter, model, UI, tests)
 │       │   ├── components/ # shared, domain-free UI primitives (form fields)
-│       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn)
+│       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn, fonts)
 │       ├── Dockerfile
 │       ├── eslint.config.mjs
 │       ├── next.config.ts
