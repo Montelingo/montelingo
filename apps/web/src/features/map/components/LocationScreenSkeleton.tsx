@@ -50,8 +50,8 @@ export function LocationScreenSkeleton() {
 function WordBlock() {
   return (
     <SkeletonCard>
-      <div className="p-3">
-        <SkeletonTextLine className="w-3/4 text-lg leading-snug" />
+      <div className="px-3 pb-3 pt-2">
+        <SkeletonTextLine className="mx-auto w-3/4 text-xl leading-snug" />
       </div>
     </SkeletonCard>
   );
