@@ -1,4 +1,4 @@
-"""Pure domain rules for calculating map availability."""
+"""Pure domain rules for map availability and the child profile."""
 
 from __future__ import annotations
 
@@ -7,7 +7,14 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.modules.content import Content
-from app.modules.progress.schemas import MapState
+from app.modules.progress.schemas import (
+    AGE_BANDS,
+    AVATARS,
+    NAME_MAX_LENGTH,
+    AgeBand,
+    Avatar,
+    MapState,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,3 +80,37 @@ def calculate_map_states(
         regions=region_states,
         locations=location_states,
     )
+
+
+class InvalidChildProfile(ValueError):
+    """A child profile value breaks one of the profile's rules."""
+
+
+@dataclass(frozen=True, slots=True)
+class ChildProfile:
+    """The child's name, age band and animal buddy on a learning profile.
+
+    A profile created at sign-up has none of them; they are set together when
+    the grown-up sets the profile up.
+    """
+
+    name: str | None = None
+    age_band: AgeBand | None = None
+    avatar: Avatar | None = None
+
+    @property
+    def is_complete(self) -> bool:
+        return self.name is not None and self.age_band is not None and self.avatar is not None
+
+    @classmethod
+    def set_up(cls, *, name: str, age_band: AgeBand, avatar: Avatar) -> ChildProfile:
+        trimmed = name.strip()
+        if not 1 <= len(trimmed) <= NAME_MAX_LENGTH:
+            raise InvalidChildProfile(
+                f"The name must be 1 to {NAME_MAX_LENGTH} characters after trimming."
+            )
+        if age_band not in AGE_BANDS:
+            raise InvalidChildProfile(f"Unknown age band: {age_band!r}.")
+        if avatar not in AVATARS:
+            raise InvalidChildProfile(f"Unknown avatar: {avatar!r}.")
+        return cls(name=trimmed, age_band=age_band, avatar=avatar)
