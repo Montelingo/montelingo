@@ -13,6 +13,7 @@ To convert a PNG (Fedora: `sudo dnf install libwebp-tools`):
 cwebp -q 80 -resize 1024 1024 -alpha_q 100 0011.png -o 0011.webp
 ```
 
-| Numbers | Chapter          | Added in |
-| ------- | ---------------- | -------- |
-| 1–10    | Na plaži (Budva) | #127     |
+| Numbers | Chapter                | Added in |
+| ------- | ---------------------- | -------- |
+| 1–10    | Na plaži (Budva)       | #127     |
+| 61–70   | Ljeto i odjeća (Budva) | #120     |
