@@ -33,6 +33,7 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/regions/{region_id}",
         "/api/v1/locations/{location_id}",
         "/api/v1/progress",
+        "/api/v1/profile",
     }
 
 
@@ -144,3 +145,45 @@ def test_word_media_fields_are_required_and_nullable(app: FastAPI) -> None:
     assert set(word["required"]) == {"id", "number", "text", "note", "image_url", "audio_url"}
     for field in ("image_url", "audio_url"):
         assert {"type": "null"} in word["properties"][field]["anyOf"]
+
+
+# The child profile contract (#117). The frontend half of #114 builds on it.
+PROFILE_CONTRACT = [
+    ("get", "profile_get", None, {"401", "500"}),
+    ("put", "profile_update", "ProfileUpdate", {"401", "403", "422", "500"}),
+]
+
+
+@pytest.mark.parametrize(("method", "operation_id", "body", "errors"), PROFILE_CONTRACT)
+def test_profile_contract(
+    app: FastAPI, method: str, operation_id: str, body: str | None, errors: set[str]
+) -> None:
+    operation = app.openapi()["paths"]["/api/v1/profile"][method]
+
+    assert operation["operationId"] == operation_id
+    assert set(operation["responses"]) == {"200", *errors}
+    schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema == {"$ref": "#/components/schemas/Profile"}
+    if body is None:
+        assert "requestBody" not in operation
+    else:
+        request = operation["requestBody"]["content"]["application/json"]["schema"]
+        assert request == {"$ref": f"#/components/schemas/{body}"}
+
+
+def test_profile_fields_are_required_and_nullable(app: FastAPI) -> None:
+    profile = app.openapi()["components"]["schemas"]["Profile"]
+
+    assert set(profile["required"]) == {"name", "age_band", "avatar", "is_complete"}
+    for field in ("name", "age_band", "avatar"):
+        assert {"type": "null"} in profile["properties"][field]["anyOf"]
+    assert profile["properties"]["is_complete"]["type"] == "boolean"
+
+
+def test_profile_bands_and_avatars_are_the_figma_values(app: FastAPI) -> None:
+    update = app.openapi()["components"]["schemas"]["ProfileUpdate"]
+
+    assert set(update["required"]) == {"name", "age_band", "avatar"}
+    assert update["properties"]["age_band"]["enum"] == ["3-4", "5-6", "7"]
+    assert update["properties"]["avatar"]["enum"] == ["fox", "bear", "bunny", "frog", "owl", "cat"]
+    assert update["properties"]["name"]["maxLength"] == 30
