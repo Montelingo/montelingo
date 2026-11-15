@@ -87,16 +87,16 @@ export function toMapData(
 type Box = { x: number; y: number; width: number; height: number };
 
 /**
- * The part of the map to show: all of it, or one region zoomed in, as the
- * build script framed it (its outline and buildings, with some room).
+ * The part of the map the screen must show whole: the country, or one region
+ * zoomed in, as the build script framed it (its outline and buildings, with
+ * some room). The rest of the art fills the screen around it.
  */
 export function mapViewBox(regionId: string | null): Box {
-  const [x, y, width, height] = MAP_GEOMETRY.viewBox;
   const region =
     regionId === null
       ? undefined
       : MAP_GEOMETRY.regions[regionId as keyof typeof MAP_GEOMETRY.regions];
-  return region?.view ?? { x, y, width, height };
+  return region?.focus ?? MAP_GEOMETRY.focus;
 }
 
 /** True when a region is drawn under fog: while it is locked. */

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none"><g id="location-cetinje-visual">
-<g id="illustration-cetinje" transform="translate(732.0 667.63) scale(0.74) translate(-732.0 -667.63)">
+<g id="illustration-cetinje" transform="translate(684.0 607.5) scale(0.74) translate(-732.0 -667.63)">
 <path id="illustration-cetinje-shape" d="M765.84 675.12H698.16V703.2H765.84V675.12Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-cetinje-shape-2" d="M694.56 675.12L703.92 663.888H760.08L769.44 675.12H694.56Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-cetinje-shape-3" d="M718.896 663.888V641.424L732 632.064L745.104 641.424V663.888H718.896Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
@@ -14,7 +14,7 @@
 </g>
 </g>
 <g id="location-podgorica-visual">
-<g id="illustration-podgorica" transform="translate(818.4 617.23) scale(0.74) translate(-818.4 -617.23)">
+<g id="illustration-podgorica" transform="translate(840.24 578.07) scale(0.74) translate(-818.4 -617.23)">
 <path id="illustration-podgorica-shape" d="M846.48 617.52H790.32V652.8H846.48V617.52Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-podgorica-shape-2" d="M803.424 617.232V607.872C813.432 591.672 823.368 591.672 833.376 607.872V617.232H803.424Z" fill="#F1E7D2" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <g id="illustration-podgorica-shape-3">
@@ -32,7 +32,7 @@
 </g>
 </g>
 <g id="location-danilovgrad-visual">
-<g id="illustration-danilovgrad" transform="translate(771.6 559.2) scale(0.74) translate(-771.6 -559.2)">
+<g id="illustration-danilovgrad" transform="translate(771.6 510.09) scale(0.74) translate(-771.6 -559.2)">
 <path id="illustration-danilovgrad-shape" d="M728.6 584.2C748.6 578.2 768.6 590.2 814.6 582.2V590.2H728.6V584.2Z" fill="#5CC8E8" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />
 <path id="illustration-danilovgrad-shape-2" d="M754.6 540.2H736.6V556.2H754.6V540.2Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.5" />
 <path id="illustration-danilovgrad-shape-3" d="M733.6 541.2L745.6 531.2L757.6 541.2H733.6Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />
@@ -43,7 +43,7 @@
 </g>
 </g>
 <g id="location-niksic-visual">
-<g id="illustration-niksic" transform="translate(696.01 442.92) scale(0.74) translate(-696.01 -442.92)">
+<g id="illustration-niksic" transform="translate(696.01 405.85) scale(0.74) translate(-696.01 -442.92)">
 <path id="illustration-niksic-shape" d="M654.816 475.68L658.56 460.704H733.44L737.184 475.68H654.816Z" fill="#79C95A" />
 <path id="illustration-niksic-shape-2" d="M664.176 462.576V432.624H668.856V438.24H673.536V432.624H678.216V438.24H682.896V432.624H687.576V438.24H692.256V432.624H696.936V438.24H701.616V432.624H706.296V438.24H710.976V432.624H715.656V438.24H720.336V462.576H664.176Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-niksic-shape-3" d="M732 415.92H711.12V462.72H732V415.92Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
@@ -53,7 +53,7 @@
 </g>
 </g>
 <g id="location-skadar-lake-visual">
-<g id="illustration-skadar-lake" transform="translate(829.27 750.0) scale(0.74) translate(-829.27 -750.0)">
+<g id="illustration-skadar-lake" transform="translate(829.27 698.78) scale(0.74) translate(-829.27 -750.0)">
 <path id="illustration-skadar-lake-shape" d="M850.8 780.24C855.572 780.24 859.44 778.628 859.44 776.64C859.44 774.652 855.572 773.04 850.8 773.04C846.028 773.04 842.16 774.652 842.16 776.64C842.16 778.628 846.028 780.24 850.8 780.24Z" fill="#5E9E5C" />
 <path id="illustration-skadar-lake-shape-2" d="M798.24 783.84C802.216 783.84 805.44 782.551 805.44 780.96C805.44 779.369 802.216 778.08 798.24 778.08C794.264 778.08 791.04 779.369 791.04 780.96C791.04 782.551 794.264 783.84 798.24 783.84Z" fill="#5E9E5C" />
 <path id="illustration-skadar-lake-shape-3" d="M852.24 777.36C853.433 777.36 854.4 776.393 854.4 775.2C854.4 774.007 853.433 773.04 852.24 773.04C851.047 773.04 850.08 774.007 850.08 775.2C850.08 776.393 851.047 777.36 852.24 777.36Z" fill="#F4F4F4" />

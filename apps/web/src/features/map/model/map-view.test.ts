@@ -115,28 +115,81 @@ describe("toMapData", () => {
 });
 
 describe("mapViewBox", () => {
-  it("shows the whole map without a region", () => {
-    const [x, y, width, height] = MAP_GEOMETRY.viewBox;
-
-    expect(mapViewBox(null)).toEqual({ x, y, width, height });
+  it("shows the whole country without a region", () => {
+    expect(mapViewBox(null)).toEqual(MAP_GEOMETRY.focus);
   });
 
   it("zooms to a region as the build script framed it", () => {
-    expect(mapViewBox("coast")).toEqual(MAP_GEOMETRY.regions.coast.view);
+    expect(mapViewBox("coast")).toEqual(MAP_GEOMETRY.regions.coast.focus);
   });
 
-  it("shows the whole map for a region it does not know", () => {
+  it("shows the whole country for a region it does not know", () => {
     expect(mapViewBox("atlantis")).toEqual(mapViewBox(null));
   });
 
-  it("frames every region within the map, at the map's shape", () => {
-    const [, , mapWidth, mapHeight] = MAP_GEOMETRY.viewBox;
-    for (const { view } of Object.values(MAP_GEOMETRY.regions)) {
-      expect(view.x).toBeGreaterThanOrEqual(0);
-      expect(view.y).toBeGreaterThanOrEqual(0);
-      expect(view.x + view.width).toBeLessThanOrEqual(mapWidth + 0.01);
-      expect(view.y + view.height).toBeLessThanOrEqual(mapHeight + 0.01);
-      expect(view.width / view.height).toBeCloseTo(mapWidth / mapHeight, 2);
+  it("frames every place of a region, marker and name", () => {
+    for (const { regionId, marker, label } of Object.values(
+      MAP_GEOMETRY.locations,
+    )) {
+      const view = mapViewBox(regionId);
+      expect(marker.cx - marker.r).toBeGreaterThanOrEqual(view.x);
+      expect(marker.cy - marker.r).toBeGreaterThanOrEqual(view.y);
+      expect(label.cx).toBeLessThanOrEqual(view.x + view.width);
+      expect(label.cy + label.height / 2).toBeLessThanOrEqual(
+        view.y + view.height,
+      );
+    }
+  });
+});
+
+describe("MAP_GEOMETRY", () => {
+  type Box = { x: number; y: number; width: number; height: number };
+  const overlaps = (a: Box, b: Box) =>
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 0 &&
+    Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 0;
+  const markerBox = ({ cx, cy, r }: { cx: number; cy: number; r: number }) => ({
+    x: cx - r,
+    y: cy - r,
+    width: 2 * r,
+    height: 2 * r,
+  });
+
+  const labelBox = ({
+    cx,
+    cy,
+    width,
+    height,
+  }: {
+    cx: number;
+    cy: number;
+    width: number;
+    height: number;
+  }) => ({ x: cx - width / 2, y: cy - height / 2, width, height });
+
+  it("never covers a place's name or marker with another place", () => {
+    const places = Object.entries(MAP_GEOMETRY.locations);
+    for (const [id, a] of places) {
+      for (const [otherId, b] of places) {
+        if (otherId === id || b.regionId !== a.regionId) {
+          continue;
+        }
+        for (const mine of [a.card, markerBox(a.marker)]) {
+          expect(
+            overlaps(mine, labelBox(b.label)) ||
+              overlaps(mine, markerBox(b.marker)),
+            `${id} covers ${otherId}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("puts each place's marker on its town, under its name", () => {
+    for (const { dot, marker, label } of Object.values(
+      MAP_GEOMETRY.locations,
+    )) {
+      expect([marker.cx, marker.cy]).toEqual([dot.cx, dot.cy]);
+      expect(label.cy).toBeLessThan(marker.cy);
     }
   });
 });

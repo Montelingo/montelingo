@@ -28,11 +28,13 @@ type MapScreenProps = MapData & {
   children: ReactNode;
 };
 
-// The frame MapHome and RegionScreen share (Figma "TM1" and "M1"): the map
-// covers the screen, with the top bar over it, the side panel on the right
-// from 1024px wide, and the bottom nav (with the next stop above it, below
-// 1024px). `data-map-screen` tells LearnerShell to drop its own Back and Home
-// bar, which the top bar and the nav's Map tab replace here.
+// The frame MapHome and RegionScreen share (Figma "TM1" and "M1"): the top
+// bar, the side panel on the right from 1024px wide, and the bottom nav (with
+// the next stop above it, below 1024px), around the map's frame: the space
+// they leave free, where the map fits the country or region whole. The rest
+// of the map's art spills past the frame under them, to the screen's edges,
+// and nothing scrolls. `data-map-screen` tells LearnerShell to drop its own
+// Back and Home bar, which the top bar and the nav's Map tab replace here.
 export function MapScreen({
   title,
   regions,
@@ -51,27 +53,32 @@ export function MapScreen({
     <section
       data-map-screen
       aria-labelledby={titleId}
-      className={cn(fredoka.className, "flex flex-col")}
+      className={cn(
+        fredoka.className,
+        "fixed inset-0 grid grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-kid-sea lg:grid-cols-[minmax(0,1fr)_auto]",
+      )}
     >
       <h1 id={titleId} className="sr-only">
         {title}
       </h1>
-      {children}
       <MapTopBar backHref={backHref} region={region} stars={0} hearts={0} />
-      {notice !== null || needsProgressRetry ? (
-        <div className="fixed inset-x-0 top-24 z-20 mx-auto flex max-w-xl flex-col gap-4 px-gutter">
-          {notice !== null ? <UrlNotice key={notice} notice={notice} /> : null}
-          {needsProgressRetry ? <ProgressErrorNotice /> : null}
-        </div>
-      ) : null}
-      <div className="pointer-events-none fixed right-0 top-28 z-20 hidden pr-safe-r lg:block">
+      {/* The map's frame. The map comes after the top bar in the reading
+          order, and is drawn under all of the chrome. */}
+      <div className="relative row-start-2 m-3">{children}</div>
+      <div className="pointer-events-none relative z-20 row-start-2 hidden pr-safe-r pt-4 lg:block">
         <MapSidePanel
           regions={regions}
           currentRegionId={region?.id ?? null}
           nextPlace={nextPlace}
         />
       </div>
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex flex-col gap-3 lg:items-center lg:pb-5">
+      {notice !== null || needsProgressRetry ? (
+        <div className="fixed inset-x-0 top-24 z-20 mx-auto flex max-w-xl flex-col gap-4 px-gutter">
+          {notice !== null ? <UrlNotice key={notice} notice={notice} /> : null}
+          {needsProgressRetry ? <ProgressErrorNotice /> : null}
+        </div>
+      ) : null}
+      <div className="pointer-events-none relative z-20 col-span-full flex flex-col gap-3 lg:items-center lg:pb-5">
         {nextPlace !== null ? (
           <div className="pointer-events-auto px-4 lg:hidden">
             <NextStopCard place={nextPlace} />

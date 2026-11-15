@@ -88,15 +88,19 @@ describe("RegionScreen", () => {
     ]);
   });
 
-  it("opens an open place's level card through the router", async () => {
+  it("opens an open place's level card on the same page, without the router", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(null, "", "/play/coast");
     renderCoast();
     const budva = within(theMap()).getByRole("link", { name: /^Budva/ });
 
     expect(budva).toHaveAttribute("href", "/play/coast?place=budva");
     await user.click(budva);
 
-    expect(router.push).toHaveBeenCalledWith("/play/coast?place=budva");
+    expect(`${window.location.pathname}${window.location.search}`).toBe(
+      "/play/coast?place=budva",
+    );
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it("says why a locked place will not open", async () => {

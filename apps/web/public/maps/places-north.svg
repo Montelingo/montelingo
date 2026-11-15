@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none"><g id="location-kolasin-visual">
-<g id="illustration-kolasin" transform="translate(932.88 426.0) scale(0.78) translate(-932.88 -426.0)">
+<g id="illustration-kolasin" transform="translate(932.88 371.31) scale(0.78) translate(-932.88 -426.0)">
 <path id="illustration-kolasin-shape" d="M891.696 460.56L925.392 404.4L974.064 460.56H891.696Z" fill="white" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-kolasin-shape-2" d="M895.44 445.44L938.64 391.44" stroke="#2B2D42" stroke-width="1.368" />
 <g id="illustration-kolasin-shape-3">
@@ -15,7 +15,7 @@
 </g>
 </g>
 <g id="location-durmitor-visual">
-<g id="illustration-durmitor" transform="translate(739.85 248.49) scale(0.78) translate(-739.85 -248.49)">
+<g id="illustration-durmitor" transform="translate(790.87 198.94) scale(0.78) translate(-739.85 -248.49)">
 <path id="illustration-durmitor-shape" d="M685.92 272.928L728.616 207.768L748.848 234.696L762.312 221.232L793.776 272.928H685.92Z" fill="#8E9BD6" />
 <path id="illustration-durmitor-shape-2" d="M728.616 207.768L748.848 234.696L762.312 221.232L793.776 272.928H742.08L728.616 207.768Z" fill="#717FC0" />
 <path id="illustration-durmitor-shape-3" d="M728.616 207.768L715.152 228L724.152 224.616L730.92 231.384L739.92 222.384L728.688 207.768H728.616Z" fill="white" />
@@ -29,7 +29,7 @@
 </g>
 </g>
 <g id="location-pljevlja-visual">
-<g id="illustration-pljevlja" transform="translate(863.76 119.64) scale(0.78) translate(-863.76 -119.64)">
+<g id="illustration-pljevlja" transform="translate(767.83 79.41) scale(0.78) translate(-863.76 -119.64)">
 <path id="illustration-pljevlja-shape" d="M874.56 143.04H837.12V171.12H874.56V143.04Z" fill="white" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-pljevlja-shape-2" d="M840.72 143.04C850.728 128.064 860.664 128.064 870.672 143.04H840.72Z" fill="#8FA3B5" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <g id="illustration-pljevlja-shape-3">
@@ -53,7 +53,7 @@
 </g>
 </g>
 <g id="location-bijelo-polje-visual">
-<g id="illustration-bijelo-polje" transform="translate(1018.63 298.49) scale(0.78) translate(-1018.63 -298.49)">
+<g id="illustration-bijelo-polje" transform="translate(960.5 292.82) scale(0.78) translate(-1018.63 -298.49)">
 <path id="illustration-bijelo-polje-shape" d="M1034.4 312.24H993.36V342.48H1034.4V312.24Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-bijelo-polje-shape-2" d="M989.616 312.528L1013.95 299.424L1038.29 312.528H989.616Z" fill="#FF6B4A" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
 <path id="illustration-bijelo-polje-shape-3" d="M993.36 342.48V321.888C988.176 321.888 984 326.064 984 331.248V342.48H993.36Z" fill="#FFD9A0" stroke="#2B2D42" stroke-width="2.808" stroke-linecap="round" stroke-linejoin="round" />
@@ -69,7 +69,7 @@
 </g>
 </g>
 <g id="location-berane-visual">
-<g id="illustration-berane" transform="translate(1084.8 401.8) scale(0.78) translate(-1084.8 -401.8)">
+<g id="illustration-berane" transform="translate(1084.8 351.85) scale(0.78) translate(-1084.8 -401.8)">
 <path id="illustration-berane-shape" d="M1042.8 412.3C1052.8 390.3 1070.8 386.3 1084.8 398.3C1098.8 382.3 1116.8 386.3 1126.8 412.3H1042.8Z" fill="#79C95A" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />
 <path id="illustration-berane-shape-2" d="M1102.8 392.3H1066.8V422.3H1102.8V392.3Z" fill="white" stroke="#2B2D42" stroke-width="2.5" />
 <path id="illustration-berane-shape-3" d="M1072.8 392.3C1072.8 382.3 1096.8 382.3 1096.8 392.3H1072.8Z" fill="#8FA3B5" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />
@@ -84,7 +84,7 @@
 </g>
 </g>
 <g id="location-rozaje-visual">
-<g id="illustration-rozaje" transform="translate(1167.6 447.6) scale(0.78) translate(-1167.6 -447.6)">
+<g id="illustration-rozaje" transform="translate(1167.6 409.95) scale(0.78) translate(-1167.6 -447.6)">
 <path id="illustration-rozaje-shape" d="M1125.6 470.4L1151.6 426.4L1165.6 446.4L1175.6 436.4L1209.6 470.4H1125.6Z" fill="#8E9BD6" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />
 <path id="illustration-rozaje-shape-2" d="M1151.6 426.4L1143.6 440.4L1149.6 438.4L1153.6 442.4L1159.6 436.4L1151.6 426.4ZM1175.6 436.4L1169.6 442.4L1174.6 441.4L1179.6 443.4L1175.6 436.4Z" fill="white" stroke="#2B2D42" stroke-width="2" stroke-linejoin="round" />
 <path id="illustration-rozaje-shape-3" d="M1137.6 478.4L1145.6 462.4L1153.6 478.4H1137.6ZM1193.6 478.4L1201.6 462.4L1209.6 478.4H1193.6Z" fill="#2FA35A" stroke="#2B2D42" stroke-width="2.5" stroke-linejoin="round" />

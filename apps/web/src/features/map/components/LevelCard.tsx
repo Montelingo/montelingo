@@ -4,7 +4,13 @@ import { StarIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef } from "react";
+import {
+  type ComponentProps,
+  type MouseEvent,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
 
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -18,6 +24,7 @@ import {
   type MapRegion,
 } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
+import { MapBaseImage } from "./MapBaseImage";
 import { FOCUS_RING, ICON_BUTTON_CLASS } from "./chrome-styles";
 
 type LevelCardProps = {
@@ -35,7 +42,6 @@ type LevelCardProps = {
 export function LevelCard({ regions, places }: LevelCardProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -58,7 +64,7 @@ export function LevelCard({ regions, places }: LevelCardProps) {
   }
 
   function close() {
-    router.replace(pathname, { scroll: false });
+    window.history.replaceState(null, "", pathname);
   }
 
   return (
@@ -143,13 +149,57 @@ export function LevelCard({ regions, places }: LevelCardProps) {
   );
 }
 
+// The card opens and closes by changing only the URL's query, through the
+// History API, which Next.js keeps useSearchParams() in step with: the card
+// needs nothing from the server. (A router.push() to the same page with a
+// new query also hangs in production, on Next.js 15.5, until some other
+// update.) From another page, the router goes to the place's region first.
+export function openLevelCard(
+  href: string,
+  router: ReturnType<typeof useRouter>,
+) {
+  if (
+    new URL(href, window.location.href).pathname === window.location.pathname
+  ) {
+    window.history.pushState(null, "", href);
+  } else {
+    router.push(href);
+  }
+}
+
+type LevelCardLinkProps = Omit<ComponentProps<typeof Link>, "href"> & {
+  href: string;
+};
+
+// A link to a place's level card, which opens it as openLevelCard() does.
+export function LevelCardLink({ href, onClick, ...props }: LevelCardLinkProps) {
+  const router = useRouter();
+  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+    onClick?.(event);
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.button !== 0
+    ) {
+      return;
+    }
+    event.preventDefault();
+    openLevelCard(href, router);
+  }
+  return <Link href={href} onClick={handleClick} {...props} />;
+}
+
 // How much of the map the picture shows, in the map's units: about a town
 // and its neighbours.
 const PICTURE_WIDTH = 220;
 const PICTURE_RATIO = 336 / 170;
 
 // The place on the map, close up: the map's own art (the country, the
-// region's decorations and buildings), centred on the place's building.
+// region's decorations and buildings), centred on the place's building. Left
+// out on a screen too short for it (a phone on its side), so the card fits
+// without scrolling.
 function PlacePicture({ place }: { place: MapPlace }) {
   const geometry =
     MAP_GEOMETRY.locations[place.id as keyof typeof MAP_GEOMETRY.locations];
@@ -165,9 +215,9 @@ function PlacePicture({ place }: { place: MapPlace }) {
     <svg
       aria-hidden="true"
       viewBox={`${x} ${y} ${PICTURE_WIDTH} ${height}`}
-      className="aspect-[336/170] w-full rounded-kid border-3 border-kid-ink bg-kid-sea"
+      className="aspect-[336/170] w-full rounded-kid border-3 border-kid-ink bg-kid-sea [@media(max-height:32rem)]:hidden"
     >
-      <image href="/maps/base.svg" width={mapWidth} height={mapHeight} />
+      <MapBaseImage />
       <image
         href={`/maps/decorations-${place.regionId}.svg`}
         width={mapWidth}

@@ -64,15 +64,18 @@ The script keeps the art and redraws what changes with state or language. The ap
 - Every outlined text, which is English in the export. The app draws Montenegrin.
 - Its own decisions on the export's art:
   - **The whole map and a zoomed region are two levels.** The whole map shows each region's name and a dot per place. A region's screen shows its buildings, markers and names, at a size for that zoom.
-  - **Coastal towns sit on the coastline.** Their marker is on the shore and their building just inland, instead of the export's markers out at sea with leader lines.
+  - **Coastal towns sit on the coastline,** just inland of their shore, instead of the export's markers out at sea with leader lines.
+  - **Each town's number is on the town's very spot, with its name just above and its building behind the name.** When towns are close, the name and building slide a little to one side; nothing covers another town's name or number, and a building stays off the other regions. Towns set to their real spots (the coast, Cetinje) keep them; the rest, which the export placed by eye, may move a little to fit.
   - **Place positions follow real geography where the export's are off.** Herceg Novi is at the mouth of the Bay of Kotor, Tivat on its south shore, and Kotor in its south-east corner (`COASTAL_TOWNS`).
   - **The region borders are redrawn:** one border per region, gently curved. Obala is the strip along the sea. Skadarsko jezero belongs to Centralna Crna Gora and stops at the Albanian border.
   - **Decorations that are not places are left out:** Perast, Sveti Stefan, Ostrog, the Millennium Bridge, and Tivat's palm island. So are the title box, the rewards and the guide eagle, which come later.
   - **The neighbouring countries are one landscape with no borders between them**, muted and darker, with scenery like Montenegro's.
+  - **The Bay of Kotor is redrawn from a real map** (`BAY_TRACE` in `build_map.py`), in place of the export's thin channel: Herceg Novi's shore, the Verige strait, the Risan and Kotor arms, and Tivat's bay with the Luštica peninsula. It is true to the map's coast from west to east but taller than life, and Kotor's inlet a little wider, so it shows. Herceg Novi, Tivat and Kotor sit on their real shores.
+  - **Cetinje is moved to where it is**, inland north-east of Kotor and above Budva (`INLAND_TOWNS` in `build_map.py`); the export drew it further east.
 
 ## Still open with the designers
 
-- **Tablet sizes.** The previews use iPad 11" (1194 × 834 and 834 × 1194). In portrait the map fills the height and pans sideways.
+- **Tablet sizes.** The previews use iPad 11" (1194 × 834 and 834 × 1194). The app fits the whole country, or the zoomed region, between the top bar, the side panel and the bottom nav on any screen, without scrolling; the muted surroundings fill the rest of the screen.
 - **Which completed decorations to show.**
 - **Zoom states for the whole map and a region**, now that the app uses two levels.
 - **Region display names.** The app uses the content's names (Obala, Centralna Crna Gora, Sjever i planine), not the export's English ones (The Coast, The Heartland, The Wild North).

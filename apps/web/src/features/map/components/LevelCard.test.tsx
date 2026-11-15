@@ -86,9 +86,10 @@ describe("LevelCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Zatvori" }));
 
-    expect(router.replace).toHaveBeenCalledWith("/play/coast", {
-      scroll: false,
-    });
+    expect(`${window.location.pathname}${window.location.search}`).toBe(
+      "/play/coast",
+    );
+    expect(router.replace).not.toHaveBeenCalled();
   });
 
   it("has no accessibility violations", async () => {

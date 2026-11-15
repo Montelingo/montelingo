@@ -1,10 +1,9 @@
-import Link from "next/link";
-
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";
 import { levelCardHref, type MapPlace } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
+import { LevelCardLink } from "./LevelCard";
 import { FOCUS_RING } from "./chrome-styles";
 
 type NextStopCardProps = {
@@ -40,7 +39,7 @@ export function NextStopCard({ place, className }: NextStopCardProps) {
           {place.name}
         </span>
       </div>
-      <Link
+      <LevelCardLink
         href={levelCardHref(place)}
         aria-label={`Otvori: ${place.name}`}
         className={cn(
@@ -49,7 +48,7 @@ export function NextStopCard({ place, className }: NextStopCardProps) {
         )}
       >
         <ChromeIcon name="play" size={36} />
-      </Link>
+      </LevelCardLink>
     </div>
   );
 }

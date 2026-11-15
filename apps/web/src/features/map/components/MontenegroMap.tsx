@@ -5,8 +5,6 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
-  useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -23,6 +21,8 @@ import {
   type MapRegion,
   mapViewBox,
 } from "../model/map-view";
+import { openLevelCard } from "./LevelCard";
+import { MapBaseImage } from "./MapBaseImage";
 
 // The designers' palette for the map.
 const INK = "#2B2D42";
@@ -81,6 +81,9 @@ type MontenegroMapProps = {
 // only its fog and its name. The art is cached images; what changes with
 // state or language is drawn here over it, in Montenegrin. A closed region or
 // town stays focusable and answers a tap by saying why it will not open.
+// It fills its frame (MapScreen's), fitting the country or the region in it
+// whole, and lets the rest of the art spill past the frame to the screen's
+// edges, so nothing scrolls on a screen of any shape.
 export function MontenegroMap({
   regions,
   places,
@@ -92,42 +95,17 @@ export function MontenegroMap({
   );
   const view = mapViewBox(focusRegionId);
   const [, , fullWidth, fullHeight] = MAP_GEOMETRY.viewBox;
-  const scrollerRef = useRef<HTMLDivElement>(null);
   const focusRegion = regions.find(({ id }) => id === focusRegionId) ?? null;
   const openRegionIds = new Set(
     regions.filter(({ state }) => !isFogged(state)).map(({ id }) => id),
   );
-  const nextPlace = places.find(({ isNext }) => isNext);
-  const nextDot =
-    nextPlace === undefined ? undefined : locationGeometry(nextPlace.id)?.dot;
-  const panTarget =
-    nextDot !== undefined &&
-    (focusRegionId === null || nextPlace?.regionId === focusRegionId)
-      ? nextDot
-      : { cx: view.x + view.width / 2, cy: view.y + view.height / 2 };
-
-  // The map covers the whole screen, so on a screen of another shape than the
-  // map's it overflows one way and pans (in portrait, sideways: the whole
-  // country would be too small to tap). It starts with the next place in the
-  // middle.
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (scroller === null) {
-      return;
-    }
-    const fx = (panTarget.cx - view.x) / view.width;
-    const fy = (panTarget.cy - view.y) / view.height;
-    scroller.scrollLeft = fx * scroller.scrollWidth - scroller.clientWidth / 2;
-    scroller.scrollTop = fy * scroller.scrollHeight - scroller.clientHeight / 2;
-  }, [panTarget.cx, panTarget.cy, view.x, view.y, view.width, view.height]);
-
   function say(text: string) {
     setMessage((previous) => ({ text, key: (previous?.key ?? 0) + 1 }));
   }
 
-  function activate(href: string, isOpen: boolean, closedText: string) {
+  function activate(open: () => void, isOpen: boolean, closedText: string) {
     if (isOpen) {
-      router.push(href);
+      open();
     } else {
       say(closedText);
     }
@@ -141,99 +119,97 @@ export function MontenegroMap({
 
   return (
     <>
-      <div ref={scrollerRef} className="fixed inset-0 overflow-auto">
-        <svg
-          viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
-          lang={CONTENT_LANG}
-          aria-label={
-            focusRegion === null
-              ? "Mapa Crne Gore"
-              : `Mapa Crne Gore, regija ${focusRegion.name}`
-          }
-          role="group"
-          className={cn(
-            fredoka.className,
-            "block aspect-[16/10] w-[max(100vw,160dvh)] max-w-none bg-[#5CC8E8]",
-          )}
-        >
-          <image href="/maps/base.svg" width={fullWidth} height={fullHeight} />
-          {regions
-            .filter(({ state }) => isFogged(state))
-            .map(({ id }) => (
-              <image
-                key={id}
-                href={`/maps/fog-${id}.svg`}
-                width={fullWidth}
-                height={fullHeight}
-              />
-            ))}
-          {focusRegion !== null ? (
-            <>
-              <image
-                href={`/maps/decorations-${focusRegion.id}.svg`}
-                width={fullWidth}
-                height={fullHeight}
-              />
-              <image
-                href={`/maps/places-${focusRegion.id}.svg`}
-                width={fullWidth}
-                height={fullHeight}
-              />
-            </>
-          ) : null}
-          <MapWords />
-          {places
-            .filter(
-              ({ regionId }) =>
-                regionId !== focusRegionId && openRegionIds.has(regionId),
-            )
-            .map((place) => (
-              <PlaceDot key={place.id} place={place} />
-            ))}
-          {overviewRegions.map((region) => {
-            const geometry = regionGeometry(region.id);
-            return geometry === undefined ? null : (
-              <RegionArea
-                key={region.id}
-                region={region}
-                geometry={geometry}
-                scale={nameScale}
-                onActivate={() =>
-                  activate(
-                    region.href,
-                    isOpenState(region.state),
-                    `Regija ${region.name} još nije otvorena.`,
-                  )
-                }
-              />
-            );
-          })}
-          {focusRegion !== null ? (
-            // The zoomed region's places, together, after the regions.
-            <g role="group" aria-label="Mjesta">
-              {places
-                .filter(({ regionId }) => regionId === focusRegionId)
-                .map((place) => {
-                  const geometry = locationGeometry(place.id);
-                  return geometry === undefined ? null : (
-                    <Place
-                      key={place.id}
-                      place={place}
-                      geometry={geometry}
-                      onActivate={() =>
-                        activate(
-                          levelCardHref(place),
-                          isOpenState(place.state),
-                          `Mjesto ${place.name} još nije otvoreno.`,
-                        )
-                      }
-                    />
-                  );
-                })}
-            </g>
-          ) : null}
-        </svg>
-      </div>
+      <svg
+        viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
+        lang={CONTENT_LANG}
+        aria-label={
+          focusRegion === null
+            ? "Mapa Crne Gore"
+            : `Mapa Crne Gore, regija ${focusRegion.name}`
+        }
+        role="group"
+        className={cn(
+          fredoka.className,
+          "absolute inset-0 size-full overflow-visible",
+        )}
+      >
+        <MapBaseImage />
+        {regions
+          .filter(({ state }) => isFogged(state))
+          .map(({ id }) => (
+            <image
+              key={id}
+              href={`/maps/fog-${id}.svg`}
+              width={fullWidth}
+              height={fullHeight}
+            />
+          ))}
+        {focusRegion !== null ? (
+          <>
+            <image
+              href={`/maps/decorations-${focusRegion.id}.svg`}
+              width={fullWidth}
+              height={fullHeight}
+            />
+            <image
+              href={`/maps/places-${focusRegion.id}.svg`}
+              width={fullWidth}
+              height={fullHeight}
+            />
+          </>
+        ) : null}
+        <MapWords />
+        {places
+          .filter(
+            ({ regionId }) =>
+              regionId !== focusRegionId && openRegionIds.has(regionId),
+          )
+          .map((place) => (
+            <PlaceDot key={place.id} place={place} />
+          ))}
+        {overviewRegions.map((region) => {
+          const geometry = regionGeometry(region.id);
+          return geometry === undefined ? null : (
+            <RegionArea
+              key={region.id}
+              region={region}
+              geometry={geometry}
+              scale={nameScale}
+              onActivate={() =>
+                activate(
+                  () => router.push(region.href),
+                  isOpenState(region.state),
+                  `Regija ${region.name} još nije otvorena.`,
+                )
+              }
+            />
+          );
+        })}
+        {focusRegion !== null ? (
+          // The zoomed region's places, together, after the regions.
+          <g role="group" aria-label="Mjesta">
+            {places
+              .filter(({ regionId }) => regionId === focusRegionId)
+              .map((place) => {
+                const geometry = locationGeometry(place.id);
+                return geometry === undefined ? null : (
+                  <Place
+                    key={place.id}
+                    place={place}
+                    geometry={geometry}
+                    onActivate={() =>
+                      activate(
+                        () => openLevelCard(levelCardHref(place), router),
+                        isOpenState(place.state),
+                        `Mjesto ${place.name} još nije otvoreno.`,
+                      )
+                    }
+                  />
+                );
+              })}
+          </g>
+        ) : null}
+      </svg>
       {/* Always mounted, so screen readers are already watching it. Each tap
           inserts a new node, which announces a repeated message again. */}
       <p
@@ -429,24 +405,25 @@ type PlaceProps = {
   onActivate: () => void;
 };
 
-// A town in a zoomed-in region: its building (in the art), its marker and
-// its name.
+// A town in a zoomed-in region: its marker on the town's very spot, its name
+// just above (over the marker's top), and its building (in the art) behind
+// the name.
 function Place({ place, geometry, onActivate }: PlaceProps) {
-  const { art, marker, label } = geometry;
+  const { marker, label, card } = geometry;
   const scale = label.height / BASE_LABEL_HEIGHT;
   const isOpen = isOpenState(place.state);
   const name = place.name.toLocaleUpperCase(CONTENT_LANG);
   const pillWidth = textWidth(name, label.fontSize) + 26 * scale;
-  // A tap hits what is drawn for the place: its art, and its marker over its
-  // name. Two boxes, not one around both, so neighbours never share a spot.
-  const top = marker.cy - marker.r - 4 * scale;
-  const stackWidth = Math.max(pillWidth, marker.r * 2);
-  const stack = {
-    x: label.cx - stackWidth / 2,
-    y: top,
-    width: stackWidth,
-    height: label.cy + label.height / 2 - top,
+  // A tap hits what is drawn for the place: its building and name (which
+  // can sit to one side, clear of a neighbour), and its marker below them.
+  // Two boxes, not one around both, so neighbours never share a spot.
+  const markerBox = {
+    x: marker.cx - marker.r,
+    y: marker.cy - marker.r,
+    width: marker.r * 2,
+    height: marker.r * 2,
   };
+  const hitBoxes = [card, markerBox];
   const accessibleName = [
     place.name,
     STATUS_LABELS[place.state],
@@ -461,7 +438,7 @@ function Place({ place, geometry, onActivate }: PlaceProps) {
       isOpen={isOpen}
       label={accessibleName}
       onActivate={onActivate}
-      focusRing={[art, stack].map((box, index) => (
+      focusRing={hitBoxes.map((box, index) => (
         <rect
           key={index}
           x={box.x - 4 * scale}
@@ -473,6 +450,15 @@ function Place({ place, geometry, onActivate }: PlaceProps) {
       ))}
     >
       <g aria-hidden="true">
+        <g
+          transform={`translate(${marker.cx} ${marker.cy}) scale(${marker.r / BASE_MARKER_RADIUS})`}
+        >
+          <Marker
+            state={place.state}
+            order={place.order}
+            isNext={place.isNext}
+          />
+        </g>
         <rect
           x={label.cx - pillWidth / 2}
           y={label.cy - label.height / 2}
@@ -492,17 +478,8 @@ function Place({ place, geometry, onActivate }: PlaceProps) {
         >
           {name}
         </text>
-        <g
-          transform={`translate(${marker.cx} ${marker.cy}) scale(${marker.r / BASE_MARKER_RADIUS})`}
-        >
-          <Marker
-            state={place.state}
-            order={place.order}
-            isNext={place.isNext}
-          />
-        </g>
       </g>
-      {[art, stack].map((box, index) => (
+      {hitBoxes.map((box, index) => (
         <rect
           key={index}
           x={box.x}

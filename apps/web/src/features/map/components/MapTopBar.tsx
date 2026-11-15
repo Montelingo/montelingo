@@ -24,7 +24,7 @@ type MapTopBarProps = {
 // and heart counters, and on the right the sound button.
 export function MapTopBar({ backHref, region, stars, hearts }: MapTopBarProps) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-20 flex items-start justify-between gap-3 pl-safe-l pr-safe-r pt-safe-t">
+    <div className="pointer-events-none relative z-20 col-span-full flex items-start justify-between gap-3 pl-safe-l pr-safe-r pt-safe-t">
       <div className="pointer-events-auto flex flex-wrap items-center gap-3.5">
         <Link href={backHref} aria-label="Nazad" className={ICON_BUTTON_CLASS}>
           <ChromeIcon name="back" size={28} />
