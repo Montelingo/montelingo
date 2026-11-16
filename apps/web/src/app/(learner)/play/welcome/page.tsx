@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PLAY_PATH } from "@/features/auth/edge";
+import { MapArt } from "@/features/map";
 import { loadMap } from "@/features/map/server";
 import { type FirstStop, ProfileSetup } from "@/features/profile";
 import { PROFILE_SETUP_PATH } from "@/features/profile/edge";
@@ -30,5 +31,5 @@ export default async function WelcomePage() {
       ? { name: next.name, regionName: region.name, order: next.order }
       : null;
 
-  return <ProfileSetup firstStop={firstStop} />;
+  return <ProfileSetup firstStop={firstStop} art={<MapArt />} />;
 }

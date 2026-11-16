@@ -1,7 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { avatarSrc, type Explorer } from "@/features/profile/edge";
+import {
+  avatarSrc,
+  type Explorer,
+  PLACEHOLDER_EXPLORER_NAME,
+} from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";
@@ -59,7 +63,7 @@ function ExplorerBadge({ explorer }: { explorer: Explorer | null }) {
       <div className="flex items-center gap-3">
         <ChromeIcon name="avatar" size={58} />
         <span className="text-3xl font-semibold leading-tight text-kid-ink">
-          Istraživač
+          {PLACEHOLDER_EXPLORER_NAME}
         </span>
       </div>
     );

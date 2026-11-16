@@ -19,7 +19,8 @@ export default function RootLayout({
     <html lang="en">
       {/* A column, so each section's layout and each page's <main> can fill
           the height. The site pages add the header in (site)/layout.tsx; the
-          learner area, in (learner), is full screen without it. */}
+          home page, in (home), and the learner area, in (learner), are full
+          screen without it. */}
       <body className="flex flex-col">
         {/* The first stop for keyboard users: past the header or the learner
             controls to the page. Every page's <main> has id="main-content". */}

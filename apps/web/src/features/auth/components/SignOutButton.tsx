@@ -7,7 +7,22 @@ import { replaceDocument } from "@/lib/navigation";
 import { useSignOut } from "../hooks/use-sign-out";
 import { HOME_PATH } from "../model/routes";
 
-export function SignOutButton() {
+type SignOutButtonProps = {
+  /** The button's label, and while signing out. The site header's by default. */
+  label?: string;
+  pendingLabel?: string;
+  /** Replaces the site header's look, for another page's style. */
+  className?: string;
+  /** Replaces where a failure's message floats (below the header's button). */
+  alertClassName?: string;
+};
+
+export function SignOutButton({
+  label = "Sign out",
+  pendingLabel = "Signing out…",
+  className,
+  alertClassName = "absolute right-0 top-full z-10 mt-2 w-64",
+}: SignOutButtonProps = {}) {
   const { isPending, error, signOut } = useSignOut({
     // A full load of the home page, not router.replace() + refresh(): it drops
     // every bit of the signed-in user's client state (including the router
@@ -26,9 +41,12 @@ export function SignOutButton() {
         aria-disabled={isPending || undefined}
         onClick={signOut}
         className={cn(
-          "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
-          isPending ? "cursor-wait hover:bg-white" : undefined,
+          className ?? [
+            "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100",
+            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
+          ],
+          isPending ? "cursor-wait" : undefined,
+          isPending && className === undefined ? "hover:bg-white" : undefined,
         )}
       >
         {/* Both labels share one grid cell, so the button keeps the width of
@@ -41,7 +59,7 @@ export function SignOutButton() {
               isPending ? "invisible" : undefined,
             )}
           >
-            Sign out
+            {label}
           </span>
           <span
             aria-hidden={!isPending || undefined}
@@ -50,15 +68,12 @@ export function SignOutButton() {
               isPending ? undefined : "invisible",
             )}
           >
-            Signing out…
+            {pendingLabel}
           </span>
         </span>
       </button>
       {/* Floats below the button, so it does not push the header around. */}
-      <FormAlert
-        message={error}
-        className="absolute right-0 top-full z-10 mt-2 w-64"
-      />
+      <FormAlert message={error} className={alertClassName} />
     </div>
   );
 }

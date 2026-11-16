@@ -17,7 +17,7 @@ const BUDVA = { name: "Budva", regionName: "Obala", order: 1 };
 
 function renderSetup() {
   const user = userEvent.setup();
-  const view = render(<ProfileSetup firstStop={BUDVA} />);
+  const view = render(<ProfileSetup firstStop={BUDVA} art={null} />);
   return { user, ...view };
 }
 

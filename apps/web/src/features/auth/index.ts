@@ -18,6 +18,7 @@ export { InvalidResetLink } from "./components/InvalidResetLink";
 export { ResetPasswordForm } from "./components/ResetPasswordForm";
 export { SignInForm } from "./components/SignInForm";
 export { SignInFormSkeleton } from "./components/SignInFormSkeleton";
+export { SignOutButton } from "./components/SignOutButton";
 export { SignUpForm } from "./components/SignUpForm";
 export { SignUpFormSkeleton } from "./components/SignUpFormSkeleton";
 export {

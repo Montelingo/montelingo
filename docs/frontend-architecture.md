@@ -16,9 +16,10 @@ apps/web/src/
     globals.css
     error.tsx
     not-found.tsx                   # renders the site header itself (§5.4)
+    (home)/                         # the home page: full screen, no site header (§5.4)
+      page.tsx                      # the welcome, or the family's way back to the map
     (site)/                         # the site's pages, under the site header
       layout.tsx
-      page.tsx
       (auth)/
       account/
     (learner)/                      # the learner area: full screen, its own chrome (§8)
@@ -30,6 +31,8 @@ apps/web/src/
         layout.tsx                  # the area's session check (§5.4)
         loading.tsx
         page.tsx                    # the map: every region (§8.2)
+        welcome/
+          page.tsx                  # the child's profile setup
         [regionId]/
           page.tsx                  # a region: its locations
           loading.tsx
@@ -445,6 +448,7 @@ Two server-only functions from `@/features/auth/server` answer "who is signed in
 A lookup only happens when the browser sent a session cookie, so `unavailable` always means "there is a cookie the API could not check".
 
 - **The site header** (`SiteHeader`, in `(site)/layout.tsx` and the root `not-found.tsx`) renders its shell and brand at once. Only the account controls wait for `getAuthState()`, inside their own `<Suspense>` boundary with a same-size placeholder, so a slow API never holds the page and nothing shifts when they arrive. Signed out, the controls are "Sign in" and "Sign up". Signed in, they are the email (linking to `/account`) and "Sign out". When the lookup fails they are "Sign out" alone: "Sign in" would tell a signed-in user they are signed out (and could leave a live session behind on a shared device), and the email is not verified.
+- **The home page** (`/`, `(home)/page.tsx`, no site header) uses `getAuthState()` too. Signed out, it is the welcome with "Nov sam" and "Imam nalog". Signed in, it shows the child and "Nastavi istraživanje", with the account and "Odjavi se". When the lookup fails it is the welcome with "Odjavi se" under it, for the same reason as the header.
 - **Sign-in and sign-up** use `getAuthState()` and treat `unavailable` as signed out, so a visitor with a stale cookie still gets the form. If the API is down, submitting the form says so. Sign-in with a known notice (`?notice=password-updated`) skips the check and shows the form even to a signed-in user (§12).
 - **Protected pages** use `getCurrentUser()`. A failed lookup reaches the error boundary, which offers a retry. Treating it as signed out would send a signed-in user to sign in.
 
@@ -738,7 +742,7 @@ A helper that several test files share sits beside them, named for what it holds
 
 ### 10.2 Component tests cover behavior and accessibility
 
-Component tests use Testing Library and `vitest-axe`. `apps/web/vitest.setup.ts` registers the `@testing-library/jest-dom` matchers (`toBeInTheDocument`, `toHaveTextContent`, …) and the `vitest-axe` matcher (`toHaveNoViolations`), and unmounts rendered trees after each test. Vitest globals are off, so import `describe`, `it`, `expect`, and `vi` from `vitest`. `src/features/health/components/ApiHealthCard.test.tsx` is the reference example. Component tests:
+Component tests use Testing Library and `vitest-axe`. `apps/web/vitest.setup.ts` registers the `@testing-library/jest-dom` matchers (`toBeInTheDocument`, `toHaveTextContent`, …) and the `vitest-axe` matcher (`toHaveNoViolations`), and unmounts rendered trees after each test. Vitest globals are off, so import `describe`, `it`, `expect`, and `vi` from `vitest`. `src/features/profile/components/ProfileSetup.test.tsx` is the reference example. Component tests:
 
 - query the way a user perceives the page: `getByRole`, `getByLabelText`, `getByText`. Use `getByTestId` only when no accessible query exists.
 - interact through `userEvent`, not by calling props or setting state
@@ -824,7 +828,7 @@ expect(container).toMatchSnapshot();
 
 ## 12. Current state and known gaps
 
-`src/features/health` is the reference implementation of these conventions: a thin `app/(site)/page.tsx`, an adapter that calls `GET /api/v1/health/live` (operation `health_live`) through the typed client, pure logic in `model/`, a presentational component, and co-located tests.
+`src/features/profile` is the reference implementation of these conventions: a thin `app/(learner)/play/welcome/page.tsx`, a server adapter that calls `GET /api/v1/profile` (operation `profile_get`) through the typed client and checks it with `zod` (`schemas.ts`), a browser adapter for the `PUT`, pure logic in `model/` (the setup reducer), presentational components, and co-located tests.
 
 `src/features/auth` is the reference for the rest:
 
@@ -844,7 +848,7 @@ expect(container).toMatchSnapshot();
 Installed and enforced:
 
 - React 19 (`react`, `react-dom`, and their types), matching the React version the App Router runs. See [ADR 0003](adr/0003-react-19.md).
-- Testing Library (`@testing-library/react`, `user-event`, `jest-dom`) and `vitest-axe`, with matchers registered in `vitest.setup.ts`. `ApiHealthCard.test.tsx` is the reference component test.
+- Testing Library (`@testing-library/react`, `user-event`, `jest-dom`) and `vitest-axe`, with matchers registered in `vitest.setup.ts`. `ProfileSetup.test.tsx` is the reference component test.
 - `eslint-plugin-react-hooks`, `@next/eslint-plugin-next`, and `eslint-plugin-jsx-a11y` in `eslint.config.mjs`. Next.js's own build-time lint is disabled (`eslint.ignoreDuringBuilds`) because `pnpm lint:web` runs the same rules in CI.
 - The same-origin API proxy (including the trusted client IP), the server and browser API clients, and the single base-URL source (§5.3). `server-only` marks the server modules. Vitest aliases it to its no-op entry so those modules can be unit-tested.
 - The `cn()` helper in `src/lib/cn.ts`, built on `clsx` and `tailwind-merge` (v2, the line that supports Tailwind 3), extended with the custom tokens (§8.1).

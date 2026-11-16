@@ -39,6 +39,34 @@ export async function fetchProfile(): Promise<Profile | null> {
   }
 }
 
+/** What a page gets from `readProfile()`. */
+export type ProfileResult =
+  | { status: "ready"; profile: Profile }
+  /** The call failed (logged); show the placeholder explorer. */
+  | { status: "unavailable" }
+  /** The session has ended. */
+  | { status: "signed-out" };
+
+/**
+ * The profile as a typed result, for pages: never throws for a failed call,
+ * a `401` included (§5.2). Shares `getProfile()`'s cached call, so a page and
+ * the loaders it calls make one request. Next.js signals still pass through.
+ */
+export async function readProfile(): Promise<ProfileResult> {
+  try {
+    const profile = await getProfile();
+    return profile === null
+      ? { status: "unavailable" }
+      : { status: "ready", profile };
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof ApiClientError && error.status === 401) {
+      return { status: "signed-out" };
+    }
+    throw error;
+  }
+}
+
 function logProfileFailure(error: unknown): void {
   let reason = "unexpected";
   let requestId = "";

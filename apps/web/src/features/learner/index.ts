@@ -3,3 +3,4 @@
 // inside it come from the features they show, such as the map.
 export { LearnerPageSkeleton } from "./components/LearnerPageSkeleton";
 export { LearnerShell } from "./components/LearnerShell";
+export { WelcomeFrame } from "./components/WelcomeFrame";

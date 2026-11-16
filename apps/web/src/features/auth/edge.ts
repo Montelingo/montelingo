@@ -13,5 +13,11 @@ export {
   REQUESTED_PATH_HEADER,
   withRequestedPath,
 } from "./model/requested-path";
-export { PLAY_PATH, signInHref } from "./model/routes";
+export {
+  ACCOUNT_PATH,
+  PLAY_PATH,
+  SIGN_IN_PATH,
+  SIGN_UP_PATH,
+  signInHref,
+} from "./model/routes";
 export { getSessionCookieName } from "./model/session-cookie";
