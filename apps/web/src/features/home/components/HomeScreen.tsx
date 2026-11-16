@@ -23,41 +23,40 @@ const BIG_BUTTON = `flex h-touch-xl w-full items-center justify-center rounded-k
 /** The grown-up's small links: the account, and signing out. */
 export const SMALL_LINK = `inline-flex h-touch items-center rounded-kid px-3 text-lg font-semibold text-kid-ink underline underline-offset-4 ${FOCUS_RING}`;
 
+/** Which home the page shows (§6: one state per case). */
+export type HomeView =
+  /**
+   * A visitor. `signOut` is offered only when the account could not be looked
+   * up while a session cookie may still be live (a shared tablet), as the
+   * site header does; otherwise `null`.
+   */
+  | { status: "visitor"; signOut: ReactNode | null }
+  /** A signed-in family: the child (`null` before setup), and signing out. */
+  | { status: "family"; explorer: Explorer | null; signOut: ReactNode };
+
 type HomeScreenProps = {
   /** The picture on the left: the map's art, from the page. */
   art: ReactNode;
-  /**
-   * The signed-in family: the child, and the sign-out control (auth's, passed
-   * in by the page, styled with SMALL_LINK). `null` for a visitor.
-   */
-  family: { explorer: Explorer | null; signOut: ReactNode } | null;
-  /**
-   * For a visitor whose account could not be looked up while a session cookie
-   * may still be live (a shared tablet): signing out, under the welcome. The
-   * site header does the same in that state.
-   */
-  visitorSignOut?: ReactNode;
+  view: HomeView;
 };
 
 // The home page, / (#152, Figma "1 · Welcome & Auth"): the welcome for a
 // visitor, with sign-up and sign-in, or for a signed-in family the child and
 // the way back to the map, with the grown-up's account and signing out. Back
 // on the map leads here, so a signed-in family is never sent on to /play.
-export function HomeScreen({
-  art,
-  family,
-  visitorSignOut = null,
-}: HomeScreenProps) {
+// The sign-out control is auth's, passed in by the page, styled with
+// SMALL_LINK.
+export function HomeScreen({ art, view }: HomeScreenProps) {
   return (
     <main id="main-content">
       <WelcomeFrame art={art}>
         {/* The heading sits about a quarter down, as in Figma, and the
             buttons at the bottom of the panel. */}
         <div className="flex flex-1 flex-col gap-6 pt-[12vh]">
-          {family === null ? (
-            <SignedOut signOut={visitorSignOut} />
+          {view.status === "visitor" ? (
+            <SignedOut signOut={view.signOut} />
           ) : (
-            <SignedIn explorer={family.explorer} signOut={family.signOut} />
+            <SignedIn explorer={view.explorer} signOut={view.signOut} />
           )}
         </div>
       </WelcomeFrame>

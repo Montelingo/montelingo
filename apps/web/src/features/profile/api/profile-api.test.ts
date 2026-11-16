@@ -17,7 +17,7 @@ import {
   vi,
 } from "vitest";
 
-import { fetchProfile, getProfile } from "./profile-api";
+import { fetchProfile, getProfile, readProfile } from "./profile-api";
 
 const fetchMock = vi.hoisted(() =>
   vi.fn<(request: Request) => Promise<Response>>(),
@@ -147,5 +147,57 @@ describe("fetchProfile", () => {
     });
 
     await expect(fetchProfile()).rejects.toBe(signal);
+  });
+});
+
+describe("readProfile", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    getApiClientMock.mockReset();
+    getApiClientMock.mockImplementation(() =>
+      createApiClient({ baseUrl: "http://api.test", fetch: fetchMock }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("is ready with the profile", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        name: "Mia",
+        age_band: "5-6",
+        avatar: "owl",
+        is_complete: true,
+      }),
+    );
+
+    await expect(readProfile()).resolves.toEqual({
+      status: "ready",
+      profile: { name: "Mia", ageBand: "5-6", avatar: "owl", isComplete: true },
+    });
+  });
+
+  it("is signed out for a 401, instead of throwing", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(401, ERROR("authentication_error")),
+    );
+
+    await expect(readProfile()).resolves.toEqual({ status: "signed-out" });
+  });
+
+  it("is unavailable for any other failure", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(500, ERROR("internal_server_error")),
+    );
+
+    await expect(readProfile()).resolves.toEqual({ status: "unavailable" });
+  });
+
+  it("rethrows Next.js signals", async () => {
+    const signal = new DynamicServerError("cookies");
+    getApiClientMock.mockImplementation(() => {
+      throw signal;
+    });
+
+    await expect(readProfile()).rejects.toBe(signal);
   });
 });

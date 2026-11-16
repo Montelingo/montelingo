@@ -16,9 +16,10 @@ apps/web/src/
     globals.css
     error.tsx
     not-found.tsx                   # renders the site header itself (§5.4)
+    (home)/                         # the home page: full screen, no site header (§5.4)
+      page.tsx                      # the welcome, or the family's way back to the map
     (site)/                         # the site's pages, under the site header
       layout.tsx
-      page.tsx
       (auth)/
       account/
     (learner)/                      # the learner area: full screen, its own chrome (§8)
@@ -30,6 +31,8 @@ apps/web/src/
         layout.tsx                  # the area's session check (§5.4)
         loading.tsx
         page.tsx                    # the map: every region (§8.2)
+        welcome/
+          page.tsx                  # the child's profile setup
         [regionId]/
           page.tsx                  # a region: its locations
           loading.tsx

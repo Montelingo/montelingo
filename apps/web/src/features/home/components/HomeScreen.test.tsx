@@ -13,7 +13,9 @@ const MIA = {
 
 describe("HomeScreen, signed out", () => {
   it("welcomes a family, as in Figma", () => {
-    render(<HomeScreen art={null} family={null} />);
+    render(
+      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -29,7 +31,9 @@ describe("HomeScreen, signed out", () => {
   });
 
   it("leads new families to sign up and others to sign in", () => {
-    render(<HomeScreen art={null} family={null} />);
+    render(
+      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+    );
 
     expect(screen.getByRole("link", { name: "Nov sam" })).toHaveAttribute(
       "href",
@@ -43,7 +47,9 @@ describe("HomeScreen, signed out", () => {
   });
 
   it("offers signing out when the account could not be looked up", () => {
-    render(<HomeScreen art={null} family={null} visitorSignOut={SIGN_OUT} />);
+    render(
+      <HomeScreen art={null} view={{ status: "visitor", signOut: SIGN_OUT }} />,
+    );
 
     expect(screen.getByRole("link", { name: "Nov sam" })).toBeInTheDocument();
     expect(
@@ -52,7 +58,9 @@ describe("HomeScreen, signed out", () => {
   });
 
   it("has no accessibility violations", async () => {
-    const { container } = render(<HomeScreen art={null} family={null} />);
+    const { container } = render(
+      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+    );
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -61,7 +69,10 @@ describe("HomeScreen, signed out", () => {
 describe("HomeScreen, signed in", () => {
   it("shows the child and leads back to the map", () => {
     render(
-      <HomeScreen art={null} family={{ explorer: MIA, signOut: SIGN_OUT }} />,
+      <HomeScreen
+        art={null}
+        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+      />,
     );
 
     expect(
@@ -76,7 +87,10 @@ describe("HomeScreen, signed in", () => {
 
   it("has the account and signing out for the grown-up", () => {
     render(
-      <HomeScreen art={null} family={{ explorer: MIA, signOut: SIGN_OUT }} />,
+      <HomeScreen
+        art={null}
+        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+      />,
     );
 
     expect(screen.getByRole("link", { name: "Nalog" })).toHaveAttribute(
@@ -91,7 +105,10 @@ describe("HomeScreen, signed in", () => {
 
   it("shows the placeholder explorer before the profile is set up", () => {
     render(
-      <HomeScreen art={null} family={{ explorer: null, signOut: SIGN_OUT }} />,
+      <HomeScreen
+        art={null}
+        view={{ status: "family", explorer: null, signOut: SIGN_OUT }}
+      />,
     );
 
     expect(screen.getByText("Istraživač")).toBeInTheDocument();
@@ -102,7 +119,10 @@ describe("HomeScreen, signed in", () => {
 
   it("has no accessibility violations", async () => {
     const { container } = render(
-      <HomeScreen art={null} family={{ explorer: MIA, signOut: SIGN_OUT }} />,
+      <HomeScreen
+        art={null}
+        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+      />,
     );
 
     expect(await axe(container)).toHaveNoViolations();
