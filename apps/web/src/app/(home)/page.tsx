@@ -18,6 +18,7 @@ function HomeSignOutButton() {
       pendingLabel="Odjavljujem…"
       className={SMALL_LINK}
       alertClassName="mt-2"
+      failureMessage="Odjava nije potvrđena. Pokušaj ponovo."
     />
   );
 }

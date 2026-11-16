@@ -10,7 +10,7 @@ import {
 // or reach a search index. next.config.ts also sends both policies as response
 // headers, which apply before the browser reaches these tags.
 export const metadata: Metadata = {
-  title: "Choose a new password",
+  title: "Izaberi novu lozinku",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

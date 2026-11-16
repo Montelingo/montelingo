@@ -27,13 +27,14 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
 
   await test.step("sign up", async () => {
     await page.goto("/sign-up");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByLabel("Confirm password").fill(password);
-    await page.getByRole("button", { name: "Create account" }).click();
+    await page.getByLabel("E-pošta odrasle osobe").fill(email);
+    await page.getByLabel("Lozinka", { exact: true }).fill(password);
+    await page.getByLabel("Potvrdi lozinku").fill(password);
+    await page.getByRole("button", { name: "Napravi nalog" }).click();
 
     // Signing up also signs in, and a new account sets up the child first.
-    await expect(page).toHaveURL("/play/welcome");
+    // Sign-up hashes the password and signs in: slow when several run at once.
+    await expect(page).toHaveURL("/play/welcome", { timeout: 15_000 });
   });
 
   await test.step("set up the child's profile (#118)", async () => {
@@ -70,9 +71,9 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
 
   await test.step("sign in and land on /play", async () => {
     await page.goto("/sign-in");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByLabel("E-pošta", { exact: true }).fill(email);
+    await page.getByLabel("Lozinka", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Prijavi se" }).click();
 
     await expect(page).toHaveURL("/play");
     // The map's heading is for screen readers; the map shows its own title.

@@ -7,7 +7,7 @@ import { InvalidResetLink } from "./InvalidResetLink";
 function heading() {
   return screen.getByRole("heading", {
     level: 1,
-    name: "This reset link doesn’t work",
+    name: "Ovaj link ne radi",
   });
 }
 
@@ -17,7 +17,7 @@ describe("InvalidResetLink", () => {
 
     expect(heading()).toBeInTheDocument();
     expect(
-      screen.getByText(/Reset links can be used once/),
+      screen.getByText(/Linkovi za novu lozinku rade samo jednom/),
     ).toBeInTheDocument();
   });
 
@@ -25,10 +25,10 @@ describe("InvalidResetLink", () => {
     render(<InvalidResetLink />);
 
     expect(
-      screen.getByRole("link", { name: "Request a new link" }),
+      screen.getByRole("link", { name: "Zatraži novi link" }),
     ).toHaveAttribute("href", "/forgot-password");
     expect(
-      screen.getByRole("link", { name: "Back to sign in" }),
+      screen.getByRole("link", { name: "Nazad na prijavu" }),
     ).toHaveAttribute("href", "/sign-in");
   });
 

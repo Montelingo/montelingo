@@ -7,7 +7,7 @@ import { PasswordField } from "./PasswordField";
 
 describe("PasswordField", () => {
   it("hides the password by default", () => {
-    render(<PasswordField label="Password" />);
+    render(<PasswordField label="Password" toggleLabel="Show password" />);
 
     expect(screen.getByLabelText("Password")).toHaveAttribute(
       "type",
@@ -20,7 +20,7 @@ describe("PasswordField", () => {
 
   it("shows and hides the password with the toggle", async () => {
     const user = userEvent.setup();
-    render(<PasswordField label="Password" />);
+    render(<PasswordField label="Password" toggleLabel="Show password" />);
     const input = screen.getByLabelText("Password");
     await user.type(input, "correct horse");
 
@@ -42,7 +42,7 @@ describe("PasswordField", () => {
 
   it("toggles from the keyboard", async () => {
     const user = userEvent.setup();
-    render(<PasswordField label="Password" />);
+    render(<PasswordField label="Password" toggleLabel="Show password" />);
 
     await user.tab();
     expect(screen.getByLabelText("Password")).toHaveFocus();
@@ -64,7 +64,7 @@ describe("PasswordField", () => {
           submitCount += 1;
         }}
       >
-        <PasswordField label="Password" />
+        <PasswordField label="Password" toggleLabel="Show password" />
       </form>,
     );
 
@@ -76,8 +76,11 @@ describe("PasswordField", () => {
   it("names each toggle after its field", () => {
     render(
       <>
-        <PasswordField label="Password" />
-        <PasswordField label="Confirm password" />
+        <PasswordField label="Password" toggleLabel="Show password" />
+        <PasswordField
+          label="Confirm password"
+          toggleLabel="Show confirm password"
+        />
       </>,
     );
 
@@ -93,7 +96,13 @@ describe("PasswordField", () => {
   });
 
   it("controls the input it toggles", () => {
-    render(<PasswordField label="Password" id="sign-in-password" />);
+    render(
+      <PasswordField
+        label="Password"
+        toggleLabel="Show password"
+        id="sign-in-password"
+      />,
+    );
 
     expect(
       screen.getByRole("button", { name: "Show password" }),
@@ -105,20 +114,32 @@ describe("PasswordField", () => {
   });
 
   it("autocompletes the current password unless told otherwise", () => {
-    const { rerender } = render(<PasswordField label="Password" />);
+    const { rerender } = render(
+      <PasswordField label="Password" toggleLabel="Show password" />,
+    );
     const input = screen.getByLabelText("Password");
     expect(input).toHaveAttribute("autocomplete", "current-password");
     expect(input).toHaveAttribute("autocapitalize", "none");
     expect(input).toHaveAttribute("spellcheck", "false");
 
-    rerender(<PasswordField label="Password" autoComplete="new-password" />);
+    rerender(
+      <PasswordField
+        label="Password"
+        toggleLabel="Show password"
+        autoComplete="new-password"
+      />,
+    );
 
     expect(input).toHaveAttribute("autocomplete", "new-password");
   });
 
   it("wires its error to the input", () => {
     render(
-      <PasswordField label="Password" error="Use at least 8 characters." />,
+      <PasswordField
+        label="Password"
+        toggleLabel="Show password"
+        error="Use at least 8 characters."
+      />,
     );
 
     const input = screen.getByLabelText("Password");
@@ -127,7 +148,9 @@ describe("PasswordField", () => {
   });
 
   it("has no accessibility violations while hidden", async () => {
-    const { container } = render(<PasswordField label="Password" />);
+    const { container } = render(
+      <PasswordField label="Password" toggleLabel="Show password" />,
+    );
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -135,7 +158,11 @@ describe("PasswordField", () => {
   it("has no accessibility violations while shown with an error", async () => {
     const user = userEvent.setup();
     const { container } = render(
-      <PasswordField label="Password" error="Use at least 8 characters." />,
+      <PasswordField
+        label="Password"
+        toggleLabel="Show password"
+        error="Use at least 8 characters."
+      />,
     );
     await user.click(screen.getByRole("button", { name: "Show password" }));
 

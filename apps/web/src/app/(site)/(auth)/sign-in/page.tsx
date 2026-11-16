@@ -9,7 +9,7 @@ import {
 import { getAuthState } from "@/features/auth/server";
 
 export const metadata: Metadata = {
-  title: "Sign in",
+  title: "Prijava",
 };
 
 type SignInPageProps = {

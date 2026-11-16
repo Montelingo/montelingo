@@ -67,9 +67,11 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Create your account
+          Napravi porodični nalog
         </h1>
-        <p className="text-slate-700">Start learning with Montelingo.</p>
+        <p className="text-slate-700">
+          Čuva napredak, da tvoj istraživač nastavi tamo gdje je stao.
+        </p>
       </div>
       {/* The submit button stays disabled until hydration. method="post" only
           guarantees the credentials never land in a URL. */}
@@ -88,7 +90,7 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
               <>
                 {failure.formError}{" "}
                 <Link href={signInHref} className={linkClassName}>
-                  Go to sign in
+                  Idi na prijavu
                 </Link>
               </>
             ) : (
@@ -103,14 +105,15 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
               <>
                 {emailField.error}{" "}
                 <Link href={signInHref} className={linkClassName}>
-                  Sign in instead
+                  Prijavi se ovim nalogom
                 </Link>
               </>
             ) : (
               emailField.error
             )
           }
-          label="Email"
+          label="E-pošta odrasle osobe"
+          description="Nikad je ne dijelimo."
           type="email"
           autoComplete="email"
           autoCapitalize="none"
@@ -119,29 +122,31 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
         />
         <PasswordField
           {...fieldProps("password")}
-          label="Password"
-          description={`Use at least ${PASSWORD_MIN_LENGTH} characters.`}
+          label="Lozinka"
+          toggleLabel="Prikaži lozinku"
+          description={`Najmanje ${PASSWORD_MIN_LENGTH} znakova.`}
           autoComplete="new-password"
           required
         />
         <PasswordField
           {...fieldProps("confirmPassword")}
-          label="Confirm password"
+          label="Potvrdi lozinku"
+          toggleLabel="Prikaži potvrđenu lozinku"
           autoComplete="new-password"
           required
         />
         <AuthSubmitButton
           isPending={isPending}
-          pendingLabel="Creating account…"
+          pendingLabel="Pravim nalog…"
           retryAfterSeconds={retryAfterSeconds}
         >
-          Create account
+          Napravi nalog
         </AuthSubmitButton>
       </form>
       <p className="text-center text-sm text-slate-700">
-        Already have an account?{" "}
+        Već imaš nalog?{" "}
         <Link href={signInHref} className={linkClassName}>
-          Sign in
+          Prijavi se
         </Link>
       </p>
     </div>

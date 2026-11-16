@@ -116,6 +116,24 @@ describe("SignOutButton", () => {
     },
   );
 
+  it("shows a page's own labels and failure message", async () => {
+    signOut.mockRejectedValue(makeApiError(500, "internal_server_error"));
+    const user = userEvent.setup();
+    render(
+      <SignOutButton
+        label="Odjavi se"
+        pendingLabel="Odjavljujem…"
+        failureMessage="Odjava nije potvrđena. Pokušaj ponovo."
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Odjavi se" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Odjava nije potvrđena. Pokušaj ponovo.",
+    );
+  });
+
   it("can try again after a failure", async () => {
     signOut.mockRejectedValueOnce(makeApiError(500, "internal_server_error"));
     const { user } = renderButton();

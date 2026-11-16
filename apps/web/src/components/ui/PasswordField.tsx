@@ -5,14 +5,19 @@ import { useId, useState } from "react";
 
 import { TextField, type TextFieldProps } from "./TextField";
 
-type PasswordFieldProps = Omit<TextFieldProps, "type" | "endAdornment">;
-
-// The toggle is named after its field ("Show password", "Show confirm
-// password"), so several toggles on one form can be told apart.
+type PasswordFieldProps = Omit<TextFieldProps, "type" | "endAdornment"> & {
+  /**
+   * The show/hide toggle's name, after its field ("Prikaži lozinku"), so
+   * several toggles on one form can be told apart. Given in full, since a
+   * language may decline the field's label ("Lozinka" → "lozinku").
+   */
+  toggleLabel: string;
+};
 export function PasswordField({
   id,
   label,
   autoComplete = "current-password",
+  toggleLabel,
   ...fieldProps
 }: PasswordFieldProps) {
   const generatedId = useId();
@@ -36,7 +41,7 @@ export function PasswordField({
           onClick={() => setIsVisible((visible) => !visible)}
           className="grid size-10 place-items-center rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
         >
-          <span className="sr-only">{`Show ${label.toLowerCase()}`}</span>
+          <span className="sr-only">{toggleLabel}</span>
           {isVisible ? (
             <EyeSlashIcon aria-hidden="true" className="size-5" />
           ) : (

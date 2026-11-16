@@ -274,7 +274,7 @@ describe("auth API adapters", () => {
 
       expect(toAuthFormError(error, { fields: signInFields, now })).toEqual({
         code: "rate_limited",
-        formError: "Too many attempts. Try again in 2 minutes.",
+        formError: "Previše pokušaja. Pokušaj ponovo za 2 minuta.",
         fieldErrors: {},
         retryAfterSeconds: 120,
         requestId: "req-rate_limited",

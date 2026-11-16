@@ -78,15 +78,15 @@ function renderForm(token = TOKEN) {
 }
 
 function newPasswordInput() {
-  return screen.getByLabelText("New password");
+  return screen.getByLabelText("Nova lozinka");
 }
 
 function confirmInput() {
-  return screen.getByLabelText("Confirm new password");
+  return screen.getByLabelText("Potvrdi novu lozinku");
 }
 
 function submitButton() {
-  return screen.getByRole("button", { name: "Update password" });
+  return screen.getByRole("button", { name: "Promijeni lozinku" });
 }
 
 async function fillAndSubmit(
@@ -96,15 +96,24 @@ async function fillAndSubmit(
     confirmPassword = newPassword,
   }: { newPassword?: string; confirmPassword?: string } = {},
 ) {
-  await user.type(newPasswordInput(), newPassword);
-  await user.type(confirmInput(), confirmPassword);
+  // Pasted, not typed: typing a 129-character password key by key took over
+  // the 5s test timeout when the whole suite runs at once.
+  for (const [input, value] of [
+    [newPasswordInput(), newPassword],
+    [confirmInput(), confirmPassword],
+  ] as const) {
+    await user.click(input);
+    if (value !== "") {
+      await user.paste(value);
+    }
+  }
   await user.click(submitButton());
 }
 
 function invalidLinkHeading() {
   return screen.findByRole("heading", {
     level: 1,
-    name: "This reset link doesn’t work",
+    name: "Ovaj link ne radi",
   });
 }
 
@@ -124,10 +133,10 @@ describe("ResetPasswordForm", () => {
     renderForm();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Choose a new password" }),
+      screen.getByRole("heading", { level: 1, name: "Izaberi novu lozinku" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("form", { name: "Choose a new password" }),
+      screen.getByRole("form", { name: "Izaberi novu lozinku" }),
     ).toBeInTheDocument();
   });
 
@@ -136,7 +145,7 @@ describe("ResetPasswordForm", () => {
     container.innerHTML = renderToString(<ResetPasswordForm token={TOKEN} />);
 
     expect(
-      within(container).getByRole("button", { name: "Update password" }),
+      within(container).getByRole("button", { name: "Promijeni lozinku" }),
     ).toBeDisabled();
   });
 
@@ -150,7 +159,7 @@ describe("ResetPasswordForm", () => {
     renderForm();
 
     expect(
-      screen.getByRole("form", { name: "Choose a new password" }),
+      screen.getByRole("form", { name: "Izaberi novu lozinku" }),
     ).toHaveAttribute("method", "post");
   });
 
@@ -167,7 +176,7 @@ describe("ResetPasswordForm", () => {
     renderForm();
 
     expect(newPasswordInput()).toHaveAccessibleDescription(
-      "Use at least 8 characters.",
+      "Najmanje 8 znakova.",
     );
   });
 
@@ -175,7 +184,7 @@ describe("ResetPasswordForm", () => {
     const { user } = renderForm();
 
     await user.click(
-      screen.getByRole("button", { name: "Show confirm new password" }),
+      screen.getByRole("button", { name: "Prikaži potvrđenu novu lozinku" }),
     );
 
     expect(confirmInput()).toHaveAttribute("type", "text");
@@ -195,7 +204,7 @@ describe("ResetPasswordForm", () => {
       await user.click(submitButton());
 
       expect(newPasswordInput()).toHaveAccessibleDescription(
-        `Use at least 8 characters. ${validationMessages.passwordRequired}`,
+        `Najmanje 8 znakova. ${validationMessages.passwordRequired}`,
       );
       expect(confirmInput()).toHaveAccessibleDescription(
         validationMessages.confirmPasswordRequired,
@@ -213,7 +222,7 @@ describe("ResetPasswordForm", () => {
       await fillAndSubmit(user, { newPassword });
 
       expect(newPasswordInput()).toHaveAccessibleDescription(
-        `Use at least 8 characters. ${message}`,
+        `Najmanje 8 znakova. ${message}`,
       );
       expect(newPasswordInput()).toHaveFocus();
       expect(confirmPasswordReset).not.toHaveBeenCalled();
@@ -273,7 +282,7 @@ describe("ResetPasswordForm", () => {
       await waitFor(() => {
         expect(replaceDocument).toHaveBeenCalled();
       });
-      expect(screen.getByRole("button", { name: "Updating…" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "Mijenjam…" })).toHaveAttribute(
         "aria-disabled",
         "true",
       );
@@ -288,7 +297,7 @@ describe("ResetPasswordForm", () => {
 
       await fillAndSubmit(user);
 
-      const button = screen.getByRole("button", { name: "Updating…" });
+      const button = screen.getByRole("button", { name: "Mijenjam…" });
       expect(button).toHaveAttribute("aria-disabled", "true");
       await user.click(button);
       await user.type(confirmInput(), "{Enter}");
@@ -297,7 +306,7 @@ describe("ResetPasswordForm", () => {
       response.reject(makeApiError(500, "internal_server_error"));
 
       expect(
-        await screen.findByRole("button", { name: "Update password" }),
+        await screen.findByRole("button", { name: "Promijeni lozinku" }),
       ).not.toHaveAttribute("aria-disabled");
     });
   });
@@ -331,10 +340,10 @@ describe("ResetPasswordForm", () => {
 
         expect(await invalidLinkHeading()).toHaveFocus();
         expect(
-          screen.queryByRole("form", { name: "Choose a new password" }),
+          screen.queryByRole("form", { name: "Izaberi novu lozinku" }),
         ).not.toBeInTheDocument();
         expect(
-          screen.getByRole("link", { name: "Request a new link" }),
+          screen.getByRole("link", { name: "Zatraži novi link" }),
         ).toHaveAttribute("href", "/forgot-password");
         expect(replaceDocument).not.toHaveBeenCalled();
       },
@@ -403,11 +412,11 @@ describe("ResetPasswordForm", () => {
 
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
         expect(
-          screen.getByRole("form", { name: "Choose a new password" }),
+          screen.getByRole("form", { name: "Izaberi novu lozinku" }),
         ).toBeInTheDocument();
         expect(
           screen.queryByRole("heading", {
-            name: "This reset link doesn’t work",
+            name: "Ovaj link ne radi",
           }),
         ).not.toBeInTheDocument();
         expect(replaceDocument).not.toHaveBeenCalled();
@@ -422,7 +431,7 @@ describe("ResetPasswordForm", () => {
 
       await waitFor(() => {
         expect(newPasswordInput()).toHaveAccessibleDescription(
-          `Use at least 8 characters. ${validationMessages.passwordLength}`,
+          `Najmanje 8 znakova. ${validationMessages.passwordLength}`,
         );
       });
       expect(newPasswordInput()).toHaveAttribute("aria-invalid", "true");
@@ -452,9 +461,11 @@ describe("ResetPasswordForm", () => {
       await fillAndSubmit(user);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Too many attempts. Try again in 2 seconds.",
+        "Previše pokušaja. Pokušaj ponovo za 2 sekunde.",
       );
-      const held = screen.getByRole("button", { name: "Try again in 0:02" });
+      const held = screen.getByRole("button", {
+        name: "Pokušaj ponovo za 0:02",
+      });
       expect(held).toHaveAttribute("aria-disabled", "true");
       await user.click(held);
       expect(confirmPasswordReset).toHaveBeenCalledTimes(1);
