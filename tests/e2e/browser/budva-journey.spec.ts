@@ -59,11 +59,13 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
   });
 
   await test.step("sign out", async () => {
-    // Sign out lives in the site header; the learner area leads back to it.
+    // Sign out is on the home page (#152), where the learner area leads back.
     await page.goto("/");
-    const account = page.getByRole("navigation", { name: "Account" });
-    await account.getByRole("button", { name: "Sign out" }).click();
-    await expect(account.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Dobro došli nazad!" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Odjavi se" }).click();
+    await expect(page.getByRole("link", { name: "Imam nalog" })).toBeVisible();
   });
 
   await test.step("sign in and land on /play", async () => {

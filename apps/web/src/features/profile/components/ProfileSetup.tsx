@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useReducer, useRef } from "react";
+import { type ReactNode, useEffect, useReducer, useRef } from "react";
 
 import { PLAY_PATH } from "@/features/auth/edge";
 import { fredoka } from "@/lib/fonts";
@@ -16,13 +16,15 @@ import { WhoStep } from "./WhoStep";
 
 type ProfileSetupProps = {
   firstStop: FirstStop | null;
+  /** The picture beside the steps: the map's art, from the page. */
+  art: ReactNode;
 };
 
 // The child's profile setup (#118): the name and buddy, then the age band,
 // saved through PUT /profile, then "ready to explore" and onto the map. The
 // rules are setupReducer's; this saves and moves focus to each new step's
 // heading, so a screen reader hears where it is.
-export function ProfileSetup({ firstStop }: ProfileSetupProps) {
+export function ProfileSetup({ firstStop, art }: ProfileSetupProps) {
   const router = useRouter();
   const [state, dispatch] = useReducer(setupReducer, undefined, initialSetup);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -81,6 +83,7 @@ export function ProfileSetup({ firstStop }: ProfileSetupProps) {
       <SetupFrame
         step={state.step === "who" ? 1 : 2}
         stepCount={2}
+        art={art}
         onBack={state.step === "age" ? () => dispatch({ type: "back" }) : null}
       >
         <form

@@ -15,6 +15,9 @@ export type Profile = {
   isComplete: boolean;
 };
 
+/** What the map and home page call the child before the profile is set up. */
+export const PLACEHOLDER_EXPLORER_NAME = "Istraživač";
+
 /** How the map shows the child: buddy, name and "Istraživač · 5–6 godina". */
 export type Explorer = {
   name: string;
