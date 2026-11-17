@@ -6,6 +6,7 @@ import {
   type Explorer,
   PLACEHOLDER_EXPLORER_NAME,
 } from "@/features/profile/edge";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";
@@ -13,7 +14,6 @@ import { isOpenState } from "../model/map-state";
 import type { MapPlace, MapRegion } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
 import { NextStopCard } from "./NextStopCard";
-import { FOCUS_RING } from "./chrome-styles";
 
 type MapSidePanelProps = {
   regions: readonly MapRegion[];

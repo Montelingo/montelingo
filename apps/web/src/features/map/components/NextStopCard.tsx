@@ -1,10 +1,10 @@
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";
 import { levelCardHref, type MapPlace } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
 import { LevelCardLink } from "./LevelCardLink";
-import { FOCUS_RING } from "./chrome-styles";
 
 type NextStopCardProps = {
   place: MapPlace;

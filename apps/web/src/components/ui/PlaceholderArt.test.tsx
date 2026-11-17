@@ -43,6 +43,15 @@ describe("PlaceholderArt", () => {
     expect(svg).toHaveTextContent(/^Nj$/);
   });
 
+  it("draws no initial when asked not to", () => {
+    const { container } = render(
+      <PlaceholderArt id="word-61" label="majica" withInitial={false} />,
+    );
+
+    expect(container.querySelector("text")).toBeNull();
+    expect(container).toHaveTextContent(/^$/);
+  });
+
   it("is decorative, hidden from assistive technology and the tab order", () => {
     const { svg } = renderArt("kotor", "Kotor");
 

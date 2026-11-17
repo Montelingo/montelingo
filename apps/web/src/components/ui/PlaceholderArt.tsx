@@ -107,6 +107,11 @@ type PlaceholderArtProps = {
   id: string;
   /** The name the initial is taken from; the ID's first letter otherwise. */
   label?: string;
+  /**
+   * Draw the initial in the middle (the default). Off where no letter may
+   * show, such as a lesson's picture card, which shows the picture alone.
+   */
+  withInitial?: boolean;
   /** Layout only. The picture fills its box, cropping to keep its shape. */
   className?: string;
 };
@@ -114,7 +119,12 @@ type PlaceholderArtProps = {
 // A stand-in picture until real artwork arrives: a pattern and an initial,
 // always the same for the same ID. Decorative, so it is hidden from assistive
 // technology; the name next to it carries the meaning.
-export function PlaceholderArt({ id, label, className }: PlaceholderArtProps) {
+export function PlaceholderArt({
+  id,
+  label,
+  withInitial = true,
+  className,
+}: PlaceholderArtProps) {
   const art = placeholderArt(id, label);
   const palette = PALETTES[art.palette] ?? PALETTES[0];
   const isWaves = art.pattern === "waves";
@@ -134,7 +144,7 @@ export function PlaceholderArt({ id, label, className }: PlaceholderArtProps) {
       >
         {PATTERN_SHAPES[art.pattern]}
       </g>
-      {art.initial ? (
+      {withInitial && art.initial ? (
         <>
           <circle cx={50} cy={50} r={26} className={palette.bg} />
           <text

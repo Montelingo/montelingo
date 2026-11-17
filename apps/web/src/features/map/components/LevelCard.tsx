@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useRef } from "react";
 
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
 
@@ -20,7 +21,7 @@ import {
 import { ChromeIcon } from "./ChromeIcon";
 import { closeLevelCard } from "./level-card-navigation";
 import { MapBaseImage } from "./MapBaseImage";
-import { FOCUS_RING, ICON_BUTTON_CLASS } from "./chrome-styles";
+import { ICON_BUTTON_CLASS } from "./chrome-styles";
 
 type LevelCardProps = {
   regions: readonly MapRegion[];

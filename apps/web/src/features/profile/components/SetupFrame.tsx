@@ -1,10 +1,9 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { WelcomeFrame } from "@/features/learner";
 import { cn } from "@/lib/cn";
-
-import { FOCUS_RING } from "./setup-styles";
 
 type SetupFrameProps = {
   /** Which of the steps this is, from 1, for the dots. */

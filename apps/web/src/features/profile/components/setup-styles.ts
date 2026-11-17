@@ -2,9 +2,7 @@
 // Tailwind finds them. The kit's own (focus, buttons) live in
 // @/components/ui/kid-styles.
 
-import { BIG_BUTTON, FOCUS_RING } from "@/components/ui/kid-styles";
-
-export { FOCUS_RING };
+import { BIG_BUTTON } from "@/components/ui/kid-styles";
 
 /** The wide yellow "Next" button with the raised ink edge. */
 export const PRIMARY_BUTTON = `${BIG_BUTTON} bg-kid-yellow disabled:opacity-60`;
