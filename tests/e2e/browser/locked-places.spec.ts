@@ -18,20 +18,21 @@ test("locked regions and places cannot be opened, including by URL (#104)", asyn
   await test.step("authenticate a learner", async () => {
     if (existingEmail && existingPassword) {
       await page.goto("/sign-in");
-      await page.getByLabel("Email").fill(existingEmail);
-      await page.getByLabel("Password", { exact: true }).fill(existingPassword);
-      await page.getByRole("button", { name: "Sign in" }).click();
+      await page.getByLabel("E-pošta", { exact: true }).fill(existingEmail);
+      await page.getByLabel("Lozinka", { exact: true }).fill(existingPassword);
+      await page.getByRole("button", { name: "Prijavi se" }).click();
     } else {
       const email = `e2e-locked-${randomUUID()}@example.com`;
       const password = `e2e-${randomUUID()}`;
       await page.goto("/sign-up");
-      await page.getByLabel("Email").fill(email);
-      await page.getByLabel("Password", { exact: true }).fill(password);
-      await page.getByLabel("Confirm password").fill(password);
-      await page.getByRole("button", { name: "Create account" }).click();
+      await page.getByLabel("E-pošta odrasle osobe").fill(email);
+      await page.getByLabel("Lozinka", { exact: true }).fill(password);
+      await page.getByLabel("Potvrdi lozinku").fill(password);
+      await page.getByRole("button", { name: "Napravi nalog" }).click();
     }
 
-    await expect(page).toHaveURL(/\/play(\/welcome)?$/);
+    // Sign-up or sign-in hashes the password: slow when several run at once.
+    await expect(page).toHaveURL(/\/play(\/welcome)?$/, { timeout: 15_000 });
     await setUpProfileAndOpenMap(page);
     await expect(
       page.getByRole("heading", { level: 1, name: "Mapa" }),

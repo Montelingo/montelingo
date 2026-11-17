@@ -36,22 +36,22 @@ export function InvalidResetLink({
           tabIndex={focusOnMount ? -1 : undefined}
           className="text-2xl font-bold text-slate-900 focus:outline-none"
         >
-          This reset link doesn’t work
+          Ovaj link ne radi
         </h1>
         <p className="text-slate-700">
-          Reset links can be used once and expire after a short time. Request a
-          new link to choose a new password.
+          Linkovi za novu lozinku rade samo jednom i brzo ističu. Zatraži novi
+          link da izabereš novu lozinku.
         </p>
       </div>
       <Link
         href={FORGOT_PASSWORD_PATH}
         className="inline-flex items-center justify-center rounded-lg bg-indigo-700 px-4 py-2 font-semibold text-white hover:bg-indigo-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
       >
-        Request a new link
+        Zatraži novi link
       </Link>
       <p className="text-center text-sm text-slate-700">
         <Link href={SIGN_IN_PATH} className={linkClassName}>
-          Back to sign in
+          Nazad na prijavu
         </Link>
       </p>
     </div>

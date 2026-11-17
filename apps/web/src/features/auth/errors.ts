@@ -1,8 +1,9 @@
 import { ApiClientError, ApiNetworkError } from "@app/api-client";
 
+import { MONTENEGRIN } from "@/lib/locale";
 import { parseRetryAfter } from "@/lib/retry-after";
 
-import { validationMessages } from "./model/messages";
+import { retryIn, validationMessages } from "./model/messages";
 import type {
   FieldErrors,
   PasswordResetConfirmField,
@@ -76,18 +77,20 @@ export class SignInAfterSignUpError extends Error {
 }
 
 export const authErrorMessages = {
-  invalidCredentials: "Incorrect email or password.",
-  emailTaken: "An account with this email already exists.",
+  invalidCredentials: "Pogrešna e-pošta ili lozinka.",
+  emailTaken: "Nalog s ovom e-poštom već postoji.",
   invalidResetToken:
-    "This reset link is invalid or has expired. Request a new one.",
-  rateLimited: "Too many attempts. Wait a moment and try again.",
-  invalidInput: "Check the details you entered and try again.",
+    "Ovaj link za novu lozinku nije ispravan ili je istekao. Zatraži novi.",
+  rateLimited: "Previše pokušaja. Sačekaj malo pa pokušaj ponovo.",
+  invalidInput: "Provjeri unesene podatke i pokušaj ponovo.",
   unreachable:
-    "We couldn’t reach Montelingo. Check your connection and try again.",
+    "Montelingo trenutno nije dostupan. Provjeri internet vezu i pokušaj ponovo.",
   signInAfterSignUp:
-    "Your account was created, but we couldn’t sign you in. Sign in to continue.",
-  generic: "Something went wrong. Try again.",
-  signOutFailed: "We couldn’t confirm you were signed out. Try again.",
+    "Nalog je napravljen, ali prijava nije uspjela. Prijavi se da nastaviš.",
+  generic: "Nešto nije u redu. Pokušaj ponovo.",
+  signOutFailed: "Odjava nije potvrđena. Pokušaj ponovo.",
+  /** The site header's, which is still in English (#153 leaves it). */
+  signOutFailedEnglish: "We couldn’t confirm you were signed out. Try again.",
 };
 
 type ToAuthFormErrorOptions<Field extends string> = {
@@ -223,10 +226,10 @@ function rateLimitedMessage(retryAfterSeconds: number | null): string {
   if (retryAfterSeconds === null || retryAfterSeconds === 0) {
     return authErrorMessages.rateLimited;
   }
-  return `Too many attempts. Try again in ${formatWait(retryAfterSeconds)}.`;
+  return `Previše pokušaja. ${retryIn(formatWait(retryAfterSeconds))}.`;
 }
 
-// "45 seconds", "2 minutes", "1 hour": rounded up to the largest whole unit.
+// "45 sekundi", "2 minuta", "1 sat": rounded up to the largest whole unit.
 function formatWait(seconds: number): string {
   if (seconds < 60) {
     return formatUnit(seconds, "second");
@@ -238,10 +241,24 @@ function formatWait(seconds: number): string {
   return formatUnit(Math.ceil(minutes / 60), "hour");
 }
 
+// The wait follows "za", which takes the accusative ("za 1 sekundu", "za 21
+// sekundu"), a form Intl's unit names do not have, so the words are ours and
+// only the plural category comes from Intl.
+const UNIT_WORDS: Record<
+  "second" | "minute" | "hour",
+  Record<"one" | "few" | "other", string>
+> = {
+  second: { one: "sekundu", few: "sekunde", other: "sekundi" },
+  minute: { one: "minut", few: "minuta", other: "minuta" },
+  hour: { one: "sat", few: "sata", other: "sati" },
+};
+
+const pluralRules = new Intl.PluralRules(MONTENEGRIN);
+
 function formatUnit(value: number, unit: "second" | "minute" | "hour") {
-  return new Intl.NumberFormat("en", {
-    style: "unit",
-    unit,
-    unitDisplay: "long",
-  }).format(value);
+  const category = pluralRules.select(value);
+  const words = UNIT_WORDS[unit];
+  const word =
+    category === "one" || category === "few" ? words[category] : words.other;
+  return `${value} ${word}`;
 }

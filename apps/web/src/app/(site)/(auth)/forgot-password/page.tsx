@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ForgotPasswordForm } from "@/features/auth";
 
 export const metadata: Metadata = {
-  title: "Forgot your password?",
+  title: "Zaboravljena lozinka?",
 };
 
 // Signed-in users are not redirected: with no change-password page, someone

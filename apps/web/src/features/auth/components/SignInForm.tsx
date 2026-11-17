@@ -1,11 +1,12 @@
 "use client";
 
+import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId } from "react";
 
-import { FormAlert } from "@/components/ui/FormAlert";
 import { FormNotice } from "@/components/ui/FormNotice";
+import { SMALL_LINK } from "@/components/ui/kid-styles";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
@@ -23,7 +24,9 @@ import {
 } from "../model/routes";
 import { validateSignIn } from "../model/validation";
 import { AuthSubmitButton } from "./AuthSubmitButton";
-import { linkClassName } from "./link-class-name";
+import { ErrorSummary } from "./ErrorSummary";
+import { kidLinkClassName } from "./link-class-name";
+import { WelcomeFormHeader } from "./WelcomeFormHeader";
 
 type SignInFormProps = {
   /** Where to go after signing in, from the page's `?next=`. */
@@ -32,6 +35,8 @@ type SignInFormProps = {
   notice?: SignInNotice | null;
 };
 
+// The sign-in panel (#153, Figma "1 · Welcome & Auth"), inside the welcome
+// frame of the (welcome) layout.
 export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
   const router = useRouter();
   const titleId = useId();
@@ -40,33 +45,35 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
   const {
     fieldProps,
     failure,
+    rejectedFieldCount,
     attempt,
     isPending,
     handleSubmit,
     formRef,
+    summaryRef,
     retryAfterSeconds,
   } = useAuthForm({
     initialValues: { email: "", password: "" },
     validate: validateSignIn,
     apiFields: signInFields,
+    focusOnError: "summary",
     submit: async (credentials) => {
       await signIn(credentials);
     },
     onSuccess: () => {
       router.replace(destination);
-      // Re-renders Server Components (such as the header) for the signed-in user.
+      // Re-renders Server Components for the signed-in user.
       router.refresh();
     },
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Sign in
-        </h1>
-        <p className="text-slate-700">Welcome back to Montelingo.</p>
-      </div>
+    <div className="flex flex-1 flex-col gap-4">
+      <WelcomeFormHeader
+        titleId={titleId}
+        title="Dobro došli nazad"
+        lead="Prijavi se da nastaviš istraživanje."
+      />
       {/* The submit button stays disabled until hydration. method="post" only
           guarantees the credentials never land in a URL. */}
       <form
@@ -75,53 +82,69 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
         aria-labelledby={titleId}
         noValidate
         onSubmit={handleSubmit}
-        className="flex flex-col gap-4"
+        className="flex flex-1 flex-col gap-3"
       >
         {/* Shown until the first submit, so it never sits beside an error. */}
         {notice !== null && attempt === 0 ? (
-          <FormNotice message={SIGN_IN_NOTICES[notice]} />
+          <FormNotice
+            message={SIGN_IN_NOTICES[notice]}
+            className="rounded-kid-lg border-3 border-green-700 text-lg font-semibold"
+          />
         ) : null}
-        <FormAlert key={attempt} message={failure?.formError} />
+        <ErrorSummary
+          key={attempt}
+          ref={summaryRef}
+          rejectedFieldCount={rejectedFieldCount}
+          formError={failure?.formError}
+        />
         <TextField
           {...fieldProps("email")}
-          label="Email"
+          appearance="kid"
+          icon={EnvelopeIcon}
+          label="E-pošta"
           type="email"
           autoComplete="email"
           autoCapitalize="none"
           spellCheck={false}
           required
         />
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           <PasswordField
             {...fieldProps("password")}
-            label="Password"
+            appearance="kid"
+            icon={LockClosedIcon}
+            label="Lozinka"
+            toggleLabel="Prikaži lozinku"
             autoComplete="current-password"
             required
           />
           <Link
             href={FORGOT_PASSWORD_PATH}
-            className={cn(linkClassName, "self-end text-sm")}
+            className={cn(SMALL_LINK, "-mr-3 self-end text-base")}
           >
-            Forgot password?
+            Zaboravili ste lozinku?
           </Link>
         </div>
-        <AuthSubmitButton
-          isPending={isPending}
-          pendingLabel="Signing in…"
-          retryAfterSeconds={retryAfterSeconds}
-        >
-          Sign in
-        </AuthSubmitButton>
+        <div className="mt-auto flex flex-col gap-3 pt-1">
+          <AuthSubmitButton
+            appearance="kid"
+            isPending={isPending}
+            pendingLabel="Prijavljujem…"
+            retryAfterSeconds={retryAfterSeconds}
+          >
+            Prijavi se
+          </AuthSubmitButton>
+          <p className="text-center text-lg font-medium text-kid-muted">
+            Nemaš nalog?{" "}
+            <Link
+              href={authPageHref(SIGN_UP_PATH, destination)}
+              className={kidLinkClassName}
+            >
+              Napravi nalog
+            </Link>
+          </p>
+        </div>
       </form>
-      <p className="text-center text-sm text-slate-700">
-        New to Montelingo?{" "}
-        <Link
-          href={authPageHref(SIGN_UP_PATH, destination)}
-          className={linkClassName}
-        >
-          Sign up
-        </Link>
-      </p>
     </div>
   );
 }

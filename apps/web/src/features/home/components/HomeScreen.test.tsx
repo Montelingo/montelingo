@@ -5,6 +5,7 @@ import { axe } from "vitest-axe";
 import { HomeScreen } from "./HomeScreen";
 
 const SIGN_OUT = <button type="button">Odjavi se</button>;
+
 const MIA = {
   name: "Mia",
   avatar: "owl",
@@ -14,7 +15,10 @@ const MIA = {
 describe("HomeScreen, signed out", () => {
   it("welcomes a family, as in Figma", () => {
     render(
-      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+      <HomeScreen
+        signOut={SIGN_OUT}
+        view={{ status: "visitor", canSignOut: false }}
+      />,
     );
 
     expect(
@@ -32,7 +36,10 @@ describe("HomeScreen, signed out", () => {
 
   it("leads new families to sign up and others to sign in", () => {
     render(
-      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+      <HomeScreen
+        signOut={SIGN_OUT}
+        view={{ status: "visitor", canSignOut: false }}
+      />,
     );
 
     expect(screen.getByRole("link", { name: "Nov sam" })).toHaveAttribute(
@@ -48,7 +55,10 @@ describe("HomeScreen, signed out", () => {
 
   it("offers signing out when the account could not be looked up", () => {
     render(
-      <HomeScreen art={null} view={{ status: "visitor", signOut: SIGN_OUT }} />,
+      <HomeScreen
+        signOut={SIGN_OUT}
+        view={{ status: "visitor", canSignOut: true }}
+      />,
     );
 
     expect(screen.getByRole("link", { name: "Nov sam" })).toBeInTheDocument();
@@ -59,7 +69,10 @@ describe("HomeScreen, signed out", () => {
 
   it("has no accessibility violations", async () => {
     const { container } = render(
-      <HomeScreen art={null} view={{ status: "visitor", signOut: null }} />,
+      <HomeScreen
+        signOut={SIGN_OUT}
+        view={{ status: "visitor", canSignOut: false }}
+      />,
     );
 
     expect(await axe(container)).toHaveNoViolations();
@@ -70,8 +83,8 @@ describe("HomeScreen, signed in", () => {
   it("shows the child and leads back to the map", () => {
     render(
       <HomeScreen
-        art={null}
-        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+        signOut={SIGN_OUT}
+        view={{ status: "family", explorer: MIA }}
       />,
     );
 
@@ -88,8 +101,8 @@ describe("HomeScreen, signed in", () => {
   it("has the account and signing out for the grown-up", () => {
     render(
       <HomeScreen
-        art={null}
-        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+        signOut={SIGN_OUT}
+        view={{ status: "family", explorer: MIA }}
       />,
     );
 
@@ -106,8 +119,8 @@ describe("HomeScreen, signed in", () => {
   it("shows the placeholder explorer before the profile is set up", () => {
     render(
       <HomeScreen
-        art={null}
-        view={{ status: "family", explorer: null, signOut: SIGN_OUT }}
+        signOut={SIGN_OUT}
+        view={{ status: "family", explorer: null }}
       />,
     );
 
@@ -120,8 +133,8 @@ describe("HomeScreen, signed in", () => {
   it("has no accessibility violations", async () => {
     const { container } = render(
       <HomeScreen
-        art={null}
-        view={{ status: "family", explorer: MIA, signOut: SIGN_OUT }}
+        signOut={SIGN_OUT}
+        view={{ status: "family", explorer: MIA }}
       />,
     );
 

@@ -13,13 +13,13 @@ function renderPage(searchParams: { token?: string | string[] } = {}) {
 function invalidLinkHeading() {
   return screen.queryByRole("heading", {
     level: 1,
-    name: "This reset link doesn’t work",
+    name: "Ovaj link ne radi",
   });
 }
 
 describe("ResetPasswordPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Choose a new password");
+    expect(metadata.title).toBe("Izaberi novu lozinku");
   });
 
   it("keeps the token in its URL out of Referer headers", () => {
@@ -34,7 +34,7 @@ describe("ResetPasswordPage", () => {
     render(await renderPage({ token: "Zx3-k9_Qp0aLm2VtR8wYb4" }));
 
     expect(
-      screen.getByRole("form", { name: "Choose a new password" }),
+      screen.getByRole("form", { name: "Izaberi novu lozinku" }),
     ).toBeInTheDocument();
     expect(invalidLinkHeading()).not.toBeInTheDocument();
     expect(getCurrentUser).not.toHaveBeenCalled();
@@ -56,7 +56,7 @@ describe("ResetPasswordPage", () => {
 
     expect(invalidLinkHeading()).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Request a new link" }),
+      screen.getByRole("link", { name: "Zatraži novi link" }),
     ).toHaveAttribute("href", "/forgot-password");
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });

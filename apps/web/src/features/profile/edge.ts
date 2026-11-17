@@ -7,6 +7,7 @@ export {
   type AgeBand,
   type Avatar,
   AVATARS,
+  PLACEHOLDER_EXPLORER,
   PLACEHOLDER_EXPLORER_NAME,
   avatarSrc,
   type Explorer,

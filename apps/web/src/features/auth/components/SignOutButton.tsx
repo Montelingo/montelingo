@@ -1,28 +1,47 @@
 "use client";
 
 import { FormAlert } from "@/components/ui/FormAlert";
+import { SMALL_LINK } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 import { replaceDocument } from "@/lib/navigation";
 
+import { authErrorMessages } from "../errors";
 import { useSignOut } from "../hooks/use-sign-out";
 import { HOME_PATH } from "../model/routes";
 
+// The two places that sign out, each with its own look and language: the site
+// header (still in English, #153 leaves it) and the welcome screens' small
+// links, in Montenegrin.
+const APPEARANCES = {
+  site: {
+    label: "Sign out",
+    pendingLabel: "Signing out…",
+    failure: authErrorMessages.signOutFailedEnglish,
+    button: cn(
+      "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100",
+      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
+    ),
+    pendingButton: "hover:bg-white",
+    // Floats below the header's button, so it does not push the header around.
+    alert: "absolute right-0 top-full z-10 mt-2 w-64",
+  },
+  welcome: {
+    label: "Odjavi se",
+    pendingLabel: "Odjavljujem…",
+    failure: authErrorMessages.signOutFailed,
+    button: SMALL_LINK,
+    pendingButton: undefined,
+    alert: "mt-2",
+  },
+} as const;
+
 type SignOutButtonProps = {
-  /** The button's label, and while signing out. The site header's by default. */
-  label?: string;
-  pendingLabel?: string;
-  /** Replaces the site header's look, for another page's style. */
-  className?: string;
-  /** Replaces where a failure's message floats (below the header's button). */
-  alertClassName?: string;
+  /** Where the button sits. The site header's by default. */
+  appearance?: keyof typeof APPEARANCES;
 };
 
-export function SignOutButton({
-  label = "Sign out",
-  pendingLabel = "Signing out…",
-  className,
-  alertClassName = "absolute right-0 top-full z-10 mt-2 w-64",
-}: SignOutButtonProps = {}) {
+export function SignOutButton({ appearance = "site" }: SignOutButtonProps) {
+  const copy = APPEARANCES[appearance];
   const { isPending, error, signOut } = useSignOut({
     // A full load of the home page, not router.replace() + refresh(): it drops
     // every bit of the signed-in user's client state (including the router
@@ -41,16 +60,12 @@ export function SignOutButton({
         aria-disabled={isPending || undefined}
         onClick={signOut}
         className={cn(
-          className ?? [
-            "inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100",
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
-          ],
-          isPending ? "cursor-wait" : undefined,
-          isPending && className === undefined ? "hover:bg-white" : undefined,
+          copy.button,
+          isPending ? ["cursor-wait", copy.pendingButton] : undefined,
         )}
       >
         {/* Both labels share one grid cell, so the button keeps the width of
-            the longer one and nothing in the header moves when it changes. */}
+            the longer one and nothing around it moves when it changes. */}
         <span className="grid">
           <span
             aria-hidden={isPending || undefined}
@@ -59,7 +74,7 @@ export function SignOutButton({
               isPending ? "invisible" : undefined,
             )}
           >
-            {label}
+            {copy.label}
           </span>
           <span
             aria-hidden={!isPending || undefined}
@@ -68,12 +83,14 @@ export function SignOutButton({
               isPending ? undefined : "invisible",
             )}
           >
-            {pendingLabel}
+            {copy.pendingLabel}
           </span>
         </span>
       </button>
-      {/* Floats below the button, so it does not push the header around. */}
-      <FormAlert message={error} className={alertClassName} />
+      <FormAlert
+        message={error === null ? null : copy.failure}
+        className={copy.alert}
+      />
     </div>
   );
 }

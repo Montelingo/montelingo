@@ -8,5 +8,12 @@ type AuthErrorProps = {
 };
 
 export default function AuthError({ reset }: AuthErrorProps) {
-  return <ErrorFallback title="We couldn’t load this page." reset={reset} />;
+  return (
+    <ErrorFallback
+      title="Stranica se nije otvorila."
+      description="Provjeri internet vezu i pokušaj ponovo."
+      retryLabel="Pokušaj ponovo"
+      reset={reset}
+    />
+  );
 }

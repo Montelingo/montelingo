@@ -11,10 +11,10 @@ const { getAuthState } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/auth/server", () => ({ getAuthState }));
 
-const { readProfile } = vi.hoisted(() => ({
-  readProfile: vi.fn<() => Promise<ProfileResult>>(),
+const { getProfileResult } = vi.hoisted(() => ({
+  getProfileResult: vi.fn<() => Promise<ProfileResult>>(),
 }));
-vi.mock("@/features/profile/server", () => ({ readProfile }));
+vi.mock("@/features/profile/server", () => ({ getProfileResult }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
@@ -45,7 +45,7 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("link", { name: "Nov sam" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Odjavi se" })).toBeNull();
-    expect(readProfile).not.toHaveBeenCalled();
+    expect(getProfileResult).not.toHaveBeenCalled();
   });
 
   it("welcomes, with signing out, when the account cannot be looked up", async () => {
@@ -57,12 +57,12 @@ describe("HomePage", () => {
     expect(
       screen.getByRole("button", { name: "Odjavi se" }),
     ).toBeInTheDocument();
-    expect(readProfile).not.toHaveBeenCalled();
+    expect(getProfileResult).not.toHaveBeenCalled();
   });
 
   it("shows a signed-in family their child and the way back to the map", async () => {
     getAuthState.mockResolvedValue(SIGNED_IN);
-    readProfile.mockResolvedValue({
+    getProfileResult.mockResolvedValue({
       status: "ready",
       profile: { name: "Mia", ageBand: "7", avatar: "owl", isComplete: true },
     });
@@ -83,7 +83,7 @@ describe("HomePage", () => {
 
   it("shows the placeholder explorer when the profile cannot be read", async () => {
     getAuthState.mockResolvedValue(SIGNED_IN);
-    readProfile.mockResolvedValue({ status: "unavailable" });
+    getProfileResult.mockResolvedValue({ status: "unavailable" });
 
     render(await HomePage());
 
@@ -92,7 +92,7 @@ describe("HomePage", () => {
 
   it("welcomes a visitor whose session ended between the two calls", async () => {
     getAuthState.mockResolvedValue(SIGNED_IN);
-    readProfile.mockResolvedValue({ status: "signed-out" });
+    getProfileResult.mockResolvedValue({ status: "signed-out" });
 
     render(await HomePage());
 

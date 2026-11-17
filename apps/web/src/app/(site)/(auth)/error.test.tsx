@@ -30,7 +30,7 @@ describe("AuthError", () => {
     renderError();
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "We couldn’t load this page.",
+      "Stranica se nije otvorila.",
     );
     expect(screen.queryByText(/secret server detail/)).not.toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe("AuthError", () => {
     const user = userEvent.setup();
     const { reset } = renderError();
 
-    await user.click(screen.getByRole("button", { name: "Try again" }));
+    await user.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
 
     expect(router.refresh).toHaveBeenCalledTimes(1);
     expect(reset).toHaveBeenCalledTimes(1);

@@ -21,5 +21,8 @@ export default defineConfig({
     environmentMatchGlobs: [["src/**/*.test.tsx", "jsdom"]],
     include: ["src/**/*.test.{ts,tsx}", "next.config.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
+    // axe on a full screen (a town's 40 word cards) takes a few seconds alone
+    // and several times that while the whole suite shares the CPU.
+    testTimeout: 20_000,
   },
 });

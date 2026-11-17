@@ -8,14 +8,14 @@ vi.mock("@/features/auth/server", () => ({ getCurrentUser }));
 
 describe("ForgotPasswordPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Forgot your password?");
+    expect(metadata.title).toBe("Zaboravljena lozinka?");
   });
 
   it("shows the form without checking the session", () => {
     render(<ForgotPasswordPage />);
 
     expect(
-      screen.getByRole("form", { name: "Forgot your password?" }),
+      screen.getByRole("form", { name: "Zaboravljena lozinka?" }),
     ).toBeInTheDocument();
     expect(getCurrentUser).not.toHaveBeenCalled();
   });

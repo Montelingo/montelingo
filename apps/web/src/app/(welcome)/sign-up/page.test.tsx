@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
 
 import type { AuthState, CurrentUser } from "@/features/auth";
 
+import WelcomeLayout from "../layout";
 import SignUpPage, { metadata } from "./page";
 
 const { getAuthState } = vi.hoisted(() => ({
@@ -37,7 +39,7 @@ beforeEach(() => {
 
 describe("SignUpPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Sign up");
+    expect(metadata.title).toBe("Napravi nalog");
   });
 
   it("shows the form to a signed-out visitor, keeping the destination", async () => {
@@ -46,9 +48,9 @@ describe("SignUpPage", () => {
     render(await renderPage({ next: "/lessons" }));
 
     expect(
-      screen.getByRole("form", { name: "Create your account" }),
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Prijavi se" })).toHaveAttribute(
       "href",
       "/sign-in?next=%2Flessons",
     );
@@ -62,7 +64,7 @@ describe("SignUpPage", () => {
 
       render(await renderPage({ next }));
 
-      expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Prijavi se" })).toHaveAttribute(
         "href",
         "/sign-in",
       );
@@ -107,8 +109,20 @@ describe("SignUpPage", () => {
     render(await renderPage({ next: "/lessons" }));
 
     expect(
-      screen.getByRole("form", { name: "Create your account" }),
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
+  });
+  it("has no accessibility violations in the welcome frame", async () => {
+    getAuthState.mockResolvedValue({ status: "signed-out" });
+
+    const { container } = render(
+      <WelcomeLayout>{await renderPage()}</WelcomeLayout>,
+    );
+
+    expect(
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
+    ).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

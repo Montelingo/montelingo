@@ -1,11 +1,13 @@
 // Class names the setup screens share (Figma A5, A6), written out in full so
-// Tailwind finds them.
+// Tailwind finds them. The kit's own (focus, buttons) live in
+// @/components/ui/kid-styles.
 
-export const FOCUS_RING =
-  "focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-focus";
+import { BIG_BUTTON, FOCUS_RING } from "@/components/ui/kid-styles";
+
+export { FOCUS_RING };
 
 /** The wide yellow "Next" button with the raised ink edge. */
-export const PRIMARY_BUTTON = `flex h-touch-xl w-full items-center justify-center rounded-kid-lg border-3 border-kid-ink bg-kid-yellow text-2xl font-semibold text-kid-ink shadow-raised-4 disabled:opacity-60 ${FOCUS_RING}`;
+export const PRIMARY_BUTTON = `${BIG_BUTTON} bg-kid-yellow disabled:opacity-60`;
 
 /** A choice card or buddy that is not picked, and the one that is. */
 export const CHOICE = "border-3 border-kid-ink bg-white shadow-raised-4";

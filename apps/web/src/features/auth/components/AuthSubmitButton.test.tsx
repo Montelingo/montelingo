@@ -20,7 +20,7 @@ function Form({
 }: FormProps) {
   return (
     <form
-      aria-label="Sign in"
+      aria-label="Prijavi se"
       method="post"
       onSubmit={(event) => {
         event.preventDefault();
@@ -31,10 +31,10 @@ function Form({
       <input id="email" name="email" />
       <AuthSubmitButton
         isPending={isPending}
-        pendingLabel="Signing in…"
+        pendingLabel="Prijavljujem…"
         retryAfterSeconds={retryAfterSeconds}
       >
-        Sign in
+        Prijavi se
       </AuthSubmitButton>
     </form>
   );
@@ -51,7 +51,7 @@ describe("AuthSubmitButton", () => {
   // values to the page route and lose them.
   it("is disabled in the server HTML", () => {
     const button = within(serverHtml(<Form />)).getByRole("button", {
-      name: "Sign in",
+      name: "Prijavi se",
     });
 
     expect(button).toBeDisabled();
@@ -63,7 +63,7 @@ describe("AuthSubmitButton", () => {
     document.body.append(container);
     const onRecoverableError = vi.fn();
     expect(
-      within(container).getByRole("button", { name: "Sign in" }),
+      within(container).getByRole("button", { name: "Prijavi se" }),
     ).toBeDisabled();
 
     let root: Root | undefined;
@@ -72,7 +72,7 @@ describe("AuthSubmitButton", () => {
     });
 
     expect(
-      within(container).getByRole("button", { name: "Sign in" }),
+      within(container).getByRole("button", { name: "Prijavi se" }),
     ).toBeEnabled();
     expect(onRecoverableError).not.toHaveBeenCalled();
     act(() => {
@@ -86,7 +86,7 @@ describe("AuthSubmitButton", () => {
     const onSubmit = vi.fn();
     render(<Form onSubmit={onSubmit} />);
 
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.click(screen.getByRole("button", { name: "Prijavi se" }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
@@ -94,7 +94,7 @@ describe("AuthSubmitButton", () => {
   it("is held, not disabled, while pending", () => {
     render(<Form isPending />);
 
-    const button = screen.getByRole("button", { name: "Signing in…" });
+    const button = screen.getByRole("button", { name: "Prijavljujem…" });
     expect(button).toBeEnabled();
     expect(button).toHaveAttribute("aria-disabled", "true");
   });
@@ -102,7 +102,9 @@ describe("AuthSubmitButton", () => {
   it("counts down while the API's Retry-After runs", () => {
     render(<Form retryAfterSeconds={75} />);
 
-    const button = screen.getByRole("button", { name: "Try again in 1:15" });
+    const button = screen.getByRole("button", {
+      name: "Pokušaj ponovo za 1:15",
+    });
     expect(button).toBeEnabled();
     expect(button).toHaveAttribute("aria-disabled", "true");
   });
