@@ -17,7 +17,7 @@ import {
   vi,
 } from "vitest";
 
-import { fetchProfile, getProfile, readProfile } from "./profile-api";
+import { fetchProfile, getProfile, getProfileResult } from "./profile-api";
 
 const fetchMock = vi.hoisted(() =>
   vi.fn<(request: Request) => Promise<Response>>(),
@@ -150,7 +150,7 @@ describe("fetchProfile", () => {
   });
 });
 
-describe("readProfile", () => {
+describe("getProfileResult", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     getApiClientMock.mockReset();
@@ -170,7 +170,7 @@ describe("readProfile", () => {
       }),
     );
 
-    await expect(readProfile()).resolves.toEqual({
+    await expect(getProfileResult()).resolves.toEqual({
       status: "ready",
       profile: { name: "Mia", ageBand: "5-6", avatar: "owl", isComplete: true },
     });
@@ -181,7 +181,7 @@ describe("readProfile", () => {
       jsonResponse(401, ERROR("authentication_error")),
     );
 
-    await expect(readProfile()).resolves.toEqual({ status: "signed-out" });
+    await expect(getProfileResult()).resolves.toEqual({ status: "signed-out" });
   });
 
   it("is unavailable for any other failure", async () => {
@@ -189,7 +189,9 @@ describe("readProfile", () => {
       jsonResponse(500, ERROR("internal_server_error")),
     );
 
-    await expect(readProfile()).resolves.toEqual({ status: "unavailable" });
+    await expect(getProfileResult()).resolves.toEqual({
+      status: "unavailable",
+    });
   });
 
   it("rethrows Next.js signals", async () => {
@@ -198,6 +200,6 @@ describe("readProfile", () => {
       throw signal;
     });
 
-    await expect(readProfile()).rejects.toBe(signal);
+    await expect(getProfileResult()).rejects.toBe(signal);
   });
 });

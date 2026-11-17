@@ -10,7 +10,8 @@ import { MONTENEGRIN } from "@/lib/locale";
 /**
  * The language of the words and chapter titles, Montenegrin in Latin script,
  * for the `lang` of the elements that show them, so a screen reader speaks
- * them in the right voice. The rest of the learner area is in English.
+ * them in the right voice. Some of the learner area's own copy is still in
+ * English, so the content marks its language itself.
  */
 export const CONTENT_LANG = MONTENEGRIN;
 

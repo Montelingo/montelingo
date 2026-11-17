@@ -129,6 +129,10 @@ describe("toAuthFormError", () => {
   describe("rate_limited", () => {
     it.each([
       ["1", 1, "1 sekundu"],
+      ["2", 2, "2 sekunde"],
+      ["11", 11, "11 sekundi"],
+      ["21", 21, "21 sekundu"],
+      ["22", 22, "22 sekunde"],
       ["30", 30, "30 sekundi"],
       ["59", 59, "59 sekundi"],
       ["60", 60, "1 minut"],
@@ -138,6 +142,7 @@ describe("toAuthFormError", () => {
       ["3541", 3541, "1 sat"],
       ["3600", 3600, "1 sat"],
       ["3601", 3601, "2 sata"],
+      ["18000", 18000, "5 sati"],
       ["86400", 86400, "24 sata"],
       [" 30 ", 30, "30 sekundi"],
     ])(

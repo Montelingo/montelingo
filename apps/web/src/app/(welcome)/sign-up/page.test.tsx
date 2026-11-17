@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
 
 import type { AuthState, CurrentUser } from "@/features/auth";
 
+import WelcomeLayout from "../layout";
 import SignUpPage, { metadata } from "./page";
 
 const { getAuthState } = vi.hoisted(() => ({
@@ -110,5 +112,17 @@ describe("SignUpPage", () => {
       screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
+  });
+  it("has no accessibility violations in the welcome frame", async () => {
+    getAuthState.mockResolvedValue({ status: "signed-out" });
+
+    const { container } = render(
+      <WelcomeLayout>{await renderPage()}</WelcomeLayout>,
+    );
+
+    expect(
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
+    ).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

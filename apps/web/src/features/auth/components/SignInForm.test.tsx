@@ -79,6 +79,11 @@ function renderForm(redirectTo = "/play", notice: SignInNotice | null = null) {
   return { ...view, user: userEvent.setup() };
 }
 
+// The welcome screens' error summary, which takes focus after a rejected submit.
+function errorSummary(count: string) {
+  return screen.getByText(count).closest<HTMLElement>('[tabindex="-1"]');
+}
+
 function emailInput() {
   return screen.getByLabelText("E-pošta");
 }
@@ -150,11 +155,35 @@ describe("SignInForm", () => {
     expect(passwordInput()).toHaveAttribute("autocomplete", "current-password");
   });
 
+  it("shows and hides the password with the eye", async () => {
+    const { user: actor } = renderForm();
+    const eye = screen.getByRole("button", { name: "Prikaži lozinku" });
+
+    await actor.click(eye);
+
+    expect(passwordInput()).toHaveAttribute("type", "text");
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+
+    await actor.click(eye);
+
+    expect(passwordInput()).toHaveAttribute("type", "password");
+    expect(eye).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("leads back to the welcome", () => {
+    renderForm();
+
+    expect(screen.getByRole("link", { name: "Nazad" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
   it("links to the forgot-password and sign-up pages", () => {
     renderForm();
 
     expect(
-      screen.getByRole("link", { name: "Zaboravljena lozinka?" }),
+      screen.getByRole("link", { name: "Zaboravili ste lozinku?" }),
     ).toHaveAttribute("href", "/forgot-password");
     expect(screen.getByRole("link", { name: "Napravi nalog" })).toHaveAttribute(
       "href",
@@ -264,7 +293,7 @@ describe("SignInForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows every error on submit, focuses the first field, and does not call the API", async () => {
+    it("shows every error on submit, focuses the summary that counts them, and does not call the API", async () => {
       const { user } = renderForm();
 
       await user.click(screen.getByRole("button", { name: "Prijavi se" }));
@@ -275,18 +304,34 @@ describe("SignInForm", () => {
       expect(passwordInput()).toHaveAccessibleDescription(
         validationMessages.passwordRequired,
       );
-      expect(emailInput()).toHaveFocus();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 2 stvari ispod",
+      );
+      expect(errorSummary("Ispravi 2 stvari ispod")).toHaveFocus();
       expect(signIn).not.toHaveBeenCalled();
     });
 
-    it("focuses the first invalid field when earlier fields are valid", async () => {
+    it("counts only the fields still wrong when earlier fields are valid", async () => {
       const { user } = renderForm();
       await user.type(emailInput(), "ana@example.com");
 
       await user.click(screen.getByRole("button", { name: "Prijavi se" }));
 
-      expect(passwordInput()).toHaveFocus();
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
+      expect(emailInput()).not.toHaveAttribute("aria-invalid");
       expect(signIn).not.toHaveBeenCalled();
+    });
+
+    it("keeps the summary's count while the user fixes the fields", async () => {
+      const { user } = renderForm();
+      await user.click(screen.getByRole("button", { name: "Prijavi se" }));
+
+      await user.type(emailInput(), "ana@example.com");
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 2 stvari ispod",
+      );
+      expect(emailInput()).not.toHaveAttribute("aria-invalid");
     });
 
     it("lets the API judge a short password", async () => {
@@ -608,13 +653,14 @@ describe("SignInForm", () => {
         validationError(null),
         authErrorMessages.invalidInput,
       ],
-    ])("shows %s in the alert", async (_case, error, message) => {
+    ])("shows %s in the focused summary", async (_case, error, message) => {
       signIn.mockRejectedValue(error);
       const { user: actor } = renderForm();
 
       await fillAndSubmit(actor);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      expect(errorSummary(message)).toHaveFocus();
       expect(emailInput()).not.toHaveAttribute("aria-invalid");
       expect(passwordInput()).not.toHaveAttribute("aria-invalid");
       expect(router.replace).not.toHaveBeenCalled();
@@ -624,7 +670,7 @@ describe("SignInForm", () => {
       ["email", emailInput, validationMessages.emailInvalid],
       ["password", passwordInput, validationMessages.signInPassword],
     ])(
-      "shows the API's validation_error on the %s field and focuses it",
+      "shows the API's validation_error on the %s field and counts it in the summary",
       async (field, input, message) => {
         signIn.mockRejectedValue(validationError(field));
         const { user: actor } = renderForm();
@@ -635,8 +681,7 @@ describe("SignInForm", () => {
           expect(input()).toHaveAccessibleDescription(message);
         });
         expect(input()).toHaveAttribute("aria-invalid", "true");
-        expect(input()).toHaveFocus();
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
       },
     );
 

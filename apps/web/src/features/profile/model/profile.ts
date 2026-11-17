@@ -18,6 +18,15 @@ export type Profile = {
 /** What the map and home page call the child before the profile is set up. */
 export const PLACEHOLDER_EXPLORER_NAME = "Istraživač";
 
+/**
+ * The child before the profile is set up, where a buddy is drawn: the fox,
+ * the welcome screens' own buddy.
+ */
+export const PLACEHOLDER_EXPLORER: Pick<Explorer, "name" | "avatar"> = {
+  name: PLACEHOLDER_EXPLORER_NAME,
+  avatar: "fox",
+};
+
 /** How the map shows the child: buddy, name and "Istraživač · 5–6 godina". */
 export type Explorer = {
   name: string;

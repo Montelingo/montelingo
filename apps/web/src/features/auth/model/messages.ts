@@ -1,12 +1,25 @@
 // Form copy and limits, kept free of zod so that error mapping (errors.ts) can
 // use them without pulling the schemas into every bundle that shows an error.
 
+import { MONTENEGRIN } from "@/lib/locale";
+
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 /** "Try again in 2:00" or "… in 2 minuta": the rate-limit wait, after "za". */
 export function retryIn(wait: string): string {
   return `Pokušaj ponovo za ${wait}`;
+}
+
+const countRules = new Intl.PluralRules(MONTENEGRIN);
+
+/**
+ * The error summary's line, "Ispravi 2 stvari ispod", with the noun in
+ * Montenegrin's forms: 1 (and 21, 31, …) stvar, the rest stvari.
+ */
+export function fixBelow(count: number): string {
+  const noun = countRules.select(count) === "one" ? "stvar" : "stvari";
+  return `Ispravi ${count} ${noun} ispod`;
 }
 
 export const validationMessages = {

@@ -78,6 +78,11 @@ function renderForm(redirectTo = "/play") {
   return { ...view, user: userEvent.setup() };
 }
 
+// The welcome screens' error summary, which takes focus after a rejected submit.
+function errorSummary(count: string) {
+  return screen.getByText(count).closest<HTMLElement>('[tabindex="-1"]');
+}
+
 function emailInput() {
   return screen.getByLabelText("E-pošta odrasle osobe");
 }
@@ -142,6 +147,16 @@ describe("SignUpForm", () => {
     expect(
       screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toHaveAttribute("method", "post");
+  });
+
+  it("shows the Za odrasle chip and leads back to the welcome", () => {
+    renderForm();
+
+    expect(screen.getByText("Za odrasle")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Nazad" })).toHaveAttribute(
+      "href",
+      "/",
+    );
   });
 
   it("names each show-password toggle after its field", async () => {
@@ -227,7 +242,7 @@ describe("SignUpForm", () => {
       );
     });
 
-    it("shows every error on submit, focuses the first field, and does not call the API", async () => {
+    it("shows every error on submit, focuses the summary that counts them, and does not call the API", async () => {
       const { user: actor } = renderForm();
 
       await actor.click(submitButton());
@@ -241,16 +256,22 @@ describe("SignUpForm", () => {
       expect(confirmInput()).toHaveAccessibleDescription(
         validationMessages.confirmPasswordRequired,
       );
-      expect(emailInput()).toHaveFocus();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 3 stvari ispod",
+      );
+      expect(errorSummary("Ispravi 3 stvari ispod")).toHaveFocus();
       expect(signUpAndSignIn).not.toHaveBeenCalled();
     });
 
-    it("focuses the mismatched confirmation on submit", async () => {
+    it("counts the mismatched confirmation as one thing to fix", async () => {
       const { user: actor } = renderForm();
 
       await fillAndSubmit(actor, { confirmPassword: "something else" });
 
-      expect(confirmInput()).toHaveFocus();
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
+      expect(confirmInput()).toHaveAccessibleDescription(
+        validationMessages.passwordsDiffer,
+      );
       expect(signUpAndSignIn).not.toHaveBeenCalled();
     });
   });
@@ -357,11 +378,10 @@ describe("SignUpForm", () => {
       expect(emailInput()).toHaveAccessibleDescription(
         `Nikad je ne dijelimo. ${authErrorMessages.emailTaken} Prijavi se ovim nalogom`,
       );
-      expect(emailInput()).toHaveFocus();
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
       expect(
         screen.getByRole("link", { name: "Prijavi se ovim nalogom" }),
       ).toHaveAttribute("href", "/sign-in?next=%2Flessons");
-      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(router.replace).not.toHaveBeenCalled();
     });
 
@@ -500,7 +520,7 @@ describe("SignUpForm", () => {
         `Najmanje 8 znakova. ${validationMessages.passwordLength}`,
       ],
     ])(
-      "shows the API's validation_error on the %s field and focuses it",
+      "shows the API's validation_error on the %s field and counts it in the summary",
       async (field, input, description) => {
         signUpAndSignIn.mockRejectedValue(validationError(field));
         const { user: actor } = renderForm();
@@ -510,8 +530,7 @@ describe("SignUpForm", () => {
         await waitFor(() => {
           expect(input()).toHaveAccessibleDescription(description);
         });
-        expect(input()).toHaveFocus();
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
       },
     );
   });

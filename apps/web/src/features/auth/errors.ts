@@ -1,8 +1,7 @@
 import { ApiClientError, ApiNetworkError } from "@app/api-client";
 
-import { parseRetryAfter } from "@/lib/retry-after";
-
 import { MONTENEGRIN } from "@/lib/locale";
+import { parseRetryAfter } from "@/lib/retry-after";
 
 import { retryIn, validationMessages } from "./model/messages";
 import type {
@@ -89,9 +88,9 @@ export const authErrorMessages = {
   signInAfterSignUp:
     "Nalog je napravljen, ali prijava nije uspjela. Prijavi se da nastaviš.",
   generic: "Nešto nije u redu. Pokušaj ponovo.",
-  // The site header's sign-out is still in English; pages in Montenegrin pass
-  // their own message to SignOutButton (failureMessage).
-  signOutFailed: "We couldn’t confirm you were signed out. Try again.",
+  signOutFailed: "Odjava nije potvrđena. Pokušaj ponovo.",
+  /** The site header's, which is still in English (#153 leaves it). */
+  signOutFailedEnglish: "We couldn’t confirm you were signed out. Try again.",
 };
 
 type ToAuthFormErrorOptions<Field extends string> = {
@@ -230,8 +229,7 @@ function rateLimitedMessage(retryAfterSeconds: number | null): string {
   return `Previše pokušaja. ${retryIn(formatWait(retryAfterSeconds))}.`;
 }
 
-// "45 sekundi", "2 minuta", "1 sat": rounded up to the largest whole unit,
-// declined by Intl for Montenegrin.
+// "45 sekundi", "2 minuta", "1 sat": rounded up to the largest whole unit.
 function formatWait(seconds: number): string {
   if (seconds < 60) {
     return formatUnit(seconds, "second");
@@ -243,13 +241,24 @@ function formatWait(seconds: number): string {
   return formatUnit(Math.ceil(minutes / 60), "hour");
 }
 
+// The wait follows "za", which takes the accusative ("za 1 sekundu", "za 21
+// sekundu"), a form Intl's unit names do not have, so the words are ours and
+// only the plural category comes from Intl.
+const UNIT_WORDS: Record<
+  "second" | "minute" | "hour",
+  Record<"one" | "few" | "other", string>
+> = {
+  second: { one: "sekundu", few: "sekunde", other: "sekundi" },
+  minute: { one: "minut", few: "minuta", other: "minuta" },
+  hour: { one: "sat", few: "sata", other: "sati" },
+};
+
+const pluralRules = new Intl.PluralRules(MONTENEGRIN);
+
 function formatUnit(value: number, unit: "second" | "minute" | "hour") {
-  const formatted = new Intl.NumberFormat(MONTENEGRIN, {
-    style: "unit",
-    unit,
-    unitDisplay: "long",
-  }).format(value);
-  // The wait follows "za", which takes the accusative: Intl's "1 sekunda" or
-  // "21 sekunda" is "sekundu" there. Minutes and hours read the same.
-  return formatted.replace(/sekunda$/, "sekundu");
+  const category = pluralRules.select(value);
+  const words = UNIT_WORDS[unit];
+  const word =
+    category === "one" || category === "few" ? words[category] : words.other;
+  return `${value} ${word}`;
 }

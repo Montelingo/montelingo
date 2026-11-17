@@ -87,6 +87,7 @@ describe("initialAuthFormState", () => {
       retryAfterSeconds: null,
       attempt: 0,
       focusTarget: null,
+      rejectedFieldCount: 0,
     });
   });
 });
@@ -154,6 +155,7 @@ describe("authFormReducer", () => {
         submittedValues: null,
         attempt: 1,
         focusTarget: "email",
+        rejectedFieldCount: 2,
       });
     });
 
@@ -170,6 +172,7 @@ describe("authFormReducer", () => {
         serverFieldErrors: {},
         attempt: 2,
         focusTarget: null,
+        rejectedFieldCount: 0,
       });
     });
 
@@ -213,11 +216,15 @@ describe("authFormReducer", () => {
           email: "Nalog s ovom e-poštom već postoji.",
         },
         focusTarget: "email",
+        rejectedFieldCount: 1,
       });
     });
 
-    it("targets no field for a form-level failure", () => {
-      expect(reduce(submitting(), failed()).focusTarget).toBeNull();
+    it("targets no field, and counts none, for a form-level failure", () => {
+      const state = reduce(submitting(), failed());
+
+      expect(state.focusTarget).toBeNull();
+      expect(state.rejectedFieldCount).toBe(0);
     });
 
     it("drops a field error whose value changed while the request was in flight", () => {
