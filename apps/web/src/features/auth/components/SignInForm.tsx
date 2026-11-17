@@ -2,7 +2,6 @@
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useId } from "react";
 
 import { FormNotice } from "@/components/ui/FormNotice";
@@ -10,6 +9,7 @@ import { SMALL_LINK } from "@/components/ui/kid-styles";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
+import { useNavigate } from "@/lib/use-navigate";
 
 import { signIn } from "../api/auth-api";
 import { signInFields } from "../errors";
@@ -38,7 +38,7 @@ type SignInFormProps = {
 // The sign-in panel (#153, Figma "1 · Welcome & Auth"), inside the welcome
 // frame of the (welcome) layout.
 export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
-  const router = useRouter();
+  const router = useNavigate();
   const titleId = useId();
   // The value comes from the URL, so it is checked here too; a safe path is unchanged.
   const destination = postAuthRedirectPath(redirectTo);

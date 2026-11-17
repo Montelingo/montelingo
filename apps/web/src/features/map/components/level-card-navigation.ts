@@ -1,8 +1,6 @@
-import type { useRouter } from "next/navigation";
+import type { Navigate } from "@/lib/use-navigate";
 
 import { LEVEL_CARD_PARAM } from "../model/map-view";
-
-type Router = ReturnType<typeof useRouter>;
 
 // Marks the history entry a card was opened into on its own page, so closing
 // it goes back to the entry before rather than adding another.
@@ -12,14 +10,14 @@ const OPENED_HERE = "levelCardOpenedHere";
 // the History API, which Next.js keeps useSearchParams() in step with: the
 // card needs nothing from the server. (A router.push() to the same page with
 // a new query also hangs in production, on Next.js 15.5, until some other
-// update.) From another page, the router goes to the place's region first.
-export function openLevelCard(href: string, router: Router) {
+// update.) From another page, it navigates to the place's region first.
+export function openLevelCard(href: string, navigate: Navigate) {
   if (
     new URL(href, window.location.href).pathname === window.location.pathname
   ) {
     window.history.pushState({ [OPENED_HERE]: true }, "", href);
   } else {
-    router.push(href);
+    navigate.push(href);
   }
 }
 

@@ -1,10 +1,19 @@
+import { preload } from "react-dom";
+
 import { SkeletonScreen } from "@/components/ui/SkeletonScreen";
+
+import { MAP_BASE_IMAGE_URL } from "./MapBaseImage";
 
 // Stands in for MapScreen while a map screen loads: the sea over the whole
 // screen, with blocks where the top bar and the bottom nav will be, so
 // nothing moves when the map arrives. `data-map-screen` drops LearnerShell's
 // Back and Home bar here too, as on the map itself.
+//
+// It starts downloading the map's base art (its largest file, ~300 KB) while
+// the data loads, so the art is usually cached when the map arrives instead
+// of popping in after it.
 export function MapScreenSkeleton() {
+  preload(MAP_BASE_IMAGE_URL, { as: "image", type: "image/svg+xml" });
   return (
     <div data-map-screen>
       <SkeletonScreen>

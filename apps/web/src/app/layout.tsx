@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { NavigationProgress } from "@/components/ui/NavigationProgress";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,6 +33,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <NavigationProgress />
       </body>
     </html>
   );
