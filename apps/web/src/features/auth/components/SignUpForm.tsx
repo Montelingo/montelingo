@@ -2,11 +2,11 @@
 
 import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useId } from "react";
 
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
+import { useNavigate } from "@/lib/use-navigate";
 
 import { signUpAndSignIn } from "../api/auth-api";
 import { signUpFields } from "../errors";
@@ -31,7 +31,7 @@ type SignUpFormProps = {
 // The "Create your family account" panel (#153, Figma "1 · Welcome & Auth"),
 // inside the welcome frame of the (welcome) layout.
 export function SignUpForm({ redirectTo }: SignUpFormProps) {
-  const router = useRouter();
+  const router = useNavigate();
   const titleId = useId();
   // The value comes from the URL, so it is checked here too; a safe path is unchanged.
   const destination = postAuthRedirectPath(redirectTo);

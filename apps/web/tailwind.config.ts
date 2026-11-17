@@ -92,7 +92,7 @@ const config: Config = {
         },
         // The map's chrome (top bar, side panel, bottom nav), from the
         // designers' Figma palette. ink on cream, white, yellow, yellow-soft,
-        // land and fog, and muted on cream, white and fog, are AA.
+        // land, fog and sea, and muted on cream, white and fog, are AA.
         kid: {
           ink: "#2B2D42",
           muted: "#4A5068",
@@ -235,6 +235,12 @@ const config: Config = {
         short: { raw: "(max-height: 32rem)" },
       },
       keyframes: {
+        // NavigationProgress's bar: a third of the screen's width, sliding
+        // across it again and again until the next page arrives.
+        "navigation-progress": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(300%)" },
+        },
         // A locked card's answer to a tap: a small shake.
         wiggle: {
           "0%, 100%": { transform: "rotate(0deg)" },
@@ -250,6 +256,7 @@ const config: Config = {
         },
       },
       animation: {
+        "navigation-progress": "navigation-progress 1s ease-in-out infinite",
         // TileCard's WIGGLE_DURATION_MS matches these durations.
         wiggle: "wiggle 400ms ease-in-out",
         "locked-flash": "locked-flash 400ms ease-in-out",

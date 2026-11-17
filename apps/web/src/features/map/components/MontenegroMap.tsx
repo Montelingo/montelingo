@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -10,6 +9,7 @@ import {
 
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import { useNavigate } from "@/lib/use-navigate";
 
 import { CONTENT_LANG } from "../model/content";
 import { MAP_GEOMETRY } from "../model/map-geometry";
@@ -90,7 +90,7 @@ export function MontenegroMap({
   places,
   focusRegionId = null,
 }: MontenegroMapProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [message, setMessage] = useState<{ text: string; key: number } | null>(
     null,
   );
@@ -178,7 +178,7 @@ export function MontenegroMap({
               scale={nameScale}
               onActivate={() =>
                 activate(
-                  () => router.push(region.href),
+                  () => navigate.push(region.href),
                   isOpenState(region.state),
                   `Regija ${region.name} još nije otvorena.`,
                 )
@@ -200,7 +200,7 @@ export function MontenegroMap({
                     geometry={geometry}
                     onActivate={() =>
                       activate(
-                        () => openLevelCard(levelCardHref(place), router),
+                        () => openLevelCard(levelCardHref(place), navigate),
                         isOpenState(place.state),
                         `Mjesto ${place.name} još nije otvoreno.`,
                       )

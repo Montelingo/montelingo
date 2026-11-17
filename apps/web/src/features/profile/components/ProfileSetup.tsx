@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useReducer, useRef } from "react";
 
 import { PLAY_PATH } from "@/features/auth/edge";
 import { fredoka } from "@/lib/fonts";
+import { useNavigate } from "@/lib/use-navigate";
 
 import { saveProfile } from "../api/profile-browser-api";
 import { initialSetup, setupReducer, toProfileUpdate } from "../model/setup";
@@ -25,7 +25,7 @@ type ProfileSetupProps = {
 // rules are setupReducer's; this saves and moves focus to each new step's
 // heading, so a screen reader hears where it is.
 export function ProfileSetup({ firstStop, art }: ProfileSetupProps) {
-  const router = useRouter();
+  const router = useNavigate();
   const [state, dispatch] = useReducer(setupReducer, undefined, initialSetup);
   const headingRef = useRef<HTMLHeadingElement>(null);
   // The step whose heading last took focus: the first one is not focused, so

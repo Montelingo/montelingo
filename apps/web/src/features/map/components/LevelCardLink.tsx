@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { ComponentProps, MouseEvent } from "react";
+
+import { useNavigate } from "@/lib/use-navigate";
 
 import { openLevelCard } from "./level-card-navigation";
 
@@ -14,7 +15,7 @@ type LevelCardLinkProps = Omit<ComponentProps<typeof Link>, "href"> & {
 // click with a modifier key, or not the main button, is left to the browser
 // (a new tab or window).
 export function LevelCardLink({ href, onClick, ...props }: LevelCardLinkProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     onClick?.(event);
     if (
@@ -28,7 +29,7 @@ export function LevelCardLink({ href, onClick, ...props }: LevelCardLinkProps) {
       return;
     }
     event.preventDefault();
-    openLevelCard(href, router);
+    openLevelCard(href, navigate);
   }
   return <Link href={href} onClick={handleClick} {...props} />;
 }
