@@ -92,7 +92,7 @@ const config: Config = {
         },
         // The map's chrome (top bar, side panel, bottom nav), from the
         // designers' Figma palette. ink on cream, white, yellow, yellow-soft,
-        // land and fog, and muted on cream, white and fog, are AA.
+        // land, fog and sea, and muted on cream, white and fog, are AA.
         kid: {
           ink: "#2B2D42",
           muted: "#4A5068",
