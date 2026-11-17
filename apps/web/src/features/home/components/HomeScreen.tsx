@@ -8,6 +8,7 @@ import {
   SIGN_IN_PATH,
   SIGN_UP_PATH,
 } from "@/features/auth/edge";
+import { FOCUS_RING } from "@/components/ui/focus-ring";
 import { WelcomeFrame } from "@/features/learner";
 import {
   avatarSrc,
@@ -15,8 +16,6 @@ import {
   PLACEHOLDER_EXPLORER_NAME,
 } from "@/features/profile/edge";
 
-const FOCUS_RING =
-  "focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-focus";
 // Figma's wide buttons with the raised ink edge: yellow for the main action,
 // white for the other.
 const BIG_BUTTON = `flex h-touch-xl w-full items-center justify-center rounded-kid-lg border-3 border-kid-ink text-2xl font-semibold text-kid-ink shadow-raised-4 ${FOCUS_RING}`;

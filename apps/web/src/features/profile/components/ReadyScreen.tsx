@@ -1,9 +1,9 @@
 import Image from "next/image";
 
+import { FOCUS_RING } from "@/components/ui/focus-ring";
 import { cn } from "@/lib/cn";
 
 import { avatarSrc, type Avatar } from "../model/profile";
-import { FOCUS_RING } from "./setup-styles";
 
 /** The first place to explore, as the map decided it. */
 export type FirstStop = {

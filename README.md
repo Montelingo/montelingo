@@ -53,7 +53,7 @@ All Markdown files are formatted with Prettier (`pnpm format:docs` to fix,
 │       ├── public/
 │       ├── src/
 │       │   ├── app/        # App Router (layout, page, globals.css, /api/* proxy route)
-│       │   ├── features/   # feature slices (auth, home, map, profile, games, learner: API adapters, model, UI, tests)
+│       │   ├── features/   # feature slices (auth, home, map, profile, games, lessons, learner: API adapters, model, UI, tests)
 │       │   ├── components/ # shared, domain-free UI primitives (form fields)
 │       │   └── lib/        # shared utilities (API clients, /api/* proxy, cn, fonts)
 │       ├── Dockerfile
