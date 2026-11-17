@@ -4,14 +4,19 @@
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
+/** "Try again in 2:00" or "… in 2 minuta": the rate-limit wait, after "za". */
+export function retryIn(wait: string): string {
+  return `Pokušaj ponovo za ${wait}`;
+}
+
 export const validationMessages = {
-  emailRequired: "Enter your email address.",
-  emailInvalid: "Enter a valid email address, like name@example.com.",
-  passwordRequired: "Enter your password.",
-  passwordTooShort: `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
-  passwordTooLong: `Use ${PASSWORD_MAX_LENGTH} characters or fewer.`,
-  passwordLength: `Use ${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters.`,
-  signInPassword: `Enter your password (up to ${PASSWORD_MAX_LENGTH} characters).`,
-  confirmPasswordRequired: "Enter your password again.",
-  passwordsDiffer: "Passwords don’t match.",
+  emailRequired: "Upiši adresu e-pošte.",
+  emailInvalid: "Upiši ispravnu adresu e-pošte, na primjer ime@primjer.com.",
+  passwordRequired: "Upiši lozinku.",
+  passwordTooShort: `Lozinka mora imati najmanje ${PASSWORD_MIN_LENGTH} znakova.`,
+  passwordTooLong: `Lozinka može imati najviše ${PASSWORD_MAX_LENGTH} znakova.`,
+  passwordLength: `Lozinka mora imati od ${PASSWORD_MIN_LENGTH} do ${PASSWORD_MAX_LENGTH} znakova.`,
+  signInPassword: `Upiši lozinku (najviše ${PASSWORD_MAX_LENGTH} znakova).`,
+  confirmPasswordRequired: "Upiši lozinku još jednom.",
+  passwordsDiffer: "Lozinke se ne poklapaju.",
 };

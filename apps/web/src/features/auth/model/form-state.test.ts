@@ -50,7 +50,7 @@ function failed(
   return {
     type: "failed",
     code: "invalid_credentials",
-    formError: "Incorrect email or password.",
+    formError: "Pogrešna e-pošta ili lozinka.",
     fieldErrors: {},
     retryAfterSeconds: null,
     now: NOW,
@@ -61,7 +61,7 @@ function failed(
 const emailTaken = failed({
   code: "email_taken",
   formError: null,
-  fieldErrors: { email: "An account with this email already exists." },
+  fieldErrors: { email: "Nalog s ovom e-poštom već postoji." },
 });
 
 // A filled-in form whose submit is in flight.
@@ -118,7 +118,7 @@ describe("authFormReducer", () => {
 
       expect(state.failure).toEqual({
         code: "invalid_credentials",
-        formError: "Incorrect email or password.",
+        formError: "Pogrešna e-pošta ili lozinka.",
       });
     });
   });
@@ -210,7 +210,7 @@ describe("authFormReducer", () => {
         status: "editing",
         failure: { code: "email_taken", formError: null },
         serverFieldErrors: {
-          email: "An account with this email already exists.",
+          email: "Nalog s ovom e-poštom već postoji.",
         },
         focusTarget: "email",
       });
@@ -244,7 +244,7 @@ describe("authFormReducer", () => {
       );
 
       expect(state.serverFieldErrors).toEqual({
-        email: "An account with this email already exists.",
+        email: "Nalog s ovom e-poštom već postoji.",
       });
     });
 
@@ -351,8 +351,8 @@ describe("authFormReducer", () => {
 
 describe("visibleFieldErrors", () => {
   const clientErrors = {
-    email: "Enter your email address.",
-    password: "Enter your password.",
+    email: "Upiši adresu e-pošte.",
+    password: "Upiši lozinku.",
   };
 
   it("hides client errors on untouched fields", () => {
@@ -362,7 +362,7 @@ describe("visibleFieldErrors", () => {
   it("shows client errors on touched fields", () => {
     expect(
       visibleFieldErrors(makeState({ touched: { email: true } }), clientErrors),
-    ).toEqual({ email: "Enter your email address." });
+    ).toEqual({ email: "Upiši adresu e-pošte." });
   });
 
   it("shows the API's error on a field without a client error", () => {
@@ -381,8 +381,8 @@ describe("visibleFieldErrors", () => {
     });
 
     expect(
-      visibleFieldErrors(state, { email: "Enter your email address." }),
-    ).toEqual({ email: "Enter your email address." });
+      visibleFieldErrors(state, { email: "Upiši adresu e-pošte." }),
+    ).toEqual({ email: "Upiši adresu e-pošte." });
   });
 });
 

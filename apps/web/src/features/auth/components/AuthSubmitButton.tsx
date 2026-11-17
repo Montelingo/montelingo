@@ -6,11 +6,12 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 
 import { formatCountdown } from "../model/form-state";
+import { retryIn } from "../model/messages";
 
 type AuthSubmitButtonProps = {
   children: ReactNode;
   isPending: boolean;
-  /** Shown while the API call is in flight, such as "Signing in…". */
+  /** Shown while the API call is in flight, such as "Prijavljujem…". */
   pendingLabel: string;
   /** Seconds left before the API accepts another attempt, or `null`. */
   retryAfterSeconds: number | null;
@@ -37,9 +38,7 @@ export function AuthSubmitButton({
       disabled={!isHydrated}
       pending={isPending || isHeld}
       pendingLabel={
-        isHeld
-          ? `Try again in ${formatCountdown(retryAfterSeconds)}`
-          : pendingLabel
+        isHeld ? retryIn(formatCountdown(retryAfterSeconds)) : pendingLabel
       }
     >
       {children}

@@ -128,18 +128,18 @@ describe("toAuthFormError", () => {
 
   describe("rate_limited", () => {
     it.each([
-      ["1", 1, "1 second"],
-      ["30", 30, "30 seconds"],
-      ["59", 59, "59 seconds"],
-      ["60", 60, "1 minute"],
-      ["61", 61, "2 minutes"],
-      ["120", 120, "2 minutes"],
-      ["3540", 3540, "59 minutes"],
-      ["3541", 3541, "1 hour"],
-      ["3600", 3600, "1 hour"],
-      ["3601", 3601, "2 hours"],
-      ["86400", 86400, "24 hours"],
-      [" 30 ", 30, "30 seconds"],
+      ["1", 1, "1 sekundu"],
+      ["30", 30, "30 sekundi"],
+      ["59", 59, "59 sekundi"],
+      ["60", 60, "1 minut"],
+      ["61", 61, "2 minuta"],
+      ["120", 120, "2 minuta"],
+      ["3540", 3540, "59 minuta"],
+      ["3541", 3541, "1 sat"],
+      ["3600", 3600, "1 sat"],
+      ["3601", 3601, "2 sata"],
+      ["86400", 86400, "24 sata"],
+      [" 30 ", 30, "30 sekundi"],
     ])(
       "reads Retry-After %j as %i seconds and says %j",
       (retryAfter, seconds, wait) => {
@@ -150,7 +150,7 @@ describe("toAuthFormError", () => {
           }),
         ).toEqual({
           code: "rate_limited",
-          formError: `Too many attempts. Try again in ${wait}.`,
+          formError: `Previše pokušaja. Pokušaj ponovo za ${wait}.`,
           fieldErrors: {},
           retryAfterSeconds: seconds,
           requestId: "req-1",
@@ -164,7 +164,7 @@ describe("toAuthFormError", () => {
           now: NOW,
         }),
       ).toMatchObject({
-        formError: "Too many attempts. Try again in 45 seconds.",
+        formError: "Previše pokušaja. Pokušaj ponovo za 45 sekundi.",
         retryAfterSeconds: 45,
       });
     });

@@ -61,11 +61,11 @@ function renderForm() {
 }
 
 function emailInput() {
-  return screen.getByLabelText("Email");
+  return screen.getByLabelText("E-pošta");
 }
 
 function submitButton() {
-  return screen.getByRole("button", { name: "Send reset link" });
+  return screen.getByRole("button", { name: "Pošalji link" });
 }
 
 async function fillAndSubmit(
@@ -77,7 +77,7 @@ async function fillAndSubmit(
 }
 
 function confirmationHeading() {
-  return screen.findByRole("heading", { level: 1, name: "Check your email" });
+  return screen.findByRole("heading", { level: 1, name: "Provjeri e-poštu" });
 }
 
 beforeEach(() => {
@@ -93,10 +93,10 @@ describe("ForgotPasswordForm", () => {
     renderForm();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Forgot your password?" }),
+      screen.getByRole("heading", { level: 1, name: "Zaboravljena lozinka?" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("form", { name: "Forgot your password?" }),
+      screen.getByRole("form", { name: "Zaboravljena lozinka?" }),
     ).toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe("ForgotPasswordForm", () => {
     container.innerHTML = renderToString(<ForgotPasswordForm />);
 
     expect(
-      within(container).getByRole("button", { name: "Send reset link" }),
+      within(container).getByRole("button", { name: "Pošalji link" }),
     ).toBeDisabled();
   });
 
@@ -119,7 +119,7 @@ describe("ForgotPasswordForm", () => {
     renderForm();
 
     expect(
-      screen.getByRole("form", { name: "Forgot your password?" }),
+      screen.getByRole("form", { name: "Zaboravljena lozinka?" }),
     ).toHaveAttribute("method", "post");
   });
 
@@ -133,7 +133,7 @@ describe("ForgotPasswordForm", () => {
   it("links back to sign in", () => {
     renderForm();
 
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Prijavi se" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
@@ -194,14 +194,14 @@ describe("ForgotPasswordForm", () => {
       });
       const heading = await confirmationHeading();
       expect(heading).toHaveFocus();
-      expect(screen.getByText(/If an account exists for/)).toHaveTextContent(
-        "If an account exists for ana@example.com, we’ve sent a link to reset your password. The link works once and expires after a short time.",
+      expect(screen.getByText(/Ako postoji nalog za/)).toHaveTextContent(
+        "Ako postoji nalog za ana@example.com, poslali smo link za novu lozinku. Link radi samo jednom i brzo ističe.",
       );
       expect(
-        screen.queryByRole("form", { name: "Forgot your password?" }),
+        screen.queryByRole("form", { name: "Zaboravljena lozinka?" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: "Back to sign in" }),
+        screen.getByRole("link", { name: "Nazad na prijavu" }),
       ).toHaveAttribute("href", "/sign-in");
     });
 
@@ -234,7 +234,7 @@ describe("ForgotPasswordForm", () => {
       [
         "rate_limited with Retry-After",
         makeApiError(429, "rate_limited", { headers: { "Retry-After": "30" } }),
-        "Too many attempts. Try again in 30 seconds.",
+        "Previše pokušaja. Pokušaj ponovo za 30 sekundi.",
       ],
       [
         "rate_limited without Retry-After",
@@ -286,11 +286,11 @@ describe("ForgotPasswordForm", () => {
 
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
         expect(
-          screen.getByRole("form", { name: "Forgot your password?" }),
+          screen.getByRole("form", { name: "Zaboravljena lozinka?" }),
         ).toBeInTheDocument();
         expect(emailInput()).toHaveValue("ana@example.com");
         expect(
-          screen.queryByRole("heading", { name: "Check your email" }),
+          screen.queryByRole("heading", { name: "Provjeri e-poštu" }),
         ).not.toBeInTheDocument();
       },
     );
@@ -347,9 +347,11 @@ describe("ForgotPasswordForm", () => {
       await fillAndSubmit(user);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Too many attempts. Try again in 2 seconds.",
+        "Previše pokušaja. Pokušaj ponovo za 2 sekunde.",
       );
-      const held = screen.getByRole("button", { name: "Try again in 0:02" });
+      const held = screen.getByRole("button", {
+        name: "Pokušaj ponovo za 0:02",
+      });
       expect(held).toHaveAttribute("aria-disabled", "true");
       await user.click(held);
       expect(requestPasswordReset).toHaveBeenCalledTimes(1);
@@ -372,7 +374,7 @@ describe("ForgotPasswordForm", () => {
 
       await fillAndSubmit(user);
 
-      const button = screen.getByRole("button", { name: "Sending…" });
+      const button = screen.getByRole("button", { name: "Šaljem…" });
       expect(button).toHaveAttribute("aria-disabled", "true");
       await user.click(button);
       await user.type(emailInput(), "{Enter}");
@@ -384,7 +386,7 @@ describe("ForgotPasswordForm", () => {
     });
   });
 
-  describe("send another link", () => {
+  describe("pošalji novi link", () => {
     it("returns to the form with the email filled in and focused", async () => {
       requestPasswordReset.mockResolvedValue(undefined);
       const { user } = renderForm();
@@ -392,11 +394,11 @@ describe("ForgotPasswordForm", () => {
       await confirmationHeading();
 
       await user.click(
-        screen.getByRole("button", { name: "send another link" }),
+        screen.getByRole("button", { name: "pošalji novi link" }),
       );
 
       expect(
-        screen.getByRole("form", { name: "Forgot your password?" }),
+        screen.getByRole("form", { name: "Zaboravljena lozinka?" }),
       ).toBeInTheDocument();
       expect(emailInput()).toHaveValue("ana@example.com");
       expect(emailInput()).toHaveFocus();
@@ -410,7 +412,7 @@ describe("ForgotPasswordForm", () => {
       await fillAndSubmit(user, "ana@exmaple.com");
       await confirmationHeading();
       await user.click(
-        screen.getByRole("button", { name: "send another link" }),
+        screen.getByRole("button", { name: "pošalji novi link" }),
       );
 
       await user.clear(emailInput());
@@ -420,7 +422,7 @@ describe("ForgotPasswordForm", () => {
         email: "ana@example.com",
       });
       expect(await confirmationHeading()).toHaveFocus();
-      expect(screen.getByText(/If an account exists for/)).toHaveTextContent(
+      expect(screen.getByText(/Ako postoji nalog za/)).toHaveTextContent(
         "ana@example.com",
       );
     });
@@ -474,7 +476,7 @@ describe("ForgotPasswordForm", () => {
       await fillAndSubmit(user);
       await confirmationHeading();
       await user.click(
-        screen.getByRole("button", { name: "send another link" }),
+        screen.getByRole("button", { name: "pošalji novi link" }),
       );
 
       expect(emailInput()).toHaveFocus();

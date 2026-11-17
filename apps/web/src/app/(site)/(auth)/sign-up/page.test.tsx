@@ -37,7 +37,7 @@ beforeEach(() => {
 
 describe("SignUpPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Sign up");
+    expect(metadata.title).toBe("Napravi nalog");
   });
 
   it("shows the form to a signed-out visitor, keeping the destination", async () => {
@@ -46,9 +46,9 @@ describe("SignUpPage", () => {
     render(await renderPage({ next: "/lessons" }));
 
     expect(
-      screen.getByRole("form", { name: "Create your account" }),
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Prijavi se" })).toHaveAttribute(
       "href",
       "/sign-in?next=%2Flessons",
     );
@@ -62,7 +62,7 @@ describe("SignUpPage", () => {
 
       render(await renderPage({ next }));
 
-      expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Prijavi se" })).toHaveAttribute(
         "href",
         "/sign-in",
       );
@@ -107,7 +107,7 @@ describe("SignUpPage", () => {
     render(await renderPage({ next: "/lessons" }));
 
     expect(
-      screen.getByRole("form", { name: "Create your account" }),
+      screen.getByRole("form", { name: "Napravi porodični nalog" }),
     ).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
   });

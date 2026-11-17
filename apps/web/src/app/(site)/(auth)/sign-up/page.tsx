@@ -5,7 +5,7 @@ import { postAuthRedirectPath, SignUpForm } from "@/features/auth";
 import { getAuthState } from "@/features/auth/server";
 
 export const metadata: Metadata = {
-  title: "Sign up",
+  title: "Napravi nalog",
 };
 
 type SignUpPageProps = {

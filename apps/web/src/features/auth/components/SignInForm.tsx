@@ -63,9 +63,9 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Sign in
+          Dobro došli nazad
         </h1>
-        <p className="text-slate-700">Welcome back to Montelingo.</p>
+        <p className="text-slate-700">Prijavi se da nastaviš istraživanje.</p>
       </div>
       {/* The submit button stays disabled until hydration. method="post" only
           guarantees the credentials never land in a URL. */}
@@ -84,7 +84,7 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
         <FormAlert key={attempt} message={failure?.formError} />
         <TextField
           {...fieldProps("email")}
-          label="Email"
+          label="E-pošta"
           type="email"
           autoComplete="email"
           autoCapitalize="none"
@@ -94,7 +94,8 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
         <div className="flex flex-col gap-2">
           <PasswordField
             {...fieldProps("password")}
-            label="Password"
+            label="Lozinka"
+            toggleLabel="Prikaži lozinku"
             autoComplete="current-password"
             required
           />
@@ -102,24 +103,24 @@ export function SignInForm({ redirectTo, notice = null }: SignInFormProps) {
             href={FORGOT_PASSWORD_PATH}
             className={cn(linkClassName, "self-end text-sm")}
           >
-            Forgot password?
+            Zaboravljena lozinka?
           </Link>
         </div>
         <AuthSubmitButton
           isPending={isPending}
-          pendingLabel="Signing in…"
+          pendingLabel="Prijavljujem…"
           retryAfterSeconds={retryAfterSeconds}
         >
-          Sign in
+          Prijavi se
         </AuthSubmitButton>
       </form>
       <p className="text-center text-sm text-slate-700">
-        New to Montelingo?{" "}
+        Nemaš nalog?{" "}
         <Link
           href={authPageHref(SIGN_UP_PATH, destination)}
           className={linkClassName}
         >
-          Sign up
+          Napravi nalog
         </Link>
       </p>
     </div>

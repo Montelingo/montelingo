@@ -34,7 +34,7 @@ export function postAuthRedirectPath(next: unknown): string {
 // Messages the sign-in page shows from its `?notice=`. Only these keys are
 // accepted, so a link can never put its own text on the page.
 export const SIGN_IN_NOTICES = {
-  "password-updated": "Password updated — please sign in.",
+  "password-updated": "Lozinka je promijenjena. Prijavi se ponovo.",
 } as const;
 
 export type SignInNotice = keyof typeof SIGN_IN_NOTICES;

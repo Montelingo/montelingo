@@ -1,5 +1,7 @@
 import type { Schemas } from "@app/api-client";
 
+import { MONTENEGRIN } from "@/lib/locale";
+
 // The map's content, the same for every account (ADR 0005), mapped from API
 // responses that schemas.ts has checked. Generated types stop here: screens
 // only see these. Ids are the content slugs (`coast`, `kotor`), except a
@@ -10,7 +12,7 @@ import type { Schemas } from "@app/api-client";
  * for the `lang` of the elements that show them, so a screen reader speaks
  * them in the right voice. The rest of the learner area is in English.
  */
-export const CONTENT_LANG = "sr-Latn-ME";
+export const CONTENT_LANG = MONTENEGRIN;
 
 export type Region = {
   id: string;

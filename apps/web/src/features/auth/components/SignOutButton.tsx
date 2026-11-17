@@ -15,6 +15,8 @@ type SignOutButtonProps = {
   className?: string;
   /** Replaces where a failure's message floats (below the header's button). */
   alertClassName?: string;
+  /** Replaces the failure's message, for a page in another language. */
+  failureMessage?: string;
 };
 
 export function SignOutButton({
@@ -22,6 +24,7 @@ export function SignOutButton({
   pendingLabel = "Signing out…",
   className,
   alertClassName = "absolute right-0 top-full z-10 mt-2 w-64",
+  failureMessage,
 }: SignOutButtonProps = {}) {
   const { isPending, error, signOut } = useSignOut({
     // A full load of the home page, not router.replace() + refresh(): it drops
@@ -73,7 +76,10 @@ export function SignOutButton({
         </span>
       </button>
       {/* Floats below the button, so it does not push the header around. */}
-      <FormAlert message={error} className={alertClassName} />
+      <FormAlert
+        message={error === null ? null : (failureMessage ?? error)}
+        className={alertClassName}
+      />
     </div>
   );
 }

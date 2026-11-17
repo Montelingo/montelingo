@@ -17,7 +17,7 @@ import { linkClassName } from "./link-class-name";
 type SentState = {
   /** The (trimmed) email the last link was requested for. */
   email: string;
-  /** False until "send another link" brings the form back. */
+  /** False until "pošalji novi link" brings the form back. */
   isShown: boolean;
 };
 
@@ -96,11 +96,11 @@ function RequestResetLinkForm({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Forgot your password?
+          Zaboravljena lozinka?
         </h1>
         <p className="text-slate-700">
-          Enter the email you use for Montelingo and we’ll send you a link to
-          choose a new password.
+          Upiši e-poštu koju koristiš za Montelingo i poslaćemo ti link za novu
+          lozinku.
         </p>
       </div>
       {/* The submit button stays disabled until hydration. method="post" only
@@ -116,7 +116,7 @@ function RequestResetLinkForm({
         <FormAlert key={attempt} message={failure?.formError} />
         <TextField
           {...fieldProps("email")}
-          label="Email"
+          label="E-pošta"
           type="email"
           autoComplete="email"
           autoCapitalize="none"
@@ -125,16 +125,16 @@ function RequestResetLinkForm({
         />
         <AuthSubmitButton
           isPending={isPending}
-          pendingLabel="Sending…"
+          pendingLabel="Šaljem…"
           retryAfterSeconds={retryAfterSeconds}
         >
-          Send reset link
+          Pošalji link
         </AuthSubmitButton>
       </form>
       <p className="text-center text-sm text-slate-700">
-        Remembered it?{" "}
+        Ipak znaš lozinku?{" "}
         <Link href={SIGN_IN_PATH} className={linkClassName}>
-          Sign in
+          Prijavi se
         </Link>
       </p>
     </div>
@@ -164,25 +164,24 @@ function ResetLinkSent({ email, onSendAnother }: ResetLinkSentProps) {
           tabIndex={-1}
           className="text-2xl font-bold text-slate-900 focus:outline-none"
         >
-          Check your email
+          Provjeri e-poštu
         </h1>
         <p className="text-slate-700">
-          If an account exists for{" "}
+          Ako postoji nalog za{" "}
           <span className="break-all font-medium text-slate-900">{email}</span>,
-          we’ve sent a link to reset your password. The link works once and
-          expires after a short time.
+          poslali smo link za novu lozinku. Link radi samo jednom i brzo ističe.
         </p>
       </div>
       <p className="text-sm text-slate-700">
-        Didn’t get it? Check your spam folder, or{" "}
+        Nije stiglo? Provjeri neželjenu poštu ili{" "}
         <button type="button" onClick={onSendAnother} className={linkClassName}>
-          send another link
+          pošalji novi link
         </button>
         .
       </p>
       <p className="text-center text-sm text-slate-700">
         <Link href={SIGN_IN_PATH} className={linkClassName}>
-          Back to sign in
+          Nazad na prijavu
         </Link>
       </p>
     </div>

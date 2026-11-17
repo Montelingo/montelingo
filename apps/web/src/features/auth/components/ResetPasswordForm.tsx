@@ -55,10 +55,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Choose a new password
+          Izaberi novu lozinku
         </h1>
         <p className="text-slate-700">
-          Once it’s updated, you’ll need to sign in again on every device.
+          Kad je promijeniš, moraćeš se ponovo prijaviti na svakom uređaju.
         </p>
       </div>
       {/* The submit button stays disabled until hydration. method="post" only
@@ -74,23 +74,25 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         <FormAlert key={attempt} message={failure?.formError} />
         <PasswordField
           {...fieldProps("newPassword")}
-          label="New password"
-          description={`Use at least ${PASSWORD_MIN_LENGTH} characters.`}
+          label="Nova lozinka"
+          toggleLabel="Prikaži novu lozinku"
+          description={`Najmanje ${PASSWORD_MIN_LENGTH} znakova.`}
           autoComplete="new-password"
           required
         />
         <PasswordField
           {...fieldProps("confirmPassword")}
-          label="Confirm new password"
+          label="Potvrdi novu lozinku"
+          toggleLabel="Prikaži potvrđenu novu lozinku"
           autoComplete="new-password"
           required
         />
         <AuthSubmitButton
           isPending={isPending}
-          pendingLabel="Updating…"
+          pendingLabel="Mijenjam…"
           retryAfterSeconds={retryAfterSeconds}
         >
-          Update password
+          Promijeni lozinku
         </AuthSubmitButton>
       </form>
     </div>
