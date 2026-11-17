@@ -1,10 +1,10 @@
 "use client";
 
+import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId } from "react";
 
-import { FormAlert } from "@/components/ui/FormAlert";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
 
@@ -19,13 +19,17 @@ import {
 } from "../model/routes";
 import { validateSignUp } from "../model/validation";
 import { AuthSubmitButton } from "./AuthSubmitButton";
-import { linkClassName } from "./link-class-name";
+import { ErrorSummary } from "./ErrorSummary";
+import { kidLinkClassName } from "./link-class-name";
+import { WelcomeFormHeader } from "./WelcomeFormHeader";
 
 type SignUpFormProps = {
   /** Where to go after signing up, from the page's `?next=`. */
   redirectTo: string;
 };
 
+// The "Create your family account" panel (#153, Figma "1 · Welcome & Auth"),
+// inside the welcome frame of the (welcome) layout.
 export function SignUpForm({ redirectTo }: SignUpFormProps) {
   const router = useRouter();
   const titleId = useId();
@@ -36,21 +40,24 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
     fieldProps,
     serverFieldErrors,
     failure,
+    rejectedFieldCount,
     attempt,
     isPending,
     handleSubmit,
     formRef,
+    summaryRef,
     retryAfterSeconds,
   } = useAuthForm({
     initialValues: { email: "", password: "", confirmPassword: "" },
     validate: validateSignUp,
     apiFields: signUpFields,
+    focusOnError: "summary",
     submit: async ({ email, password }) => {
       await signUpAndSignIn({ email, password });
     },
     onSuccess: () => {
       router.replace(destination);
-      // Re-renders Server Components (such as the header) for the signed-in user.
+      // Re-renders Server Components for the signed-in user.
       router.refresh();
     },
   });
@@ -64,13 +71,13 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
     failure?.code === "sign_in_after_sign_up_failed";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 id={titleId} className="text-2xl font-bold text-slate-900">
-          Create your account
-        </h1>
-        <p className="text-slate-700">Start learning with Montelingo.</p>
-      </div>
+    <div className="flex flex-1 flex-col gap-4">
+      <WelcomeFormHeader
+        titleId={titleId}
+        title="Napravi porodični nalog"
+        lead="Čuva napredak, da tvoj istraživač nastavi tamo gdje je stao."
+        forGrownUps
+      />
       {/* The submit button stays disabled until hydration. method="post" only
           guarantees the credentials never land in a URL. */}
       <form
@@ -79,16 +86,18 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
         aria-labelledby={titleId}
         noValidate
         onSubmit={handleSubmit}
-        className="flex flex-col gap-4"
+        className="flex flex-1 flex-col gap-3"
       >
-        <FormAlert
+        <ErrorSummary
           key={attempt}
-          message={
+          ref={summaryRef}
+          rejectedFieldCount={rejectedFieldCount}
+          formError={
             isSignInAfterSignUpFailure ? (
               <>
                 {failure.formError}{" "}
-                <Link href={signInHref} className={linkClassName}>
-                  Go to sign in
+                <Link href={signInHref} className={kidLinkClassName}>
+                  Idi na prijavu
                 </Link>
               </>
             ) : (
@@ -102,15 +111,18 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
             isEmailTaken ? (
               <>
                 {emailField.error}{" "}
-                <Link href={signInHref} className={linkClassName}>
-                  Sign in instead
+                <Link href={signInHref} className={kidLinkClassName}>
+                  Prijavi se ovim nalogom
                 </Link>
               </>
             ) : (
               emailField.error
             )
           }
-          label="Email"
+          appearance="kid"
+          icon={EnvelopeIcon}
+          label="E-pošta odrasle osobe"
+          description="Nikad je ne dijelimo."
           type="email"
           autoComplete="email"
           autoCapitalize="none"
@@ -119,31 +131,40 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
         />
         <PasswordField
           {...fieldProps("password")}
-          label="Password"
-          description={`Use at least ${PASSWORD_MIN_LENGTH} characters.`}
+          appearance="kid"
+          icon={LockClosedIcon}
+          label="Lozinka"
+          toggleLabel="Prikaži lozinku"
+          description={`Najmanje ${PASSWORD_MIN_LENGTH} znakova.`}
           autoComplete="new-password"
           required
         />
         <PasswordField
           {...fieldProps("confirmPassword")}
-          label="Confirm password"
+          appearance="kid"
+          icon={LockClosedIcon}
+          label="Potvrdi lozinku"
+          toggleLabel="Prikaži potvrđenu lozinku"
           autoComplete="new-password"
           required
         />
-        <AuthSubmitButton
-          isPending={isPending}
-          pendingLabel="Creating account…"
-          retryAfterSeconds={retryAfterSeconds}
-        >
-          Create account
-        </AuthSubmitButton>
+        <div className="mt-auto flex flex-col gap-3 pt-1">
+          <AuthSubmitButton
+            appearance="kid"
+            isPending={isPending}
+            pendingLabel="Pravim nalog…"
+            retryAfterSeconds={retryAfterSeconds}
+          >
+            Napravi nalog
+          </AuthSubmitButton>
+          <p className="text-center text-lg font-medium text-kid-muted">
+            Već imaš nalog?{" "}
+            <Link href={signInHref} className={kidLinkClassName}>
+              Prijavi se
+            </Link>
+          </p>
+        </div>
       </form>
-      <p className="text-center text-sm text-slate-700">
-        Already have an account?{" "}
-        <Link href={signInHref} className={linkClassName}>
-          Sign in
-        </Link>
-      </p>
     </div>
   );
 }

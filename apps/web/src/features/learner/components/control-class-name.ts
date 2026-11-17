@@ -1,4 +1,4 @@
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 
 // The learner area's round Back and Home controls: larger than the 48px
 // minimum touch target, with a visible focus outline.

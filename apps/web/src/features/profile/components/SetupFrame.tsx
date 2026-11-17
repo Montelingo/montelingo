@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { WelcomeFrame } from "@/features/learner";
 import { cn } from "@/lib/cn";
 

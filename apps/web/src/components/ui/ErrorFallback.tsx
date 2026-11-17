@@ -30,6 +30,8 @@ type ErrorFallbackProps = {
   /** The line under the title. Defaults to advice to check the connection. */
   description?: string;
   size?: keyof typeof SIZE_STYLES;
+  /** The retry button's label, for a page in another language. */
+  retryLabel?: string;
   /** The `reset` an `error.tsx` boundary receives. */
   reset: () => void;
 };
@@ -40,6 +42,7 @@ export function ErrorFallback({
   title,
   description = DEFAULT_DESCRIPTION,
   size = "default",
+  retryLabel = "Try again",
   reset,
 }: ErrorFallbackProps) {
   const router = useRouter();
@@ -63,7 +66,7 @@ export function ErrorFallback({
         onClick={handleRetry}
         className={cn(ACTION_STYLE, styles.button)}
       >
-        Try again
+        {retryLabel}
       </button>
     </div>
   );

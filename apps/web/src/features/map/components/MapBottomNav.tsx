@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { PLAY_PATH } from "@/features/auth/edge";
 import { cn } from "@/lib/cn";
 

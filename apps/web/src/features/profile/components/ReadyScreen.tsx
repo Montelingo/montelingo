@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 
 import { avatarSrc, type Avatar } from "../model/profile";

@@ -13,7 +13,8 @@ const VIEW = {
   height: MAP_GEOMETRY.focus.height + 2 * MARGIN + BADGE_ROOM,
 };
 
-const REGIONS = ["coast", "central", "north"] as const;
+// The regions the map's geometry knows, whose art files share their ids.
+const REGIONS = Object.keys(MAP_GEOMETRY.regions);
 
 // The map's art as a picture, for the welcome and setup screens (Figma "1 ·
 // Welcome & Auth"): every region's scenery and buildings, with no state,

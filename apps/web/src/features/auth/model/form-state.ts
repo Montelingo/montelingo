@@ -37,6 +37,12 @@ export type AuthFormState<Field extends string> = {
   attempt: number;
   /** The field to focus after this attempt was rejected, if any. */
   focusTarget: Field | null;
+  /**
+   * How many fields this attempt rejected, client-side or by the API, for the
+   * error summary. Kept until the next submit, so the summary does not change
+   * under the user while they fix the fields.
+   */
+  rejectedFieldCount: number;
 };
 
 export type AuthFormAction<Field extends string> =
@@ -76,6 +82,7 @@ export function initialAuthFormState<Field extends string>(
     retryAfterSeconds: null,
     attempt: 0,
     focusTarget: null,
+    rejectedFieldCount: 0,
   };
 }
 
@@ -125,6 +132,9 @@ export function authFormReducer<Field extends string>(
         focusTarget: action.isValid
           ? null
           : (firstFieldWithError(state.values, action.clientErrors) ?? null),
+        rejectedFieldCount: action.isValid
+          ? 0
+          : countFieldErrors(state.values, action.clientErrors),
       };
     }
     case "failed": {
@@ -156,6 +166,7 @@ export function authFormReducer<Field extends string>(
         ),
         focusTarget:
           firstFieldWithError(state.values, serverFieldErrors) ?? null,
+        rejectedFieldCount: countFieldErrors(state.values, serverFieldErrors),
       };
     }
     case "succeeded":
@@ -218,6 +229,13 @@ export function firstFieldWithError<Field extends string>(
   errors: FieldErrors<Field>,
 ): Field | undefined {
   return fieldsOf(values).find((field) => errors[field] !== undefined);
+}
+
+function countFieldErrors<Field extends string>(
+  values: FormValues<Field>,
+  errors: FieldErrors<Field>,
+): number {
+  return fieldsOf(values).filter((field) => errors[field] !== undefined).length;
 }
 
 /** A wait as a clock, for a countdown: `0:45`, `2:00`, `1:00:00`. */

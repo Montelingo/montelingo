@@ -5,7 +5,7 @@ import { type ReactNode, useEffect, useReducer, useRef } from "react";
 import { preload } from "react-dom";
 import { useSwipeable } from "react-swipeable";
 
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";

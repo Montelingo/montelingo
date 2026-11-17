@@ -79,12 +79,17 @@ function renderForm(redirectTo = "/play", notice: SignInNotice | null = null) {
   return { ...view, user: userEvent.setup() };
 }
 
+// The welcome screens' error summary, which takes focus after a rejected submit.
+function errorSummary(count: string) {
+  return screen.getByText(count).closest<HTMLElement>('[tabindex="-1"]');
+}
+
 function emailInput() {
-  return screen.getByLabelText("Email");
+  return screen.getByLabelText("E-pošta");
 }
 
 function passwordInput() {
-  return screen.getByLabelText("Password");
+  return screen.getByLabelText("Lozinka");
 }
 
 async function fillAndSubmit(
@@ -93,7 +98,7 @@ async function fillAndSubmit(
 ) {
   await user.type(emailInput(), email);
   await user.type(passwordInput(), password);
-  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  await user.click(screen.getByRole("button", { name: "Prijavi se" }));
 }
 
 beforeEach(() => {
@@ -109,9 +114,11 @@ describe("SignInForm", () => {
     renderForm();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Sign in" }),
+      screen.getByRole("heading", { level: 1, name: "Dobro došli nazad" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the submit button disabled in the server HTML, until hydration", () => {
@@ -121,23 +128,22 @@ describe("SignInForm", () => {
     );
 
     expect(
-      within(container).getByRole("button", { name: "Sign in" }),
+      within(container).getByRole("button", { name: "Prijavi se" }),
     ).toBeDisabled();
   });
 
   it("enables the submit button once running in the browser", () => {
     renderForm();
 
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Prijavi se" })).toBeEnabled();
   });
 
   it("posts, so credentials never reach the URL", () => {
     renderForm();
 
-    expect(screen.getByRole("form", { name: "Sign in" })).toHaveAttribute(
-      "method",
-      "post",
-    );
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toHaveAttribute("method", "post");
   });
 
   it("asks the browser to fill in the email and current password", () => {
@@ -149,13 +155,37 @@ describe("SignInForm", () => {
     expect(passwordInput()).toHaveAttribute("autocomplete", "current-password");
   });
 
+  it("shows and hides the password with the eye", async () => {
+    const { user: actor } = renderForm();
+    const eye = screen.getByRole("button", { name: "Prikaži lozinku" });
+
+    await actor.click(eye);
+
+    expect(passwordInput()).toHaveAttribute("type", "text");
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+
+    await actor.click(eye);
+
+    expect(passwordInput()).toHaveAttribute("type", "password");
+    expect(eye).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("leads back to the welcome", () => {
+    renderForm();
+
+    expect(screen.getByRole("link", { name: "Nazad" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
   it("links to the forgot-password and sign-up pages", () => {
     renderForm();
 
     expect(
-      screen.getByRole("link", { name: "Forgot password?" }),
+      screen.getByRole("link", { name: "Zaboravili ste lozinku?" }),
     ).toHaveAttribute("href", "/forgot-password");
-    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Napravi nalog" })).toHaveAttribute(
       "href",
       "/sign-up",
     );
@@ -164,7 +194,7 @@ describe("SignInForm", () => {
   it("keeps the destination on the sign-up link", () => {
     renderForm("/lessons/42");
 
-    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Napravi nalog" })).toHaveAttribute(
       "href",
       "/sign-up?next=%2Flessons%2F42",
     );
@@ -175,10 +205,9 @@ describe("SignInForm", () => {
     (redirectTo) => {
       renderForm(redirectTo);
 
-      expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
-        "href",
-        "/sign-up",
-      );
+      expect(
+        screen.getByRole("link", { name: "Napravi nalog" }),
+      ).toHaveAttribute("href", "/sign-up");
     },
   );
 
@@ -193,10 +222,12 @@ describe("SignInForm", () => {
       renderForm("/", "password-updated");
 
       const notice = screen.getByRole("status");
-      expect(notice).toHaveTextContent("Password updated — please sign in.");
-      expect(screen.getByRole("form", { name: "Sign in" })).toContainElement(
-        notice,
+      expect(notice).toHaveTextContent(
+        "Lozinka je promijenjena. Prijavi se ponovo.",
       );
+      expect(
+        screen.getByRole("form", { name: "Dobro došli nazad" }),
+      ).toContainElement(notice);
       expect(
         notice.compareDocumentPosition(emailInput()) &
           Node.DOCUMENT_POSITION_FOLLOWING,
@@ -218,7 +249,7 @@ describe("SignInForm", () => {
     it("hides the notice after a submit that fails client validation", async () => {
       const { user: actor } = renderForm("/", "password-updated");
 
-      await actor.click(screen.getByRole("button", { name: "Sign in" }));
+      await actor.click(screen.getByRole("button", { name: "Prijavi se" }));
 
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
@@ -262,10 +293,10 @@ describe("SignInForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows every error on submit, focuses the first field, and does not call the API", async () => {
+    it("shows every error on submit, focuses the summary that counts them, and does not call the API", async () => {
       const { user } = renderForm();
 
-      await user.click(screen.getByRole("button", { name: "Sign in" }));
+      await user.click(screen.getByRole("button", { name: "Prijavi se" }));
 
       expect(emailInput()).toHaveAccessibleDescription(
         validationMessages.emailRequired,
@@ -273,18 +304,34 @@ describe("SignInForm", () => {
       expect(passwordInput()).toHaveAccessibleDescription(
         validationMessages.passwordRequired,
       );
-      expect(emailInput()).toHaveFocus();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 2 stvari ispod",
+      );
+      expect(errorSummary("Ispravi 2 stvari ispod")).toHaveFocus();
       expect(signIn).not.toHaveBeenCalled();
     });
 
-    it("focuses the first invalid field when earlier fields are valid", async () => {
+    it("counts only the fields still wrong when earlier fields are valid", async () => {
       const { user } = renderForm();
       await user.type(emailInput(), "ana@example.com");
 
-      await user.click(screen.getByRole("button", { name: "Sign in" }));
+      await user.click(screen.getByRole("button", { name: "Prijavi se" }));
 
-      expect(passwordInput()).toHaveFocus();
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
+      expect(emailInput()).not.toHaveAttribute("aria-invalid");
       expect(signIn).not.toHaveBeenCalled();
+    });
+
+    it("keeps the summary's count while the user fixes the fields", async () => {
+      const { user } = renderForm();
+      await user.click(screen.getByRole("button", { name: "Prijavi se" }));
+
+      await user.type(emailInput(), "ana@example.com");
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 2 stvari ispod",
+      );
+      expect(emailInput()).not.toHaveAttribute("aria-invalid");
     });
 
     it("lets the API judge a short password", async () => {
@@ -372,7 +419,7 @@ describe("SignInForm", () => {
 
       await fillAndSubmit(actor);
 
-      const button = screen.getByRole("button", { name: "Signing in…" });
+      const button = screen.getByRole("button", { name: "Prijavljujem…" });
       expect(button).toHaveAttribute("aria-disabled", "true");
 
       await actor.click(button);
@@ -382,7 +429,7 @@ describe("SignInForm", () => {
       response.reject(makeApiError(401, "invalid_credentials"));
 
       expect(
-        await screen.findByRole("button", { name: "Sign in" }),
+        await screen.findByRole("button", { name: "Prijavi se" }),
       ).not.toHaveAttribute("aria-disabled");
     });
 
@@ -396,7 +443,7 @@ describe("SignInForm", () => {
         expect(router.replace).toHaveBeenCalled();
       });
       expect(
-        screen.getByRole("button", { name: "Signing in…" }),
+        screen.getByRole("button", { name: "Prijavljujem…" }),
       ).toHaveAttribute("aria-disabled", "true");
     });
 
@@ -409,7 +456,7 @@ describe("SignInForm", () => {
       await fillAndSubmit(actor);
       expect(await screen.findByRole("alert")).toBeInTheDocument();
 
-      await actor.click(screen.getByRole("button", { name: "Sign in" }));
+      await actor.click(screen.getByRole("button", { name: "Prijavi se" }));
 
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       response.resolve(user);
@@ -462,9 +509,11 @@ describe("SignInForm", () => {
       await fillAndSubmit(actor);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Too many attempts. Try again in 2 seconds.",
+        "Previše pokušaja. Pokušaj ponovo za 2 sekunde.",
       );
-      const held = screen.getByRole("button", { name: "Try again in 0:02" });
+      const held = screen.getByRole("button", {
+        name: "Pokušaj ponovo za 0:02",
+      });
       expect(held).toHaveAttribute("aria-disabled", "true");
       await actor.click(held);
       expect(signIn).toHaveBeenCalledTimes(1);
@@ -473,13 +522,13 @@ describe("SignInForm", () => {
         vi.advanceTimersByTime(1000);
       });
       expect(
-        screen.getByRole("button", { name: "Try again in 0:01" }),
+        screen.getByRole("button", { name: "Pokušaj ponovo za 0:01" }),
       ).toHaveAttribute("aria-disabled", "true");
 
       act(() => {
         vi.advanceTimersByTime(1000);
       });
-      const button = screen.getByRole("button", { name: "Sign in" });
+      const button = screen.getByRole("button", { name: "Prijavi se" });
       expect(button).not.toHaveAttribute("aria-disabled");
 
       await actor.click(button);
@@ -507,7 +556,7 @@ describe("SignInForm", () => {
         );
         const { user: actor } = renderForm();
         await fillAndSubmit(actor);
-        await screen.findByRole("button", { name: "Try again in 0:30" });
+        await screen.findByRole("button", { name: "Pokušaj ponovo za 0:30" });
 
         act(() => {
           vi.setSystemTime(Date.now() + 60_000);
@@ -515,7 +564,7 @@ describe("SignInForm", () => {
         });
 
         expect(
-          screen.getByRole("button", { name: "Sign in" }),
+          screen.getByRole("button", { name: "Prijavi se" }),
         ).not.toHaveAttribute("aria-disabled");
       },
     );
@@ -526,7 +575,7 @@ describe("SignInForm", () => {
       );
       const { user: actor, unmount } = renderForm();
       await fillAndSubmit(actor);
-      await screen.findByRole("button", { name: "Try again in 0:30" });
+      await screen.findByRole("button", { name: "Pokušaj ponovo za 0:30" });
 
       unmount();
 
@@ -540,7 +589,7 @@ describe("SignInForm", () => {
       await screen.findByRole("alert");
 
       expect(
-        screen.getByRole("button", { name: "Sign in" }),
+        screen.getByRole("button", { name: "Prijavi se" }),
       ).not.toHaveAttribute("aria-disabled");
     });
 
@@ -551,7 +600,7 @@ describe("SignInForm", () => {
       );
       const { container, user: actor } = renderForm();
       await fillAndSubmit(actor);
-      await screen.findByRole("button", { name: /Try again in/ });
+      await screen.findByRole("button", { name: /Pokušaj ponovo za/ });
 
       expect(await axe(container)).toHaveNoViolations();
     });
@@ -567,7 +616,7 @@ describe("SignInForm", () => {
       [
         "rate_limited with Retry-After",
         makeApiError(429, "rate_limited", { headers: { "Retry-After": "30" } }),
-        "Too many attempts. Try again in 30 seconds.",
+        "Previše pokušaja. Pokušaj ponovo za 30 sekundi.",
       ],
       [
         "rate_limited without Retry-After",
@@ -604,13 +653,14 @@ describe("SignInForm", () => {
         validationError(null),
         authErrorMessages.invalidInput,
       ],
-    ])("shows %s in the alert", async (_case, error, message) => {
+    ])("shows %s in the focused summary", async (_case, error, message) => {
       signIn.mockRejectedValue(error);
       const { user: actor } = renderForm();
 
       await fillAndSubmit(actor);
 
       expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      expect(errorSummary(message)).toHaveFocus();
       expect(emailInput()).not.toHaveAttribute("aria-invalid");
       expect(passwordInput()).not.toHaveAttribute("aria-invalid");
       expect(router.replace).not.toHaveBeenCalled();
@@ -620,7 +670,7 @@ describe("SignInForm", () => {
       ["email", emailInput, validationMessages.emailInvalid],
       ["password", passwordInput, validationMessages.signInPassword],
     ])(
-      "shows the API's validation_error on the %s field and focuses it",
+      "shows the API's validation_error on the %s field and counts it in the summary",
       async (field, input, message) => {
         signIn.mockRejectedValue(validationError(field));
         const { user: actor } = renderForm();
@@ -631,8 +681,7 @@ describe("SignInForm", () => {
           expect(input()).toHaveAccessibleDescription(message);
         });
         expect(input()).toHaveAttribute("aria-invalid", "true");
-        expect(input()).toHaveFocus();
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
       },
     );
 
@@ -665,7 +714,7 @@ describe("SignInForm", () => {
 
     it("has no violations with field errors", async () => {
       const { container, user: actor } = renderForm();
-      await actor.click(screen.getByRole("button", { name: "Sign in" }));
+      await actor.click(screen.getByRole("button", { name: "Prijavi se" }));
 
       expect(await axe(container)).toHaveNoViolations();
     });

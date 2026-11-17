@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { MapHome, parseMapNotice } from "@/features/map";
 import { loadMap } from "@/features/map/server";
 import { needsSetup, PROFILE_SETUP_PATH } from "@/features/profile/edge";
-import { readProfile } from "@/features/profile/server";
+import { getProfileResult } from "@/features/profile/server";
 
 export const metadata: Metadata = {
   title: "Mapa",
@@ -21,7 +21,7 @@ export default async function PlayPage({ searchParams }: PlayPageProps) {
   // redirect does not wait for every region. Any other result lets the map
   // load: loadMap() reads the same cached call and sends a signed-out learner
   // to sign in.
-  const profile = await readProfile();
+  const profile = await getProfileResult();
   if (profile.status === "ready" && needsSetup(profile.profile)) {
     redirect(PROFILE_SETUP_PATH);
   }

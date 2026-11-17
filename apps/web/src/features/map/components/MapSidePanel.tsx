@@ -6,7 +6,7 @@ import {
   type Explorer,
   PLACEHOLDER_EXPLORER_NAME,
 } from "@/features/profile/edge";
-import { FOCUS_RING } from "@/components/ui/focus-ring";
+import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 
 import { CONTENT_LANG } from "../model/content";

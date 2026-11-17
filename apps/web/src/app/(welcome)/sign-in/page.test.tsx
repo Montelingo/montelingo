@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
 
 import type { AuthState, CurrentUser } from "@/features/auth";
 
+import WelcomeLayout from "../layout";
 import SignInPage, { metadata } from "./page";
 
 const { getAuthState } = vi.hoisted(() => ({
@@ -42,7 +44,7 @@ beforeEach(() => {
 
 describe("SignInPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Sign in");
+    expect(metadata.title).toBe("Prijava");
   });
 
   it("shows the form to a signed-out visitor, keeping the destination", async () => {
@@ -50,8 +52,10 @@ describe("SignInPage", () => {
 
     render(await renderPage({ next: "/lessons" }));
 
-    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Napravi nalog" })).toHaveAttribute(
       "href",
       "/sign-up?next=%2Flessons",
     );
@@ -65,10 +69,9 @@ describe("SignInPage", () => {
 
       render(await renderPage({ next }));
 
-      expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
-        "href",
-        "/sign-up",
-      );
+      expect(
+        screen.getByRole("link", { name: "Napravi nalog" }),
+      ).toHaveAttribute("href", "/sign-up");
     },
   );
 
@@ -78,7 +81,7 @@ describe("SignInPage", () => {
     render(await renderPage({ notice: "password-updated" }));
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Password updated — please sign in.",
+      "Lozinka je promijenjena. Prijavi se ponovo.",
     );
   });
 
@@ -91,7 +94,9 @@ describe("SignInPage", () => {
 
     render(await renderPage({ notice }));
 
-    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -101,7 +106,7 @@ describe("SignInPage", () => {
     render(await renderPage({ next: "/lessons", notice: "password-updated" }));
 
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Napravi nalog" })).toHaveAttribute(
       "href",
       "/sign-up?next=%2Flessons",
     );
@@ -145,9 +150,11 @@ describe("SignInPage", () => {
 
     render(await renderPage({ next: "/lessons", notice: "password-updated" }));
 
-    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Password updated — please sign in.",
+      "Lozinka je promijenjena. Prijavi se ponovo.",
     );
     expect(redirect).not.toHaveBeenCalled();
   });
@@ -176,7 +183,21 @@ describe("SignInPage", () => {
 
     render(await renderPage({ next: "/lessons" }));
 
-    expect(screen.getByRole("form", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
+  });
+  it("has no accessibility violations in the welcome frame", async () => {
+    getAuthState.mockResolvedValue({ status: "signed-out" });
+
+    const { container } = render(
+      <WelcomeLayout>{await renderPage()}</WelcomeLayout>,
+    );
+
+    expect(
+      screen.getByRole("form", { name: "Dobro došli nazad" }),
+    ).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

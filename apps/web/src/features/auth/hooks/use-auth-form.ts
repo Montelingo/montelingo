@@ -33,6 +33,12 @@ type UseAuthFormOptions<Field extends string, Data> = {
   onSuccess: () => void;
   /** Reads the clock, in epoch milliseconds, for the Retry-After deadline. */
   now?: () => number;
+  /**
+   * Where focus goes after a rejected submit: the first field with an error
+   * (the default), or the error summary attached to `summaryRef`, which then
+   * also takes focus for an error of the whole form.
+   */
+  focusOnError?: "field" | "summary";
 };
 
 const CLOCK_CHECK_INTERVAL_MS = 1000;
@@ -40,10 +46,12 @@ const CLOCK_CHECK_INTERVAL_MS = 1000;
 /**
  * Runs an auth form: controlled values, client validation shown on blur and on
  * submit, the API call, and its errors mapped onto fields or the whole form.
- * After a rejected submit, focus moves to the first field with an error. After
+ * After a rejected submit, focus moves to the first field with an error, or to
+ * the error summary (`focusOnError: "summary"`). After
  * `rate_limited`, submitting is held until the API's `Retry-After` has passed.
  *
- * Attach `formRef` to the `<form>`, so focus can move to its fields by name.
+ * Attach `formRef` to the `<form>`, so focus can move to its fields by name,
+ * and `summaryRef` to the error summary when focus goes there.
  */
 export function useAuthForm<Field extends string, Data>({
   initialValues,
@@ -52,6 +60,7 @@ export function useAuthForm<Field extends string, Data>({
   submit,
   onSuccess,
   now = Date.now,
+  focusOnError = "field",
 }: UseAuthFormOptions<Field, Data>) {
   const [state, dispatch] = useReducer(
     authFormReducer<Field>,
@@ -59,6 +68,7 @@ export function useAuthForm<Field extends string, Data>({
     initialAuthFormState<Field>,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
   // A response that arrives after the user has left (for example through the
   // "Sign up" link) must not navigate them somewhere else.
   const isMountedRef = useRef(false);
@@ -78,8 +88,15 @@ export function useAuthForm<Field extends string, Data>({
     };
   }, []);
 
-  // Runs after the errors are rendered, so the field is announced with its error.
+  // Runs after the errors are rendered, so the field or the summary is
+  // announced with them.
   useEffect(() => {
+    if (focusOnError === "summary") {
+      if (state.rejectedFieldCount > 0 || state.failure?.formError) {
+        summaryRef.current?.focus();
+      }
+      return;
+    }
     if (state.focusTarget === null) {
       return;
     }
@@ -87,7 +104,13 @@ export function useAuthForm<Field extends string, Data>({
     if (element instanceof HTMLElement) {
       element.focus();
     }
-  }, [state.attempt, state.focusTarget]);
+  }, [
+    focusOnError,
+    state.attempt,
+    state.failure,
+    state.focusTarget,
+    state.rejectedFieldCount,
+  ]);
 
   // The wait is a deadline: each check re-reads the clock, so it ends on time
   // even when a background tab throttles the interval. Coming back to the tab
@@ -165,10 +188,13 @@ export function useAuthForm<Field extends string, Data>({
 
   return {
     formRef,
+    summaryRef,
     fieldProps,
     /** The API's field errors from the last submit, until their field changes. */
     serverFieldErrors: state.serverFieldErrors,
     failure: state.failure,
+    /** How many fields the last attempt rejected, for the error summary. */
+    rejectedFieldCount: state.rejectedFieldCount,
     /** Changes on every submit: use it as the alert's `key` to announce it again. */
     attempt: state.attempt,
     /** True while the API call is in flight, and after it succeeds. */

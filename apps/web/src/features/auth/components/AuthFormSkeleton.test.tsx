@@ -9,10 +9,10 @@ describe.each([
   ["SignInFormSkeleton", SignInFormSkeleton],
   ["SignUpFormSkeleton", SignUpFormSkeleton],
 ])("%s", (_name, Skeleton) => {
-  it("announces that the page is loading", () => {
+  it("announces in Montenegrin that the page is loading", () => {
     render(<Skeleton />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    expect(screen.getByRole("status")).toHaveTextContent("Učitavam…");
   });
 
   it("has no accessibility violations", async () => {

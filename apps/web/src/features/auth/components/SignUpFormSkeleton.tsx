@@ -1,10 +1,11 @@
 import { AuthFormSkeleton, FieldSkeleton } from "./AuthFormSkeleton";
 
-// Mirrors SignUpForm: email, password with its rule, and the confirmation.
+// Mirrors SignUpForm: the chip, email with its note, password with its rule,
+// and the confirmation.
 export function SignUpFormSkeleton() {
   return (
-    <AuthFormSkeleton>
-      <FieldSkeleton />
+    <AuthFormSkeleton hasChip>
+      <FieldSkeleton hasDescription />
       <FieldSkeleton hasDescription />
       <FieldSkeleton />
     </AuthFormSkeleton>

@@ -107,7 +107,7 @@ describe("SignOutButton", () => {
       await user.click(signOutButton());
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        authErrorMessages.signOutFailed,
+        authErrorMessages.signOutFailedEnglish,
       );
       expect(replaceDocument).not.toHaveBeenCalled();
       const button = screen.getByRole("button", { name: "Sign out" });
@@ -115,6 +115,21 @@ describe("SignOutButton", () => {
       expect(button).toHaveFocus();
     },
   );
+
+  it("speaks Montenegrin on the welcome screens", async () => {
+    signOut.mockRejectedValue(makeApiError(500, "internal_server_error"));
+    const user = userEvent.setup();
+    render(<SignOutButton appearance="welcome" />);
+
+    await user.click(screen.getByRole("button", { name: "Odjavi se" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      authErrorMessages.signOutFailed,
+    );
+    expect(authErrorMessages.signOutFailed).toBe(
+      "Odjava nije potvrđena. Pokušaj ponovo.",
+    );
+  });
 
   it("can try again after a failure", async () => {
     signOut.mockRejectedValueOnce(makeApiError(500, "internal_server_error"));

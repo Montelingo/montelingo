@@ -39,7 +39,7 @@ export async function fetchProfile(): Promise<Profile | null> {
   }
 }
 
-/** What a page gets from `readProfile()`. */
+/** What a page gets from `getProfileResult()`. */
 export type ProfileResult =
   | { status: "ready"; profile: Profile }
   /** The call failed (logged); show the placeholder explorer. */
@@ -52,7 +52,7 @@ export type ProfileResult =
  * a `401` included (§5.2). Shares `getProfile()`'s cached call, so a page and
  * the loaders it calls make one request. Next.js signals still pass through.
  */
-export async function readProfile(): Promise<ProfileResult> {
+export async function getProfileResult(): Promise<ProfileResult> {
   try {
     const profile = await getProfile();
     return profile === null

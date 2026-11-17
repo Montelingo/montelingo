@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content.models import Chapter, Location, Region, VocabularyItem
 from app.modules.progress.models import LearningProfile, LocationProgress
 from app.modules.users.models import User
+from tests.integration.schema_helpers import expect_violation
 
 pytestmark = pytest.mark.integration
 
@@ -42,13 +42,6 @@ async def add_user(db: AsyncSession, email: str) -> User:
     db.add(user)
     await db.flush()
     return user
-
-
-async def expect_violation(db: AsyncSession, constraint: str) -> None:
-    with pytest.raises(IntegrityError) as error:
-        async with db.begin_nested():
-            await db.flush()
-    assert constraint in str(error.value)
 
 
 async def test_the_full_hierarchy_can_be_stored(db_session: AsyncSession) -> None:
