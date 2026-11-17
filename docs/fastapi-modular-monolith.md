@@ -552,7 +552,7 @@ Rules:
 - migrations must be reviewed for constraints, indexes, and data safety
 - repository and domain code must assume schema changes are explicit and versioned
 - do not create migrations from ORM metadata alone without verifying the generated SQL
-- CI applies all migrations to a clean database and runs `pnpm db:check` to catch model/migration drift
+- CI applies all migrations to a clean database and runs `pnpm db:check` to catch model/migration drift, then downgrades to an empty database and upgrades again, so every `downgrade()` keeps working
 
 Migration discipline:
 
