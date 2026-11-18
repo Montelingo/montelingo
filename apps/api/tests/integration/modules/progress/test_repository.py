@@ -6,8 +6,14 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content.models import Location, Region
-from app.modules.progress.models import LearningProfile, LocationProgress
+from app.modules.content.models import Chapter, Location, Region
+from app.modules.progress.domain import ChapterProgressRecord
+from app.modules.progress.models import (
+    ChapterProgress,
+    GameResult,
+    LearningProfile,
+    LocationProgress,
+)
 from app.modules.progress.repository import SqlAlchemyProgressRepository
 from app.modules.users.models import User
 
@@ -147,6 +153,127 @@ async def test_repository_uses_fixed_number_of_queries(
 
         statements.clear()
         await repository.read_map(profile.id)
+        assert len(statements) == 3
+    finally:
+        event.remove(engine, "before_cursor_execute", count_queries)
+
+
+async def seed_chapters(session: AsyncSession, budva: Location, kotor: Location) -> Chapter:
+    beach = Chapter(location_id=budva.id, slug="budva-beach", title="Na plaži", position=1)
+    walls = Chapter(location_id=kotor.id, slug="kotor-walls", title="Zidine", position=2)
+    session.add_all([beach, walls])
+    await session.flush()
+    return beach
+
+
+async def test_read_chapters_lists_every_chapter_without_progress(
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    profile = await create_profile(db_session, "chapters-new@example.com")
+
+    chapters = await SqlAlchemyProgressRepository(db_session).read_chapters(profile.id)
+
+    assert chapters == [
+        ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva"),
+        ChapterProgressRecord(chapter_slug="kotor-walls", location_slug="kotor"),
+    ]
+
+
+async def test_read_chapters_isolates_learning_profiles(
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach = await seed_chapters(db_session, budva, kotor)
+    first_profile = await create_profile(db_session, "chapters-first@example.com")
+    second_profile = await create_profile(db_session, "chapters-second@example.com")
+
+    db_session.add_all(
+        [
+            ChapterProgress(
+                learning_profile_id=first_profile.id,
+                chapter_id=beach.id,
+                lesson_completed_at=NOW,
+            ),
+            GameResult(
+                learning_profile_id=first_profile.id,
+                chapter_id=beach.id,
+                game="match",
+                completed_at=NOW,
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    repository = SqlAlchemyProgressRepository(db_session)
+    first = await repository.read_chapters(first_profile.id)
+    second = await repository.read_chapters(second_profile.id)
+
+    assert first[0] == ChapterProgressRecord(
+        chapter_slug="budva-beach",
+        location_slug="budva",
+        lesson_completed_at=NOW,
+        completed_games=("match",),
+    )
+    assert second[0] == ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva")
+
+
+async def test_read_chapters_uses_fixed_number_of_queries(
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach = await seed_chapters(db_session, budva, kotor)
+    profile = await create_profile(db_session, "chapters-count@example.com")
+    repository = SqlAlchemyProgressRepository(db_session)
+
+    engine = db_session.sync_session.get_bind()
+    assert engine is not None
+
+    statements: list[str] = []
+
+    def count_queries(
+        conn: object,
+        cursor: object,
+        statement: str,
+        parameters: object,
+        context: object,
+        executemany: bool,
+    ) -> None:
+        if statement.lstrip().lower().startswith("select"):
+            statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", count_queries)
+
+    try:
+        await repository.read_chapters(profile.id)
+        assert len(statements) == 3
+
+        db_session.add_all(
+            [
+                ChapterProgress(
+                    learning_profile_id=profile.id,
+                    chapter_id=beach.id,
+                    lesson_completed_at=NOW,
+                ),
+                GameResult(
+                    learning_profile_id=profile.id,
+                    chapter_id=beach.id,
+                    game="memory",
+                    completed_at=NOW,
+                ),
+                GameResult(
+                    learning_profile_id=profile.id,
+                    chapter_id=beach.id,
+                    game="match",
+                    completed_at=NOW,
+                ),
+            ]
+        )
+        await db_session.flush()
+
+        statements.clear()
+        await repository.read_chapters(profile.id)
         assert len(statements) == 3
     finally:
         event.remove(engine, "before_cursor_execute", count_queries)

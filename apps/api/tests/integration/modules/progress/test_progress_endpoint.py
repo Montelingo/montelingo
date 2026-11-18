@@ -12,8 +12,13 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Argon2PasswordHasher
-from app.modules.content.models import Location, Region
-from app.modules.progress.models import LearningProfile, LocationProgress
+from app.modules.content.models import Chapter, Location, Region
+from app.modules.progress.models import (
+    ChapterProgress,
+    GameResult,
+    LearningProfile,
+    LocationProgress,
+)
 from app.modules.users.models import User
 
 pytestmark = pytest.mark.integration
@@ -270,12 +275,35 @@ async def test_endpoint_query_count_stays_constant(
         db_session.add(another_location)
         await db_session.flush()
 
-        db_session.add(
-            LocationProgress(
-                learning_profile_id=profile.id,
-                location_id=budva.id,
-                started_at=datetime.now(UTC),
-            )
+        chapter = Chapter(
+            location_id=budva.id,
+            slug="budva-beach",
+            title="Na plaži",
+            position=1,
+        )
+        db_session.add(chapter)
+        await db_session.flush()
+
+        now = datetime.now(UTC)
+        db_session.add_all(
+            [
+                LocationProgress(
+                    learning_profile_id=profile.id,
+                    location_id=budva.id,
+                    started_at=now,
+                ),
+                ChapterProgress(
+                    learning_profile_id=profile.id,
+                    chapter_id=chapter.id,
+                    lesson_completed_at=now,
+                ),
+                GameResult(
+                    learning_profile_id=profile.id,
+                    chapter_id=chapter.id,
+                    game="memory",
+                    completed_at=now,
+                ),
+            ]
         )
         await db_session.flush()
 
@@ -284,3 +312,125 @@ async def test_endpoint_query_count_stays_constant(
         assert after == before, f"Endpoint query count changed: {before} -> {after}"
     finally:
         event.remove(bind, "before_cursor_execute", count_queries)
+
+
+LOCKED_GAMES = [{"id": "memory", "state": "locked"}, {"id": "match", "state": "locked"}]
+
+
+async def seed_chapters(
+    session: AsyncSession, budva: Location, kotor: Location
+) -> tuple[Chapter, Chapter]:
+    # Positions are the recording order. Kotor's chapter is recorded between
+    # Budva's, so the response has to follow the map, not the recording order.
+    beach = Chapter(location_id=budva.id, slug="budva-beach", title="Na plaži", position=1)
+    walls = Chapter(location_id=kotor.id, slug="kotor-walls", title="Zidine", position=2)
+    old_town = Chapter(location_id=budva.id, slug="budva-old-town", title="Stari grad", position=3)
+    session.add_all([beach, walls, old_town])
+    await session.flush()
+    return beach, old_town
+
+
+async def test_new_account_sees_the_starting_place_chapters(
+    integration_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    user, _ = await create_user(db_session)
+    await sign_in(integration_client, user)
+
+    response = await integration_client.get("/api/v1/progress")
+
+    assert response.status_code == 200
+    assert response.json()["chapters"] == [
+        {"id": "budva-beach", "lesson": "todo", "games": LOCKED_GAMES},
+        {"id": "budva-old-town", "lesson": "todo", "games": LOCKED_GAMES},
+    ]
+
+
+async def test_chapters_of_a_started_place_are_listed(
+    integration_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    db_session.add(
+        LocationProgress(
+            learning_profile_id=profile.id,
+            location_id=kotor.id,
+            started_at=datetime.now(UTC),
+        )
+    )
+    await db_session.flush()
+    await sign_in(integration_client, user)
+
+    response = await integration_client.get("/api/v1/progress")
+
+    assert response.status_code == 200
+    assert [chapter["id"] for chapter in response.json()["chapters"]] == [
+        "budva-beach",
+        "budva-old-town",
+        "kotor-walls",
+    ]
+
+
+async def test_two_accounts_only_see_their_own_chapters(
+    integration_app: FastAPI,
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach, _ = await seed_chapters(db_session, budva, kotor)
+    first_user, first_profile = await create_user(db_session)
+    second_user, _ = await create_user(db_session)
+
+    now = datetime.now(UTC)
+    db_session.add_all(
+        [
+            LocationProgress(
+                learning_profile_id=first_profile.id,
+                location_id=budva.id,
+                started_at=now,
+            ),
+            ChapterProgress(
+                learning_profile_id=first_profile.id,
+                chapter_id=beach.id,
+                lesson_completed_at=now,
+            ),
+            GameResult(
+                learning_profile_id=first_profile.id,
+                chapter_id=beach.id,
+                game="memory",
+                completed_at=now,
+            ),
+        ]
+    )
+    await db_session.flush()
+
+    async with (
+        AsyncClient(transport=ASGITransport(app=integration_app), base_url="http://test") as first,
+        AsyncClient(transport=ASGITransport(app=integration_app), base_url="http://test") as second,
+    ):
+        await sign_in(first, first_user)
+        await sign_in(second, second_user)
+
+        first_response = await first.get("/api/v1/progress")
+        second_response = await second.get("/api/v1/progress")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert first_response.json()["chapters"] == [
+        {
+            "id": "budva-beach",
+            "lesson": "done",
+            "games": [
+                {"id": "memory", "state": "completed"},
+                {"id": "match", "state": "available"},
+            ],
+        },
+        {"id": "budva-old-town", "lesson": "todo", "games": LOCKED_GAMES},
+    ]
+    assert second_response.json()["chapters"] == [
+        {"id": "budva-beach", "lesson": "todo", "games": LOCKED_GAMES},
+        {"id": "budva-old-town", "lesson": "todo", "games": LOCKED_GAMES},
+    ]

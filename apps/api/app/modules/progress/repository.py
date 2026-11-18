@@ -8,11 +8,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content import Content, read_map_content
+from app.modules.content import Content, read_map_chapters, read_map_content
 
-from .domain import ChildProfile, LocationProgressRecord
-from .models import LearningProfile, LocationProgress
-from .schemas import AgeBand, Avatar
+from .domain import ChapterProgressRecord, ChildProfile, LocationProgressRecord
+from .models import ChapterProgress, GameResult, LearningProfile, LocationProgress
+from .schemas import AgeBand, Avatar, GameId
 
 
 class LearningProfileRepository(Protocol):
@@ -87,6 +87,11 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
     ) -> tuple[Content, list[LocationProgressRecord]]: ...
 
+    async def read_chapters(
+        self,
+        learning_profile_id: UUID,
+    ) -> list[ChapterProgressRecord]: ...
+
 
 class SqlAlchemyProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -116,3 +121,38 @@ class SqlAlchemyProgressRepository:
         ]
 
         return content, progress
+
+    async def read_chapters(
+        self,
+        learning_profile_id: UUID,
+    ) -> list[ChapterProgressRecord]:
+        """Every content chapter in map order, with this profile's lesson and games."""
+
+        chapters = await read_map_chapters(self.session)
+
+        lesson_result = await self.session.execute(
+            select(ChapterProgress.chapter_id, ChapterProgress.lesson_completed_at).where(
+                ChapterProgress.learning_profile_id == learning_profile_id
+            )
+        )
+        lessons = dict(lesson_result.tuples().all())
+
+        game_result = await self.session.execute(
+            select(GameResult.chapter_id, GameResult.game).where(
+                GameResult.learning_profile_id == learning_profile_id
+            )
+        )
+        games: dict[UUID, list[GameId]] = {}
+        for chapter_id, game in game_result.tuples().all():
+            # The table's check constraint keeps `game` to the known game ids.
+            games.setdefault(chapter_id, []).append(game)
+
+        return [
+            ChapterProgressRecord(
+                chapter_slug=chapter.slug,
+                location_slug=chapter.location_slug,
+                lesson_completed_at=lessons.get(chapter.id),
+                completed_games=tuple(games.get(chapter.id, ())),
+            )
+            for chapter in chapters
+        ]

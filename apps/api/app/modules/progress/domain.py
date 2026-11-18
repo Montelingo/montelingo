@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -129,6 +129,37 @@ def calculate_chapter_state(
         games.append(GameState(id=game_id, state=state))
 
     return ChapterState(id=chapter_slug, lesson=lesson, games=tuple(games))
+
+
+@dataclass(frozen=True, slots=True)
+class ChapterProgressRecord:
+    """One content chapter with a profile's progress in it. No progress is the default."""
+
+    chapter_slug: str
+    location_slug: str
+    lesson_completed_at: datetime | None = None
+    completed_games: tuple[GameId, ...] = ()
+
+
+def calculate_chapter_states(
+    chapters: Iterable[ChapterProgressRecord],
+    location_states: Mapping[str, MapState],
+) -> tuple[ChapterState, ...]:
+    """Calculate the state of every chapter whose place is not `locked`.
+
+    A child can only open a place that is not `locked`, so only those
+    chapters are listed (ADR 0006). The order of `chapters` is kept.
+    """
+
+    return tuple(
+        calculate_chapter_state(
+            chapter.chapter_slug,
+            chapter.lesson_completed_at,
+            chapter.completed_games,
+        )
+        for chapter in chapters
+        if location_states.get(chapter.location_slug, "locked") != "locked"
+    )
 
 
 class InvalidChildProfile(ValueError):

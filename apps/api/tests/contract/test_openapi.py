@@ -33,6 +33,8 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/regions/{region_id}",
         "/api/v1/locations/{location_id}",
         "/api/v1/progress",
+        "/api/v1/chapters/{chapter_id}/lesson",
+        "/api/v1/chapters/{chapter_id}/games/{game_id}/result",
         "/api/v1/profile",
     }
 
@@ -187,3 +189,57 @@ def test_profile_bands_and_avatars_are_the_figma_values(app: FastAPI) -> None:
     assert update["properties"]["age_band"]["enum"] == ["3-4", "5-6", "7"]
     assert update["properties"]["avatar"]["enum"] == ["fox", "bear", "bunny", "frog", "owl", "cat"]
     assert update["properties"]["name"]["maxLength"] == 30
+
+
+# The phase 2 chapter contract, frozen in ADR 0006 (epic #120). The routes answer 501
+# until #125 and #126, but the client is complete. Writes also document 403 for an
+# untrusted Origin, and 422 because their path parameters are slugs.
+CHAPTER_CONTRACT = [
+    ("/api/v1/chapters/{chapter_id}/lesson", "progress_complete_lesson", {"chapter_id"}),
+    (
+        "/api/v1/chapters/{chapter_id}/games/{game_id}/result",
+        "progress_complete_game",
+        {"chapter_id", "game_id"},
+    ),
+]
+
+
+@pytest.mark.parametrize(("path", "operation_id", "parameters"), CHAPTER_CONTRACT)
+def test_chapter_contract_is_frozen(
+    app: FastAPI, path: str, operation_id: str, parameters: set[str]
+) -> None:
+    path_item = app.openapi()["paths"][path]
+    operation = path_item["post"]
+
+    assert set(path_item) == {"post"}
+    assert operation["operationId"] == operation_id
+    assert operation["tags"] == ["progress"]
+    assert "requestBody" not in operation
+    assert {parameter["name"] for parameter in operation["parameters"]} == parameters
+    assert set(operation["responses"]) == {"200", "401", "403", "404", "409", "422", "500"}
+    schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema == {"$ref": "#/components/schemas/ChapterState"}
+
+
+def test_progress_state_lists_chapters(app: FastAPI) -> None:
+    components = app.openapi()["components"]["schemas"]
+    progress = components["ProgressState"]
+
+    assert set(progress["required"]) == {"regions", "locations", "chapters"}
+    assert progress["properties"]["chapters"]["items"] == {
+        "$ref": "#/components/schemas/ChapterState"
+    }
+    assert set(components["ChapterState"]["required"]) == {"id", "lesson", "games"}
+    assert set(components["GameState"]["required"]) == {"id", "state"}
+
+
+def test_chapter_states_are_the_adr_literals(app: FastAPI) -> None:
+    components = app.openapi()["components"]["schemas"]
+
+    assert components["ChapterState"]["properties"]["lesson"]["enum"] == ["todo", "done"]
+    assert components["GameState"]["properties"]["id"]["enum"] == ["memory", "match"]
+    assert components["GameState"]["properties"]["state"]["enum"] == [
+        "locked",
+        "available",
+        "completed",
+    ]
