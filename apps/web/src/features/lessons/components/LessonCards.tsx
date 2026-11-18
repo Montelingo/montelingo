@@ -1,11 +1,25 @@
 "use client";
 
-import { ArrowLeftIcon, ArrowRightIcon } from "@heroicons/react/24/solid";
-import { type ReactNode, useEffect, useReducer, useRef } from "react";
+import {
+  ArrowLeftIcon,
+  ArrowPathIcon,
+  ArrowRightIcon,
+  StarIcon,
+} from "@heroicons/react/24/solid";
+import Link from "next/link";
+import {
+  type Dispatch,
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { preload } from "react-dom";
 import { useSwipeable } from "react-swipeable";
 
-import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { BIG_BUTTON, FOCUS_RING } from "@/components/ui/kid-styles";
 import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
@@ -16,7 +30,6 @@ import {
   cardPositionLabel,
   INITIAL_LESSON,
   isFirstCard,
-  isLastCard,
   type LessonAction,
   LESSON_MODES,
   type LessonMode,
@@ -31,6 +44,13 @@ export type LessonCardsProps = {
    * it is on screen, so a new chapter needs a new `key`.
    */
   words: readonly LessonWord[];
+  /** The place's screen, where "Nazad na mjesto" leads after the last card. */
+  placeHref: string;
+  /**
+   * Called once, when the "Bravo!" screen first shows after the last card.
+   * Watching again does not call it a second time.
+   */
+  onFinished?: () => void;
 };
 
 const MODE_LABELS: Record<LessonMode, string> = {
@@ -46,11 +66,21 @@ const KEY_ACTIONS: Partial<Record<string, LessonAction>> = {
 // A swipe must travel this far (CSS px) to turn the card; less is a tap.
 const SWIPE_DISTANCE = 40;
 
+/**
+ * How long a screen ignores presses after it appears. A child tapping quickly
+ * through the cards would otherwise press a "Bravo!" button with the tap after
+ * the last card, and a held Enter on "Pogledaj ponovo" would repeat on Next.
+ */
+export const SETTLE_DELAY_MS = 600;
+
 // A chapter's lesson (ADR 0006): one large card, the picture alone or the word
-// alone. A switch starts again from the first card (the second when the first
-// is the word just shown), so a picture is never followed by its word. The
-// copy is Montenegrin, so the lesson carries the content's language.
-export function LessonCards({ words }: LessonCardsProps) {
+// alone, then a "Bravo!" screen after the last card. The copy is Montenegrin,
+// so the lesson carries the content's language.
+export function LessonCards({
+  words,
+  placeHref,
+  onFinished,
+}: LessonCardsProps) {
   const count = words.length;
   // The reducer reads the current number of words, so it is never stale.
   const [state, dispatch] = useReducer(
@@ -58,11 +88,73 @@ export function LessonCards({ words }: LessonCardsProps) {
       lessonReducer(current, action, count),
     INITIAL_LESSON,
   );
+  const { finished } = state;
+
+  // The lesson is reported once per visit, however often it is watched again.
+  const reported = useRef(false);
+  useEffect(() => {
+    // Marked only when called, so a callback passed in late still runs.
+    if (finished && !reported.current && onFinished !== undefined) {
+      reported.current = true;
+      onFinished();
+    }
+  }, [finished, onFinished]);
+
+  if (count === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      lang={CONTENT_LANG}
+      className={cn(fredoka.className, "flex flex-1 flex-col text-kid-ink")}
+    >
+      {finished ? (
+        <FinishScreen
+          placeHref={placeHref}
+          onRestart={() => dispatch({ type: "restart" })}
+        />
+      ) : (
+        <LessonScreen words={words} state={state} dispatch={dispatch} />
+      )}
+    </div>
+  );
+}
+
+type LessonScreenProps = {
+  words: readonly LessonWord[];
+  state: LessonState;
+  dispatch: Dispatch<LessonAction>;
+};
+
+// The cards themselves. A switch starts again from the first card (the second
+// when the first is the word just shown), so a picture is never followed by
+// its word. A row of dots shows the card; Next on the last card ends the
+// lesson. Mounted only while a card is on screen, so its swipe, arrow keys and
+// preloading stop on the "Bravo!" screen.
+function LessonScreen({ words, state, dispatch }: LessonScreenProps) {
+  const count = words.length;
   const index = cardIndex(state, count);
   const word = words[index];
-  const hasCard = word !== undefined;
   const next = () => dispatch({ type: "next" });
   const back = () => dispatch({ type: "back" });
+
+  // After "Watch again" the focus was on a button that is gone: give it to
+  // Next. Only on mount, as the cards mount again after "Watch again".
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const [focusNextOnMount] = useState(state.watchedToEnd);
+  useEffect(() => {
+    if (focusNextOnMount) {
+      nextButtonRef.current?.focus();
+    }
+  }, [focusNextOnMount]);
+  // There, Next waits a moment, so a held Enter does not skip cards.
+  const settled = useSettled(SETTLE_DELAY_MS);
+  const pressNext = () => {
+    if (!focusNextOnMount || settled()) {
+      next();
+    }
+  };
 
   // A swipe (with a finger, or a mouse drag) ends with a click on the card
   // when the mouse is let go: that click is the swipe's, not a tap for Next.
@@ -87,12 +179,9 @@ export function LessonCards({ words }: LessonCardsProps) {
     next();
   };
 
-  // The arrow keys turn the card wherever the focus is, while there is a
-  // card: the lesson is the whole screen, and nothing on it takes arrow keys.
+  // The arrow keys turn the card wherever the focus is: the lesson is the
+  // whole screen, and nothing on it takes arrow keys.
   useEffect(() => {
-    if (!hasCard) {
-      return;
-    }
     function handleKeyDown(event: KeyboardEvent) {
       if (
         event.defaultPrevented ||
@@ -113,7 +202,7 @@ export function LessonCards({ words }: LessonCardsProps) {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [hasCard]);
+  }, [dispatch]);
 
   // Fetch the next picture while this one is on screen, so it is there at once.
   const upcoming = words[index + 1];
@@ -121,21 +210,12 @@ export function LessonCards({ words }: LessonCardsProps) {
     preload(upcoming.imageUrl, { as: "image" });
   }
 
-  if (!hasCard) {
+  if (word === undefined) {
     return null;
   }
 
-  const atFirst = isFirstCard(state, count);
-  const atLast = isLastCard(state, count);
-
   return (
-    <div
-      lang={CONTENT_LANG}
-      className={cn(
-        fredoka.className,
-        "flex flex-1 flex-col gap-4 text-kid-ink",
-      )}
-    >
+    <div className="flex flex-1 flex-col gap-4">
       <div
         role="group"
         aria-label="Prikaz"
@@ -179,11 +259,27 @@ export function LessonCards({ words }: LessonCardsProps) {
         {word.text}, {cardPositionLabel(state, count)}
       </p>
 
-      <div className="flex items-center justify-between">
-        <NavButton label="Nazad" disabled={atFirst} onPress={back}>
+      <div className="flex items-center justify-between gap-4">
+        <NavButton
+          label="Nazad"
+          disabled={isFirstCard(state, count)}
+          onPress={back}
+        >
           <ArrowLeftIcon aria-hidden="true" className="size-9" />
         </NavButton>
-        <NavButton label="Dalje" disabled={atLast} onPress={next} primary>
+        <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+          <CardDots count={count} current={index} />
+          <p className="text-base font-medium text-kid-muted">
+            Pročitajte djetetu svaku riječ naglas.
+          </p>
+        </div>
+        {/* On the last card, Next ends the lesson. */}
+        <NavButton
+          ref={nextButtonRef}
+          label="Dalje"
+          onPress={pressNext}
+          primary
+        >
           <ArrowRightIcon aria-hidden="true" className="size-9" />
         </NavButton>
       </div>
@@ -234,25 +330,113 @@ function WordText({ word }: CardProps) {
   );
 }
 
+type CardDotsProps = {
+  count: number;
+  /** The card on screen, from 0. */
+  current: number;
+};
+
+// One dot per card, the current one large and dark. Hidden from screen
+// readers, which hear "3 od 10" in the status line.
+function CardDots({ count, current }: CardDotsProps) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="lesson-dots"
+      className="flex flex-wrap items-center justify-center gap-2"
+    >
+      {Array.from({ length: count }, (_, dot) => (
+        <span
+          key={dot}
+          data-current={dot === current}
+          className={cn(
+            "size-3 rounded-full transition motion-reduce:transition-none",
+            dot === current
+              ? "scale-150 bg-kid-ink"
+              : "border-2 border-kid-muted bg-white",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+type FinishScreenProps = {
+  placeHref: string;
+  onRestart: () => void;
+};
+
+// After the last card: praise, then the lesson again or back to the place.
+// The heading takes the focus, so a screen reader hears "Bravo!" at once. The
+// buttons wait a moment, so the tap after the last card does not press one.
+function FinishScreen({ placeHref, onRestart }: FinishScreenProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+  const settled = useSettled(SETTLE_DELAY_MS);
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-8">
+      <StarIcon aria-hidden="true" className="size-32 text-kid-yellow" />
+      <h2
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-7xl font-semibold focus:outline-none"
+      >
+        Bravo!
+      </h2>
+      <div className="flex w-full max-w-md flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => {
+            if (settled()) {
+              onRestart();
+            }
+          }}
+          className={cn(BIG_BUTTON, "gap-3 bg-kid-yellow")}
+        >
+          <ArrowPathIcon aria-hidden="true" className="size-8" />
+          Pogledaj ponovo
+        </button>
+        <Link
+          href={placeHref}
+          onClick={(event) => {
+            if (!settled()) {
+              event.preventDefault();
+            }
+          }}
+          className={cn(BIG_BUTTON, "bg-white")}
+        >
+          Nazad na mjesto
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 type NavButtonProps = {
+  ref?: Ref<HTMLButtonElement>;
   label: string;
-  disabled: boolean;
+  disabled?: boolean;
   onPress: () => void;
   primary?: boolean;
   children: ReactNode;
 };
 
-// Next and Back: big round buttons. At the lesson's ends they stay focusable
-// (aria-disabled), so the keyboard focus is not lost when one stops working.
+// Next and Back: big round buttons. Back stays focusable on the first card
+// (aria-disabled), so the keyboard focus is not lost when it stops working.
 function NavButton({
+  ref,
   label,
-  disabled,
+  disabled = false,
   onPress,
   primary = false,
   children,
 }: NavButtonProps) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       aria-disabled={disabled}
@@ -267,6 +451,19 @@ function NavButton({
       {children}
     </button>
   );
+}
+
+/**
+ * Returns a check that is true once `delayMs` have passed since the component
+ * mounted. Read it in event handlers, not while rendering.
+ */
+function useSettled(delayMs: number): () => boolean {
+  const mountedAt = useRef<number | null>(null);
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
+  return () =>
+    mountedAt.current !== null && Date.now() - mountedAt.current >= delayMs;
 }
 
 function isEditable(target: EventTarget | null): boolean {

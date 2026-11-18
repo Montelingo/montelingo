@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import type { LessonWord } from "../model/lesson";
-import { LessonCards } from "./LessonCards";
+import { LessonCards, SETTLE_DELAY_MS } from "./LessonCards";
 
 // "Ljeto i odjeća" (words 61–70): real images for most, none for the last two,
 // so the placeholder shows. "Šešir" checks that a word card lowercases.
@@ -36,18 +36,41 @@ function makeWords(): LessonWord[] {
   });
 }
 
+const PLACE_HREF = "/play/primorje/budva";
+
 function renderLesson() {
   const user = userEvent.setup();
-  const view = render(<LessonCards words={makeWords()} />);
-  return { user, ...view };
+  const onFinished = vi.fn();
+  const view = render(
+    <LessonCards
+      words={makeWords()}
+      placeHref={PLACE_HREF}
+      onFinished={onFinished}
+    />,
+  );
+  return { user, onFinished, ...view };
 }
 
 type User = ReturnType<typeof userEvent.setup>;
 
+/** Lets the screen on display settle, so its buttons take presses. */
+function settle() {
+  vi.setSystemTime(Date.now() + SETTLE_DELAY_MS);
+}
+
+/** Presses Next from card 1 until `card` is on screen. */
 async function goToCard(user: User, card: number) {
+  settle();
+  const next = nextButton();
   for (let step = 1; step < card; step += 1) {
-    await user.click(nextButton());
+    await user.click(next);
   }
+}
+
+/** Presses Next from card 1 through the last card, to "Bravo!". */
+async function finishLesson(user: User) {
+  await goToCard(user, 11);
+  settle();
 }
 
 function nextButton() {
@@ -58,8 +81,31 @@ function backButton() {
   return screen.getByRole("button", { name: "Nazad" });
 }
 
+function modeButton(name: "Slike" | "Riječi") {
+  return screen.getByRole("button", { name });
+}
+
+function watchAgainButton() {
+  return screen.getByRole("button", { name: "Pogledaj ponovo" });
+}
+
 function picture(name: string) {
   return screen.getByRole("img", { name });
+}
+
+function dots(): Element[] {
+  return Array.from(screen.getByTestId("lesson-dots").children);
+}
+
+/** The current dot, from 1. */
+function currentDot(): number {
+  return (
+    dots().findIndex((dot) => dot.getAttribute("data-current") === "true") + 1
+  );
+}
+
+function bravo() {
+  return screen.queryByRole("heading", { name: "Bravo!" });
 }
 
 function swipe(element: Element, fromX: number, toX: number) {
@@ -71,15 +117,21 @@ function swipe(element: Element, fromX: number, toX: number) {
 }
 
 describe("LessonCards", () => {
+  // Only the clock: the screens wait SETTLE_DELAY_MS before taking presses.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("starts on the first picture, named by its word, card 1 of 10", () => {
     renderLesson();
 
     expect(picture("majica")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/ 1 od 10$/);
-    expect(screen.getByRole("button", { name: "Slike" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(modeButton("Slike")).toHaveAttribute("aria-pressed", "true");
   });
 
   it("moves forward and back with the buttons", async () => {
@@ -136,20 +188,204 @@ describe("LessonCards", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/ 1 od 10$/);
   });
 
-  it("stays on the last card on Next, which says it does nothing there", async () => {
-    const { user } = renderLesson();
+  it("keeps Next working on the last card, where it ends the lesson", async () => {
+    const { user, onFinished } = renderLesson();
 
     await goToCard(user, 10);
     expect(screen.getByRole("status")).toHaveTextContent(/ 10 od 10$/);
-    expect(nextButton()).toHaveAttribute("aria-disabled", "true");
+    expect(nextButton()).toHaveAttribute("aria-disabled", "false");
     expect(backButton()).toHaveAttribute("aria-disabled", "false");
+    expect(bravo()).not.toBeInTheDocument();
+    expect(onFinished).not.toHaveBeenCalled();
 
     await user.click(nextButton());
-    await user.keyboard("{ArrowRight}");
-    await user.click(picture("marama"));
 
-    expect(picture("marama")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/ 10 od 10$/);
+    expect(bravo()).toBeInTheDocument();
+  });
+
+  it("shows a row of ten dots, hidden from screen readers, that follows the card", async () => {
+    const { user } = renderLesson();
+
+    // Screen readers hear "1 od 10" in the status line instead.
+    expect(screen.getByTestId("lesson-dots")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(dots()).toHaveLength(10);
+    expect(
+      dots().filter((dot) => dot.getAttribute("data-current") === "true"),
+    ).toHaveLength(1);
+    expect(currentDot()).toBe(1);
+
+    await user.click(nextButton());
+    await user.click(nextButton());
+    expect(currentDot()).toBe(3);
+
+    await user.keyboard("{ArrowLeft}");
+    expect(currentDot()).toBe(2);
+
+    await user.click(modeButton("Riječi"));
+    expect(currentDot()).toBe(1);
+
+    await goToCard(user, 10);
+    expect(currentDot()).toBe(10);
+  });
+
+  it("marks only the current dot, not the cards before it", async () => {
+    const { user } = renderLesson();
+
+    // The switch on card 1 starts from card 2: card 1's word was never shown.
+    await user.click(modeButton("Riječi"));
+
+    expect(currentDot()).toBe(2);
+    expect(dots()[0]?.className).toBe(dots()[2]?.className);
+  });
+
+  it("tells the grown-up to read each word aloud", () => {
+    renderLesson();
+
+    expect(
+      screen.getByText("Pročitajte djetetu svaku riječ naglas."),
+    ).toBeInTheDocument();
+  });
+
+  it("ends with Bravo!, a way to watch again and a way back to the place", async () => {
+    const { user } = renderLesson();
+
+    await finishLesson(user);
+
+    expect(bravo()).toHaveFocus();
+    expect(watchAgainButton()).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Nazad na mjesto" }),
+    ).toHaveAttribute("href", PLACE_HREF);
+    // The lesson itself is gone: no card, switch, dots or arrows.
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("lesson-dots")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dalje" }),
+    ).not.toBeInTheDocument();
+    expect(bravo()?.closest("[lang]")).toHaveAttribute("lang", "sr-Latn-ME");
+  });
+
+  it("calls onFinished once when Bravo! shows, and not again on a second watch", async () => {
+    const { user, onFinished } = renderLesson();
+
+    await goToCard(user, 10);
+    expect(onFinished).not.toHaveBeenCalled();
+
+    await user.click(nextButton());
+    expect(onFinished).toHaveBeenCalledTimes(1);
+
+    // The arrow keys do nothing on the Bravo! screen.
+    await user.keyboard("{ArrowRight}{ArrowLeft}");
+    expect(bravo()).toBeInTheDocument();
+
+    settle();
+    await user.click(watchAgainButton());
+    await finishLesson(user);
+
+    expect(bravo()).toBeInTheDocument();
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call onFinished again when it changes on the Bravo! screen", async () => {
+    const { user, onFinished, rerender } = renderLesson();
+    await finishLesson(user);
+    const later = vi.fn();
+
+    rerender(
+      <LessonCards
+        words={makeWords()}
+        placeHref={PLACE_HREF}
+        onFinished={later}
+      />,
+    );
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+    expect(later).not.toHaveBeenCalled();
+  });
+
+  it("ignores the Bravo! buttons for a moment, so the tap after the last card presses neither", async () => {
+    const { user } = renderLesson();
+
+    await goToCard(user, 10);
+    await user.click(nextButton());
+    await user.click(watchAgainButton());
+    const link = screen.getByRole("link", { name: "Nazad na mjesto" });
+
+    expect(bravo()).toBeInTheDocument();
+    // fireEvent.click is false when the click's default (following the link)
+    // was prevented.
+    expect(fireEvent.click(link)).toBe(false);
+
+    settle();
+    await user.click(watchAgainButton());
+
+    expect(picture("majica")).toBeInTheDocument();
+  });
+
+  it("does not let a held Enter on Watch again skip cards", async () => {
+    const { user } = renderLesson();
+
+    await finishLesson(user);
+    watchAgainButton().focus();
+    await user.keyboard("{Enter}");
+    expect(nextButton()).toHaveFocus();
+
+    // The key's repeats now land on Next, which waits a moment.
+    await user.keyboard("{Enter}{Enter}");
+    expect(screen.getByRole("status")).toHaveTextContent(/ 1 od 10$/);
+
+    settle();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("status")).toHaveTextContent(/ 2 od 10$/);
+  });
+
+  it("calls onFinished passed in only after Bravo! showed", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <LessonCards words={makeWords()} placeHref={PLACE_HREF} />,
+    );
+    await finishLesson(user);
+    const onFinished = vi.fn();
+
+    rerender(
+      <LessonCards
+        words={makeWords()}
+        placeHref={PLACE_HREF}
+        onFinished={onFinished}
+      />,
+    );
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("watches again from the first card, in the same mode, with the focus on Next", async () => {
+    const { user } = renderLesson();
+
+    // The switch on card 1 starts from card 2: nine more reach Bravo!.
+    await user.click(modeButton("Riječi"));
+    await goToCard(user, 10);
+    expect(bravo()).toBeInTheDocument();
+    settle();
+    await user.click(watchAgainButton());
+
+    expect(screen.getByText("majica")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("majica, 1 od 10");
+    expect(modeButton("Riječi")).toHaveAttribute("aria-pressed", "true");
+    expect(currentDot()).toBe(1);
+    expect(nextButton()).toHaveFocus();
+  });
+
+  it("works without onFinished", async () => {
+    const user = userEvent.setup();
+    render(<LessonCards words={makeWords()} placeHref={PLACE_HREF} />);
+
+    await finishLesson(user);
+
+    expect(bravo()).toBeInTheDocument();
   });
 
   it("shows no writing on a picture card", () => {
@@ -179,7 +415,7 @@ describe("LessonCards", () => {
     const { user } = renderLesson();
 
     // The switch on card 1 starts from card 2; two more reach "Šešir".
-    await user.click(screen.getByRole("button", { name: "Riječi" }));
+    await user.click(modeButton("Riječi"));
     await goToCard(user, 3);
 
     const word = screen.getByText("šešir");
@@ -191,8 +427,8 @@ describe("LessonCards", () => {
 
   it("switches modes from the first card, as a real toggle", async () => {
     const { user } = renderLesson();
-    const pictures = screen.getByRole("button", { name: "Slike" });
-    const words = screen.getByRole("button", { name: "Riječi" });
+    const pictures = modeButton("Slike");
+    const words = modeButton("Riječi");
 
     await user.click(nextButton());
     await user.click(nextButton());
@@ -213,7 +449,7 @@ describe("LessonCards", () => {
   it("starts from card 2 when the switch is pressed on card 1, so a word never follows its picture", async () => {
     const { user } = renderLesson();
 
-    await user.click(screen.getByRole("button", { name: "Riječi" }));
+    await user.click(modeButton("Riječi"));
 
     expect(screen.queryByText("majica")).not.toBeInTheDocument();
     expect(screen.getByText("šorc")).toBeInTheDocument();
@@ -242,7 +478,9 @@ describe("LessonCards", () => {
   });
 
   it("renders nothing and leaves the arrow keys alone with no words", () => {
-    const { container } = render(<LessonCards words={[]} />);
+    const { container } = render(
+      <LessonCards words={[]} placeHref={PLACE_HREF} />,
+    );
 
     expect(container).toBeEmptyDOMElement();
     expect(fireEvent.keyDown(document, { key: "ArrowRight" })).toBe(true);
@@ -261,10 +499,18 @@ describe("LessonCards", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("has no accessibility violations on the Bravo! screen", async () => {
+    const { user, container } = renderLesson();
+
+    await finishLesson(user);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("has no accessibility violations with words, on the last card", async () => {
     const { user, container } = renderLesson();
 
-    await user.click(screen.getByRole("button", { name: "Riječi" }));
+    await user.click(modeButton("Riječi"));
     await goToCard(user, 10);
 
     expect(await axe(container)).toHaveNoViolations();
