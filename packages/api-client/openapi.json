@@ -35,6 +35,38 @@
         "title": "Chapter",
         "type": "object"
       },
+      "ChapterState": {
+        "description": "A chapter's lesson and its games, always listed `memory`, then `match`.",
+        "properties": {
+          "games": {
+            "items": {
+              "$ref": "#/components/schemas/GameState"
+            },
+            "title": "Games",
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lesson": {
+            "enum": [
+              "todo",
+              "done"
+            ],
+            "title": "Lesson",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lesson",
+          "games"
+        ],
+        "title": "ChapterState",
+        "type": "object"
+      },
       "CurrentUser": {
         "properties": {
           "created_at": {
@@ -141,6 +173,33 @@
           "error"
         ],
         "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "GameState": {
+        "properties": {
+          "id": {
+            "enum": [
+              "memory",
+              "match"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "locked",
+              "available",
+              "completed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "GameState",
         "type": "object"
       },
       "LiveHealth": {
@@ -439,6 +498,13 @@
       },
       "ProgressState": {
         "properties": {
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterState"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/LocationState"
@@ -456,7 +522,8 @@
         },
         "required": [
           "regions",
-          "locations"
+          "locations",
+          "chapters"
         ],
         "title": "ProgressState",
         "type": "object"
@@ -967,6 +1034,202 @@
         "summary": "Sign Up",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/chapters/{chapter_id}/games/{game_id}/result": {
+      "post": {
+        "operationId": "progress_complete_game",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "title": "Game Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Complete Game",
+        "tags": [
+          "progress"
+        ]
+      }
+    },
+    "/api/v1/chapters/{chapter_id}/lesson": {
+      "post": {
+        "operationId": "progress_complete_lesson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Complete Lesson",
+        "tags": [
+          "progress"
         ]
       }
     },

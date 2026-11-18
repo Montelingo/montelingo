@@ -69,7 +69,20 @@ const stateEntrySchema = z.object({
   state: z.enum(["locked", "available", "in-progress", "completed"]),
 });
 
+const gameStateSchema = z.object({
+  id: z.enum(["memory", "match"]),
+  state: z.enum(["locked", "available", "completed"]),
+}) satisfies z.ZodType<Schemas["GameState"]>;
+
+// A chapter's lesson and games (ADR 0006). The server decides every lock.
+const chapterStateSchema = z.object({
+  id: slugSchema,
+  lesson: z.enum(["todo", "done"]),
+  games: z.array(gameStateSchema),
+}) satisfies z.ZodType<Schemas["ChapterState"]>;
+
 export const progressSchema = z.object({
   regions: z.array(stateEntrySchema),
   locations: z.array(stateEntrySchema),
+  chapters: z.array(chapterStateSchema),
 }) satisfies z.ZodType<Schemas["ProgressState"]>;

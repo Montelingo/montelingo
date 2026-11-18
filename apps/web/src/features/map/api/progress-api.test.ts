@@ -70,7 +70,7 @@ describe("fetchProgress", () => {
 
   it("asks the API for progress with the incoming cookies", async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse(200, { regions: [], locations: [] }),
+      jsonResponse(200, { regions: [], locations: [], chapters: [] }),
     );
 
     await fetchProgress();
@@ -88,6 +88,16 @@ describe("fetchProgress", () => {
         locations: [
           { id: "budva", state: "available" },
           { id: "kotor", state: "locked" },
+        ],
+        chapters: [
+          {
+            id: "budva-beach",
+            lesson: "todo",
+            games: [
+              { id: "memory", state: "locked" },
+              { id: "match", state: "locked" },
+            ],
+          },
         ],
       }),
     );
@@ -179,6 +189,7 @@ describe("fetchProgress", () => {
       jsonResponse(200, {
         regions: [],
         locations: [{ id: "budva", state: "unlocked" }],
+        chapters: [],
       }),
     );
 
@@ -190,7 +201,34 @@ describe("fetchProgress", () => {
       jsonResponse(200, {
         regions: [],
         locations: [{ id: "budva", state: "active" }],
+        chapters: [],
       }),
+    );
+
+    await expect(fetchProgress()).resolves.toEqual({ status: "error" });
+  });
+
+  it("returns an error result for a game state outside the contract", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        regions: [],
+        locations: [],
+        chapters: [
+          {
+            id: "budva-beach",
+            lesson: "todo",
+            games: [{ id: "memory", state: "in-progress" }],
+          },
+        ],
+      }),
+    );
+
+    await expect(fetchProgress()).resolves.toEqual({ status: "error" });
+  });
+
+  it("returns an error result when chapters are missing", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { regions: [], locations: [] }),
     );
 
     await expect(fetchProgress()).resolves.toEqual({ status: "error" });

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .domain import Content
 from .domain import Location as ContentLocation
 from .domain import Region as ContentRegion
-from .models import Location, Region
+from .models import Chapter, Location, Region
 
 
 async def read_map_content(
@@ -71,3 +72,32 @@ async def read_map_content(
     )
 
     return content, location_slugs
+
+
+@dataclass(frozen=True, slots=True)
+class MapChapter:
+    """A chapter's identity and the place it belongs to, without its words."""
+
+    id: UUID
+    slug: str
+    location_slug: str
+
+
+async def read_map_chapters(session: AsyncSession) -> tuple[MapChapter, ...]:
+    """Return every chapter in map order: by region, place, then recording order.
+
+    The ID lets the progress module resolve its chapter rows without importing
+    or querying content models.
+    """
+
+    result = await session.execute(
+        select(Chapter.id, Chapter.slug, Location.slug)
+        .join(Location, Location.id == Chapter.location_id)
+        .join(Region, Region.id == Location.region_id)
+        .order_by(Region.position, Location.position, Chapter.position)
+    )
+
+    return tuple(
+        MapChapter(id=chapter_id, slug=slug, location_slug=location_slug)
+        for chapter_id, slug, location_slug in result.all()
+    )
