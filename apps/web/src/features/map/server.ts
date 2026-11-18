@@ -8,6 +8,7 @@ export { getProgress } from "./api/progress-api";
 export {
   assertLocationOpen,
   loadMap,
+  loadPrizes,
   loadRegionMap,
   loadRegionName,
   loadRegionScreen,

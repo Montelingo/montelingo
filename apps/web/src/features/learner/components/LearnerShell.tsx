@@ -21,10 +21,10 @@ export function LearnerShell({
   children,
 }: LearnerShellProps) {
   return (
-    // A map screen (data-map-screen) brings its own top bar and bottom nav,
-    // and a full-screen page (data-full-screen, the profile setup) its own
-    // Back, so this Back and Home bar is dropped there (display: none, so it
-    // is gone for screen readers and the keyboard too).
+    // A map screen or the Prizes screen (data-map-screen) brings its own top
+    // bar and bottom nav, and a full-screen page (data-full-screen, the
+    // profile setup) its own Back, so this Back and Home bar is dropped there
+    // (display: none, so it is gone for screen readers and the keyboard too).
     <div className="flex flex-1 flex-col gap-4 pb-safe-b pl-safe-l pr-safe-r pt-safe-t [&:has([data-full-screen])>nav]:hidden [&:has([data-map-screen])>nav]:hidden">
       {/* Above the page, so a full-screen map can lie under it. */}
       <nav
