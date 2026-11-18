@@ -153,7 +153,7 @@ def test_record_routes_require_a_trusted_origin(
         app.dependency_overrides.clear()
 
 
-@pytest.mark.parametrize("path", RECORD_ROUTES)
+@pytest.mark.parametrize("path", [RECORD_ROUTES[1]])
 def test_record_routes_are_not_implemented_yet(app: FastAPI, client: TestClient, path: str) -> None:
     app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
     try:

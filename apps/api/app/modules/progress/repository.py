@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Protocol, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content import Content, read_map_chapters, read_map_content
@@ -92,6 +93,10 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
     ) -> list[ChapterProgressRecord]: ...
 
+    async def record_lesson(
+        self, learning_profile_id: UUID, chapter_slug: str, location_slug: str
+    ) -> None: ...
+
 
 class SqlAlchemyProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -156,3 +161,47 @@ class SqlAlchemyProgressRepository:
             )
             for chapter in chapters
         ]
+
+    async def record_lesson(
+        self, learning_profile_id: UUID, chapter_slug: str, location_slug: str
+    ) -> None:
+        """Insert only the first completion time; start its location once.
+
+        PostgreSQL ON CONFLICT makes duplicate and concurrent calls idempotent.
+        Content IDs are resolved using the content module's public read API.
+        The caller owns the transaction.
+        """
+        chapters = await read_map_chapters(self.session)
+        chapter = next((item for item in chapters if item.slug == chapter_slug), None)
+        if chapter is None or chapter.location_slug != location_slug:
+            raise ValueError("Validated chapter is no longer present in content.")
+
+        _, location_slugs = await read_map_content(self.session)
+        location_id = next(
+            (key for key, slug in location_slugs.items() if slug == location_slug), None
+        )
+        if location_id is None:
+            raise ValueError("Validated location is no longer present in content.")
+
+        location_insert = insert(LocationProgress).values(
+            learning_profile_id=learning_profile_id,
+            location_id=location_id,
+            started_at=func.now(),
+        )
+        await self.session.execute(location_insert.on_conflict_do_nothing())
+
+        chapter_insert = insert(ChapterProgress).values(
+            learning_profile_id=learning_profile_id,
+            chapter_id=chapter.id,
+            lesson_completed_at=func.now(),
+        )
+        await self.session.execute(
+            chapter_insert.on_conflict_do_update(
+                index_elements=[ChapterProgress.learning_profile_id, ChapterProgress.chapter_id],
+                set_={
+                    "lesson_completed_at": func.coalesce(
+                        ChapterProgress.lesson_completed_at, func.now()
+                    )
+                },
+            )
+        )
