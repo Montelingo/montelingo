@@ -86,6 +86,7 @@ def test_progress_returns_the_starting_state(
                     LocationState(id="budva", state="available"),
                     LocationState(id="kotor", state="locked"),
                 ],
+                chapters=[],
             )
 
     client.app.dependency_overrides[get_progress_service] = lambda: FakeProgressService()

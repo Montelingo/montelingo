@@ -1,4 +1,4 @@
-"""Unit tests for calculate_chapter_state (ADR 0006)."""
+"""Unit tests for calculate_chapter_state and calculate_chapter_states (ADR 0006)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.modules.progress.domain import ChapterState, GameState, calculate_chapter_state
-from app.modules.progress.schemas import GAME_IDS, GameId
+from app.modules.progress.domain import (
+    ChapterProgressRecord,
+    ChapterState,
+    GameState,
+    calculate_chapter_state,
+    calculate_chapter_states,
+)
+from app.modules.progress.schemas import GAME_IDS, GameId, MapState
 
 NOW = datetime(2026, 11, 15, tzinfo=UTC)
 
@@ -85,3 +91,50 @@ def test_games_are_always_listed_memory_then_match(
 
 def test_the_chapter_keeps_its_slug() -> None:
     assert calculate_chapter_state("kotor-old-town", None, []).id == "kotor-old-town"
+
+
+BUDVA_CHAPTERS = [
+    ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva"),
+    ChapterProgressRecord(chapter_slug="budva-old-town", location_slug="budva"),
+]
+KOTOR_CHAPTER = ChapterProgressRecord(chapter_slug="kotor-walls", location_slug="kotor")
+
+
+def test_only_chapters_of_places_that_are_not_locked_are_listed() -> None:
+    states = calculate_chapter_states(
+        [*BUDVA_CHAPTERS, KOTOR_CHAPTER],
+        {"budva": "available", "kotor": "locked"},
+    )
+
+    assert [state.id for state in states] == ["budva-beach", "budva-old-town"]
+
+
+@pytest.mark.parametrize("kotor", ["available", "in-progress", "completed"])
+def test_chapters_of_an_open_place_are_listed(kotor: MapState) -> None:
+    states = calculate_chapter_states([KOTOR_CHAPTER], {"kotor": kotor})
+
+    assert [state.id for state in states] == ["kotor-walls"]
+
+
+def test_a_chapter_of_an_unknown_place_is_not_listed() -> None:
+    assert calculate_chapter_states([KOTOR_CHAPTER], {"budva": "available"}) == ()
+
+
+def test_listed_chapters_keep_the_given_order_and_their_progress() -> None:
+    chapters = [
+        ChapterProgressRecord(
+            chapter_slug="budva-old-town",
+            location_slug="budva",
+            lesson_completed_at=NOW,
+            completed_games=("memory",),
+        ),
+        ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva"),
+    ]
+
+    states = calculate_chapter_states(chapters, {"budva": "in-progress"})
+
+    assert states == (
+        calculate_chapter_state("budva-old-town", NOW, ["memory"]),
+        calculate_chapter_state("budva-beach", None, []),
+    )
+    assert game_states(states[0]) == {"memory": "completed", "match": "available"}

@@ -22,11 +22,6 @@ class LocationState(ApiSchema):
     state: MapState
 
 
-class ProgressState(ApiSchema):
-    regions: list[RegionState]
-    locations: list[LocationState]
-
-
 # A chapter's lesson and games (ADR 0006). The server decides them; the
 # frontend never computes a lock.
 LessonState = Literal["todo", "done"]
@@ -35,6 +30,26 @@ GameStatus = Literal["locked", "available", "completed"]
 
 # The fixed set of games, in the order every chapter lists them.
 GAME_IDS: tuple[GameId, ...] = get_args(GameId)
+
+
+class GameState(ApiSchema):
+    id: GameId
+    state: GameStatus
+
+
+class ChapterState(ApiSchema):
+    """A chapter's lesson and its games, always listed `memory`, then `match`."""
+
+    id: Slug
+    lesson: LessonState
+    games: list[GameState]
+
+
+class ProgressState(ApiSchema):
+    regions: list[RegionState]
+    locations: list[LocationState]
+    # Only the chapters of places that are not `locked` (ADR 0006).
+    chapters: list[ChapterState]
 
 
 # The child's profile on the learning profile (#117). The bands and buddies are
