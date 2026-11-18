@@ -3,6 +3,8 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { useHideMessage } from "./use-hide-message";
+
 // Screen readers start watching a live region when it appears and speak what
 // changes in it afterwards, not what it held when it appeared. The message is
 // inserted a moment after mount, so it is spoken on a full load and after a
@@ -15,6 +17,11 @@ type ScreenNoticeProps = {
   /** An action under the message, such as a retry button. */
   children?: ReactNode;
   /**
+   * Whether the notice stays until the learner taps away from it, instead of
+   * hiding itself: for one whose action they need time to reach.
+   */
+  staysUntilTappedAway?: boolean;
+  /**
    * Called once, when the message has been put in the status region: for a
    * notice that should not come back, such as one read from the URL.
    */
@@ -23,13 +30,18 @@ type ScreenNoticeProps = {
 
 // A calm note at the top of a map screen: neutral colours, never an alarm.
 // The visible text is hidden from assistive technology, which hears the same
-// words once, from the polite status region.
+// words once, from the polite status region. Once announced, it hides itself
+// after a few seconds (unless it stays for its action), and on a tap anywhere
+// but on its action.
 export function ScreenNotice({
   message,
   children,
+  staysUntilTappedAway = false,
   onAnnounce,
 }: ScreenNoticeProps) {
   const [isAnnounced, setIsAnnounced] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const noticeRef = useRef<HTMLDivElement>(null);
 
   // The latest onAnnounce, so a new one on a later render neither restarts the
   // delay nor is missed. Not useEffectEvent(): the React that Next.js 15 ships
@@ -47,8 +59,23 @@ export function ScreenNotice({
     return () => window.clearTimeout(timer);
   }, []);
 
+  useHideMessage({
+    isShown: isAnnounced && !isHidden,
+    onHide: () => setIsHidden(true),
+    timesOut: !staysUntilTappedAway,
+    ownsTap: (target) =>
+      (noticeRef.current?.contains(target) ?? false) &&
+      target.closest("a, button") !== null,
+  });
+
+  if (isHidden) {
+    return null;
+  }
   return (
-    <div className="flex flex-col items-start gap-4 rounded-tile border-2 border-ink-muted bg-surface-muted p-4">
+    <div
+      ref={noticeRef}
+      className="flex flex-col items-start gap-4 rounded-tile border-2 border-ink-muted bg-surface-muted p-4"
+    >
       <div className="flex items-start gap-3">
         <InformationCircleIcon
           aria-hidden="true"

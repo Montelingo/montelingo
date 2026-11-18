@@ -42,7 +42,11 @@ export function ProgressErrorNotice() {
   }
 
   return (
-    <ScreenNotice message="Your places didn’t load. Something went wrong on our side. Let’s try again.">
+    // It stays, so the learner has time to reach the retry.
+    <ScreenNotice
+      message="Your places didn’t load. Something went wrong on our side. Let’s try again."
+      staysUntilTappedAway
+    >
       {/* Like SubmitButton while pending: focusable, marked, and ignoring taps. */}
       <button
         type="button"

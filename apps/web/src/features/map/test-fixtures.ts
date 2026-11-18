@@ -1,3 +1,6 @@
+import { act, fireEvent } from "@testing-library/react";
+import { vi } from "vitest";
+
 import type {
   Chapter,
   Location,
@@ -339,4 +342,20 @@ export function newAccountProgress(): ProgressResult {
 /** Where the browser is now: the path, query and hash, as a test sets them. */
 export function currentPath(): string {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+/**
+ * A tap, as a pointer makes it: a click from the keyboard has no detail.
+ * Synchronous, so it works under fake timers, which userEvent's async
+ * wrapper would wait on for ever.
+ */
+export function tap(element: Element): void {
+  fireEvent.click(element, { detail: 1 });
+}
+
+/** Moves the fake timers on, with what React renders as a result. */
+export function advanceTimers(ms: number): void {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
 }
