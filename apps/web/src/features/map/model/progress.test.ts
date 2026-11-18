@@ -200,6 +200,7 @@ describe("toProgress", () => {
       toProgress({
         regions: [{ id: "coast", state: "available" }],
         locations: [{ id: "budva", state: "in-progress" }],
+        chapters: [],
       }),
     ).toEqual({
       regions: [{ id: "coast", state: "available" }],

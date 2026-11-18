@@ -7,9 +7,24 @@ from uuid import UUID
 from app.core.errors import ApiError, ErrorCode
 from app.db.transaction import TransactionManager
 
-from .domain import ChildProfile, InvalidChildProfile, calculate_map_states
+from .domain import ChapterState as ChapterStateRecord
+from .domain import (
+    ChildProfile,
+    InvalidChildProfile,
+    calculate_chapter_states,
+    calculate_map_states,
+)
 from .repository import ChildProfileRepository, ProgressRepository
-from .schemas import AgeBand, Avatar, LocationState, Profile, ProgressState, RegionState
+from .schemas import (
+    AgeBand,
+    Avatar,
+    ChapterState,
+    GameState,
+    LocationState,
+    Profile,
+    ProgressState,
+    RegionState,
+)
 
 
 class DatabaseProgressService:
@@ -20,14 +35,25 @@ class DatabaseProgressService:
 
     async def get_state(self, learning_profile_id: UUID) -> ProgressState:
         content, progress = await self.repository.read_map(learning_profile_id)
+        chapters = await self.repository.read_chapters(learning_profile_id)
         states = calculate_map_states(content, progress)
+        chapter_states = calculate_chapter_states(chapters, states.locations)
 
         return ProgressState(
             regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
             locations=[
                 LocationState(id=slug, state=state) for slug, state in states.locations.items()
             ],
+            chapters=[_chapter_state(chapter) for chapter in chapter_states],
         )
+
+
+def _chapter_state(chapter: ChapterStateRecord) -> ChapterState:
+    return ChapterState(
+        id=chapter.id,
+        lesson=chapter.lesson,
+        games=[GameState(id=game.id, state=game.state) for game in chapter.games],
+    )
 
 
 def _profile(profile: ChildProfile) -> Profile:
