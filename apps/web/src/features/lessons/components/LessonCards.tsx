@@ -47,8 +47,10 @@ export type LessonCardsProps = {
   /** The place's screen, where "Nazad na mjesto" leads after the last card. */
   placeHref: string;
   /**
-   * Called once, when the "Bravo!" screen first shows after the last card.
-   * Watching again does not call it a second time.
+   * Called once, when the child reaches the last card in either mode: the
+   * lesson then counts as seen (ADR 0006), whether or not they go on to the
+   * "Bravo!" screen. Going back and forth or watching again does not call it
+   * a second time.
    */
   onFinished?: () => void;
 };
@@ -89,16 +91,17 @@ export function LessonCards({
     INITIAL_LESSON,
   );
   const { finished } = state;
+  const reachedLastCard = finished || cardIndex(state, count) === count - 1;
 
   // The lesson is reported once per visit, however often it is watched again.
   const reported = useRef(false);
   useEffect(() => {
     // Marked only when called, so a callback passed in late still runs.
-    if (finished && !reported.current && onFinished !== undefined) {
+    if (reachedLastCard && !reported.current && onFinished !== undefined) {
       reported.current = true;
       onFinished();
     }
-  }, [finished, onFinished]);
+  }, [reachedLastCard, onFinished]);
 
   if (count === 0) {
     return null;

@@ -196,7 +196,7 @@ describe("LessonCards", () => {
     expect(nextButton()).toHaveAttribute("aria-disabled", "false");
     expect(backButton()).toHaveAttribute("aria-disabled", "false");
     expect(bravo()).not.toBeInTheDocument();
-    expect(onFinished).not.toHaveBeenCalled();
+    expect(onFinished).toHaveBeenCalledTimes(1);
 
     await user.click(nextButton());
 
@@ -269,13 +269,21 @@ describe("LessonCards", () => {
     expect(bravo()?.closest("[lang]")).toHaveAttribute("lang", "sr-Latn-ME");
   });
 
-  it("calls onFinished once when Bravo! shows, and not again on a second watch", async () => {
+  it("calls onFinished once on reaching the last card, and not again on Bravo! or a second watch", async () => {
     const { user, onFinished } = renderLesson();
 
-    await goToCard(user, 10);
+    await goToCard(user, 9);
     expect(onFinished).not.toHaveBeenCalled();
 
     await user.click(nextButton());
+    expect(screen.getByRole("status")).toHaveTextContent(/ 10 od 10$/);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+
+    // Back and on to the last card again, then Bravo!.
+    await user.click(backButton());
+    await user.click(nextButton());
+    await user.click(nextButton());
+    expect(bravo()).toBeInTheDocument();
     expect(onFinished).toHaveBeenCalledTimes(1);
 
     // The arrow keys do nothing on the Bravo! screen.
@@ -341,6 +349,30 @@ describe("LessonCards", () => {
     settle();
     await user.keyboard("{Enter}");
     expect(screen.getByRole("status")).toHaveTextContent(/ 2 od 10$/);
+  });
+
+  it("calls onFinished on reaching the last card in Riječi too", async () => {
+    const { user, onFinished } = renderLesson();
+
+    // The switch on card 1 starts from card 2: eight more reach card 10.
+    await user.click(modeButton("Riječi"));
+    await goToCard(user, 9);
+
+    expect(screen.getByText("marama")).toBeInTheDocument();
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onFinished on mount for a one-word lesson, whose first card is its last", () => {
+    const onFinished = vi.fn();
+    render(
+      <LessonCards
+        words={makeWords().slice(0, 1)}
+        placeHref={PLACE_HREF}
+        onFinished={onFinished}
+      />,
+    );
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
   it("calls onFinished passed in only after Bravo! showed", async () => {
