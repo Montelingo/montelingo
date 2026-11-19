@@ -1,12 +1,18 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import { type MapData, toMapData } from "../model/map-view";
 import { MAP_NOTICES, type MapNotice, withMapNotice } from "../model/notices";
-import { newAccountProgress, seedRegionDetails } from "../test-fixtures";
+import {
+  advanceTimers,
+  newAccountProgress,
+  seedRegionDetails,
+  tap,
+} from "../test-fixtures";
 import { MapHome } from "./MapHome";
+import { MESSAGE_HIDE_DELAY_MS } from "./use-hide-message";
 
 const router = vi.hoisted(() => ({
   push: vi.fn(),
@@ -107,6 +113,167 @@ describe("MapHome", () => {
     expect(
       screen.getByText("Regija Centralna Crna Gora još nije otvorena."),
     ).toBeVisible();
+  });
+
+  describe("hiding its messages", () => {
+    const centralLocked = "Regija Centralna Crna Gora još nije otvorena.";
+    const northLocked = "Regija Sjever i planine još nije otvorena.";
+    const regionNotice = MAP_NOTICES["region-locked"];
+
+    function link(name: string) {
+      return within(theMap()).getByRole("link", { name });
+    }
+
+    // The map's own status region, beside it.
+    function mapStatus() {
+      const frame = theMap().parentElement;
+      if (frame === null) {
+        throw new Error("Expected the map in its frame.");
+      }
+      return within(frame).getByRole("status");
+    }
+
+    function noticeText() {
+      return screen.queryByText(regionNotice, { selector: "p" });
+    }
+
+    // A notice from the URL is announced, and can hide, a moment after mount.
+    function announceNotices() {
+      advanceTimers(100);
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("hides a locked region's message after a few seconds, keeping its status region", () => {
+      renderHome();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+      advanceTimers(MESSAGE_HIDE_DELAY_MS - 1);
+      expect(screen.getByText(centralLocked)).toBeVisible();
+      advanceTimers(1);
+
+      expect(screen.queryByText(centralLocked)).not.toBeInTheDocument();
+      expect(mapStatus()).toBeEmptyDOMElement();
+    });
+
+    it("hides it at a tap anywhere, and that tap does nothing else", () => {
+      renderHome();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+      tap(link("Obala, otvoreno"));
+
+      expect(screen.queryByText(centralLocked)).not.toBeInTheDocument();
+      expect(router.push).not.toHaveBeenCalled();
+      // The next tap is an ordinary one again.
+      tap(link("Obala, otvoreno"));
+      expect(router.push).toHaveBeenCalledWith("/play/coast");
+    });
+
+    it("hides it at a tap on the empty map", () => {
+      renderHome();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+      tap(theMap());
+
+      expect(screen.queryByText(centralLocked)).not.toBeInTheDocument();
+    });
+
+    it("replaces it with another locked region's, which starts the delay again", () => {
+      renderHome();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+      advanceTimers(MESSAGE_HIDE_DELAY_MS - 1000);
+      tap(link("Sjever i planine, zaključano"));
+
+      expect(screen.queryByText(centralLocked)).not.toBeInTheDocument();
+      expect(mapStatus()).toHaveTextContent(northLocked);
+      advanceTimers(MESSAGE_HIDE_DELAY_MS - 1);
+      expect(screen.getByText(northLocked)).toBeVisible();
+      advanceTimers(1);
+      expect(screen.queryByText(northLocked)).not.toBeInTheDocument();
+    });
+
+    it("says it anew when the same region is tapped again", () => {
+      renderHome();
+      const central = link("Centralna Crna Gora, zaključano");
+
+      tap(central);
+      const first = screen.getByText(centralLocked);
+      tap(central);
+
+      expect(screen.getByText(centralLocked)).not.toBe(first);
+      expect(mapStatus().children).toHaveLength(1);
+    });
+
+    it("says it again after it has hidden", () => {
+      renderHome();
+      const central = link("Centralna Crna Gora, zaključano");
+
+      tap(central);
+      advanceTimers(MESSAGE_HIDE_DELAY_MS);
+      tap(central);
+
+      expect(screen.getByText(centralLocked)).toBeVisible();
+    });
+
+    it("lets the keyboard through", () => {
+      renderHome();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+      fireEvent.keyDown(link("Obala, otvoreno"), { key: "Enter" });
+
+      expect(router.push).toHaveBeenCalledWith("/play/coast");
+    });
+
+    it("hides the notice from the URL after a few seconds", () => {
+      renderHome(newAccount, "region-locked");
+      announceNotices();
+
+      advanceTimers(MESSAGE_HIDE_DELAY_MS - 1);
+      expect(noticeText()).toBeVisible();
+      advanceTimers(1);
+
+      expect(noticeText()).not.toBeInTheDocument();
+    });
+
+    it("says why a locked region will not open while the notice shows", () => {
+      renderHome(newAccount, "region-locked");
+      announceNotices();
+
+      tap(link("Centralna Crna Gora, zaključano"));
+
+      expect(screen.getByText(centralLocked)).toBeVisible();
+      expect(noticeText()).toBeVisible();
+    });
+
+    it("keeps the retry until it is tapped away, and lets it work while other messages show", () => {
+      renderHome(failed, "region-locked");
+      tap(link("Obala, nije učitano"));
+      const lockedCoast = "Regija Obala još nije otvorena.";
+      announceNotices();
+      const retry = screen.getByRole("button", { name: "Try again" });
+
+      tap(retry);
+
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(lockedCoast)).toBeVisible();
+      expect(noticeText()).toBeVisible();
+
+      advanceTimers(MESSAGE_HIDE_DELAY_MS * 10);
+      expect(screen.queryByText(lockedCoast)).not.toBeInTheDocument();
+      expect(noticeText()).not.toBeInTheDocument();
+      expect(retry).toBeVisible();
+
+      tap(theMap());
+      expect(retry).not.toBeInTheDocument();
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("shows no place to open on the whole map, only regions", () => {

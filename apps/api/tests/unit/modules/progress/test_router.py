@@ -3,13 +3,20 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.modules.auth import get_current_user
 from app.modules.progress.dependencies import get_learning_profile
 from app.modules.progress.router import get_progress_service
-from app.modules.progress.schemas import LocationState, ProgressState, RegionState
+from app.modules.progress.schemas import (
+    ChapterState,
+    GameState,
+    LocationState,
+    ProgressState,
+    RegionState,
+)
 
 
 class FakeDatabaseProgressService:
@@ -27,6 +34,16 @@ class FakeDatabaseProgressService:
             locations=[
                 LocationState(id="budva", state="available"),
                 LocationState(id="kotor", state="locked"),
+            ],
+            chapters=[
+                ChapterState(
+                    id="budva-beach",
+                    lesson="todo",
+                    games=[
+                        GameState(id="memory", state="locked"),
+                        GameState(id="match", state="locked"),
+                    ],
+                )
             ],
         )
 
@@ -64,6 +81,16 @@ def test_get_progress_uses_current_learning_profile(
             {"id": "budva", "state": "available"},
             {"id": "kotor", "state": "locked"},
         ]
+        assert body["chapters"] == [
+            {
+                "id": "budva-beach",
+                "lesson": "todo",
+                "games": [
+                    {"id": "memory", "state": "locked"},
+                    {"id": "match", "state": "locked"},
+                ],
+            }
+        ]
     finally:
         app.dependency_overrides.clear()
 
@@ -90,5 +117,49 @@ def test_get_progress_uses_different_profile_ids(
 
             assert response.status_code == 200
             assert service.received_profile_id == profile_id
+    finally:
+        app.dependency_overrides.clear()
+
+
+ORIGIN = "http://localhost:3000"
+# The chapter routes are frozen in ADR 0006; #125 and #126 implement them.
+RECORD_ROUTES = [
+    "/api/v1/chapters/budva-beach/lesson",
+    "/api/v1/chapters/budva-beach/games/memory/result",
+]
+
+
+@pytest.mark.parametrize("path", RECORD_ROUTES)
+@pytest.mark.parametrize("headers", [{"Origin": ORIGIN}, {}])
+def test_record_routes_require_a_session(
+    client: TestClient, path: str, headers: dict[str, str]
+) -> None:
+    response = client.post(path, headers=headers)
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "authentication_error"
+
+
+@pytest.mark.parametrize("path", RECORD_ROUTES)
+def test_record_routes_require_a_trusted_origin(
+    app: FastAPI, client: TestClient, path: str
+) -> None:
+    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
+    try:
+        response = client.post(path, headers={"Origin": "https://evil.example"})
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("path", RECORD_ROUTES)
+def test_record_routes_are_not_implemented_yet(app: FastAPI, client: TestClient, path: str) -> None:
+    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
+    try:
+        response = client.post(path, headers={"Origin": ORIGIN})
+
+        assert response.status_code == 501
+        assert response.json()["error"]["code"] == "not_implemented"
     finally:
         app.dependency_overrides.clear()

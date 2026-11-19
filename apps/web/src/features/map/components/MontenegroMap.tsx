@@ -4,6 +4,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  useRef,
   useState,
 } from "react";
 
@@ -24,6 +25,7 @@ import {
 } from "../model/map-view";
 import { openLevelCard } from "./level-card-navigation";
 import { MapBaseImage } from "./MapBaseImage";
+import { useHideMessage } from "./use-hide-message";
 
 // The designers' palette for the map.
 const INK = "#2B2D42";
@@ -103,6 +105,17 @@ export function MontenegroMap({
   function say(text: string) {
     setMessage((previous) => ({ text, key: (previous?.key ?? 0) + 1 }));
   }
+  // The message hides itself after a while, or on a tap elsewhere. A tap on
+  // another closed region or place (a disabled link) says its own instead.
+  const svgRef = useRef<SVGSVGElement>(null);
+  useHideMessage({
+    isShown: message !== null,
+    restartKey: message?.key,
+    onHide: () => setMessage(null),
+    ownsTap: (target) =>
+      (svgRef.current?.contains(target) ?? false) &&
+      target.closest('[aria-disabled="true"]') !== null,
+  });
 
   function activate(open: () => void, isOpen: boolean, closedText: string) {
     if (isOpen) {
@@ -121,6 +134,7 @@ export function MontenegroMap({
   return (
     <>
       <svg
+        ref={svgRef}
         viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
         lang={CONTENT_LANG}
         aria-label={
@@ -212,7 +226,8 @@ export function MontenegroMap({
         ) : null}
       </svg>
       {/* Always mounted, so screen readers are already watching it. Each tap
-          inserts a new node, which announces a repeated message again. */}
+          inserts a new node, which announces a repeated message again. It
+          hides itself after a while, and on a tap elsewhere. */}
       <p
         role="status"
         lang={CONTENT_LANG}

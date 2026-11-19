@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
+import { advanceTimers } from "../test-fixtures";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
+import { MESSAGE_HIDE_DELAY_MS } from "./use-hide-message";
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -102,6 +104,25 @@ describe("ProgressErrorNotice", () => {
     expect(router.refresh).toHaveBeenCalledTimes(2);
     expect(statuses().retry).toHaveTextContent(STILL_NOT_LOADED);
     expect(statuses().retry.children).toHaveLength(1);
+  });
+
+  describe("with fake timers", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("does not hide itself before the learner can reach the retry", () => {
+      render(<ProgressErrorNotice />);
+
+      advanceTimers(MESSAGE_HIDE_DELAY_MS * 10);
+
+      expect(statuses().notice).toHaveTextContent(NOTICE);
+      expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+    });
   });
 
   it("has no accessibility violations", async () => {

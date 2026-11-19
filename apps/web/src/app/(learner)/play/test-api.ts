@@ -115,6 +115,7 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
 type ProgressBody = {
   regions: { id: string; state: string }[];
   locations: { id: string; state: string }[];
+  chapters: { id: string; lesson: string; games: unknown[] }[];
 };
 
 // A new account: the coast and Budva open, everything else locked.
@@ -130,6 +131,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
       state: id === "budva" ? "available" : "locked",
     })),
   ),
+  chapters: [],
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -144,6 +146,7 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     { id: "kotor", state: "locked" },
     { id: "podgorica", state: "available" },
   ],
+  chapters: [],
 };
 
 /**
@@ -166,7 +169,7 @@ function progressResponse(progress: ProgressAnswer): Response {
     case "failed":
       return errorResponse(500, "internal_server_error");
     case "empty":
-      return jsonResponse(200, { regions: [], locations: [] });
+      return jsonResponse(200, { regions: [], locations: [], chapters: [] });
     case "signed-out":
       return errorResponse(401, "authentication_error");
   }
