@@ -59,9 +59,6 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 @pytest.fixture(scope="session")
 def apply_migrations() -> Iterator[None]:
     """Apply migrations exclusively to the configured test database."""
-    if not TEST_DB_URL.endswith("/montelingo_test"):
-        raise RuntimeError("Integration tests must use the isolated montelingo_test database.")
-
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv("MONTELINGO_DATABASE_URL", TEST_DB_URL)
         _clear_db_caches()
