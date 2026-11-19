@@ -16,7 +16,7 @@ from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
 from .schemas import ChapterState, Profile, ProfileUpdate, ProgressState
-from .service import ChildProfileService, DatabaseProgressService
+from .service import ChildProfileService, DatabaseProgressService, GameProgressService
 
 # The module owns three top-level resources, /progress, /chapters and /profile,
 # so its routes carry their paths and tags.
@@ -28,6 +28,15 @@ def get_progress_service(
 ) -> DatabaseProgressService:
     repository = SqlAlchemyProgressRepository(session)
     return DatabaseProgressService(repository)
+
+
+def get_game_progress_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> GameProgressService:
+    return GameProgressService(
+        repository=SqlAlchemyProgressRepository(session),
+        transaction_manager=SessionTransactionManager(session),
+    )
 
 
 def get_child_profile_service(
@@ -62,7 +71,7 @@ _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
 
 
 def _not_implemented() -> Never:
-    # The contract is frozen in ADR 0006; #125 and #126 replace these stubs.
+    # The contract is frozen in ADR 0006; #125 replaces this stub.
     raise ApiError(
         ErrorCode.NOT_IMPLEMENTED,
         "Recording chapter progress is not implemented.",
@@ -90,10 +99,15 @@ async def complete_lesson(chapter_id: Slug) -> ChapterState:
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
-async def complete_game(chapter_id: Slug, game_id: Slug) -> ChapterState:
-    # `game_id` is a slug, not the game literal, so an unknown game is a 404
+async def complete_game(
+    chapter_id: Slug,
+    # A slug, not the game literal, so an unknown game is a 404
     # `content_not_found` like an unknown chapter, not a 422.
-    _not_implemented()
+    game_id: Slug,
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+    service: GameProgressService = Depends(get_game_progress_service),
+) -> ChapterState:
+    return await service.complete_game(learning_profile.id, chapter_id, game_id)
 
 
 @router.get(
