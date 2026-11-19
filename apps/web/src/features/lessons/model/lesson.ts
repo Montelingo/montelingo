@@ -1,4 +1,4 @@
-// A chapter's lesson, Doman style (#129, ADR 0006). Pure functions, no React:
+// A chapter's lesson, Doman style (#129, #130, ADR 0006). Pure functions, no React:
 // `LessonCards` drives `lessonReducer` with `useReducer`. The number of cards
 // is the chapter's words, passed in rather than stored, so it is never stale.
 
@@ -20,31 +20,52 @@ export type LessonState = {
   mode: LessonMode;
   /** The card on screen, from 0. Read it through `cardIndex`. */
   index: number;
+  /** Past the last card: the "Bravo!" screen is showing. */
+  finished: boolean;
 };
 
 export type LessonAction =
   | { type: "next" }
   | { type: "back" }
-  | { type: "mode"; mode: LessonMode };
+  | { type: "mode"; mode: LessonMode }
+  /** "Watch again": the first card, in the mode the lesson was watched in. */
+  | { type: "restart" };
 
-export const INITIAL_LESSON: LessonState = { mode: "pictures", index: 0 };
+export const INITIAL_LESSON: LessonState = {
+  mode: "pictures",
+  index: 0,
+  finished: false,
+};
 
 export function lessonReducer(
   state: LessonState,
   action: LessonAction,
   count: number,
 ): LessonState {
+  if (count === 0 || (state.finished && action.type !== "restart")) {
+    // "Bravo!" leads only back to the first card.
+    return state;
+  }
   const index = cardIndex(state, count);
   switch (action.type) {
     case "next":
-      return isLastCard(state, count) ? state : { ...state, index: index + 1 };
+      // Next on the last card ends the lesson.
+      return isLastCard(state, count)
+        ? { ...state, index, finished: true }
+        : { ...state, index: index + 1 };
     case "back":
-      return isFirstCard(state, count) ? state : { ...state, index: index - 1 };
+      return index === 0 ? state : { ...state, index: index - 1 };
     case "mode":
       // Pressing the mode already on screen keeps the child's place.
       return action.mode === state.mode
         ? state
-        : { mode: action.mode, index: firstCardAfterSwitch(index, count) };
+        : {
+            ...state,
+            mode: action.mode,
+            index: firstCardAfterSwitch(index, count),
+          };
+    case "restart":
+      return state.finished ? { ...state, index: 0, finished: false } : state;
   }
 }
 
@@ -61,7 +82,7 @@ export function isFirstCard(state: LessonState, count: number): boolean {
 }
 
 export function isLastCard(state: LessonState, count: number): boolean {
-  return cardIndex(state, count) >= count - 1;
+  return cardIndex(state, count) === count - 1;
 }
 
 /** The card's place in the lesson, as screen readers hear it: "3 od 10". */
