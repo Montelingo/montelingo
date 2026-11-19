@@ -9,7 +9,7 @@ import type {
   RegionDetail,
   Word,
 } from "./model/content";
-import type { ProgressResult } from "./model/progress";
+import type { ChapterState, GameState, ProgressResult } from "./model/progress";
 
 // Test data for the map feature's tests, mirroring the content seed
 // (apps/api/app/modules/content/data/content.json): three regions in content
@@ -316,11 +316,41 @@ export function allOpenProgress(): ProgressResult {
       locations: SEED_REGIONS.flatMap(({ locations }) =>
         locations.map(([id]) => ({ id, state: "available" as const })),
       ),
+      chapters: [],
     },
   };
 }
 
-/** A new account's progress: the coast and Budva open, everything else locked. */
+/**
+ * A chapter's state as the server sends it: the lesson, then both games in the
+ * server's order, `memory` then `match`. By default a chapter not started yet.
+ */
+export function makeChapterState(
+  id: string,
+  {
+    lesson = "todo",
+    memory = "locked",
+    match = "locked",
+  }: {
+    lesson?: ChapterState["lesson"];
+    memory?: GameState;
+    match?: GameState;
+  } = {},
+): ChapterState {
+  return {
+    id,
+    lesson,
+    games: [
+      { id: "memory", state: memory },
+      { id: "match", state: match },
+    ],
+  };
+}
+
+/**
+ * A new account's progress: the coast and Budva open, everything else locked,
+ * and Budva's two chapters not started, their games locked.
+ */
 export function newAccountProgress(): ProgressResult {
   return {
     status: "ready",
@@ -335,6 +365,10 @@ export function newAccountProgress(): ProgressResult {
           state: id === "budva" ? "available" : "locked",
         })),
       ),
+      chapters: [
+        makeChapterState("budva-beach"),
+        makeChapterState("budva-summer-clothes"),
+      ],
     },
   };
 }

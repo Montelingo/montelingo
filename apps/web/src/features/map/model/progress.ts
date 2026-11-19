@@ -4,10 +4,32 @@ import type { MapElementState, ServerMapState } from "./map-state";
 
 type ProgressEntry = { readonly id: string; readonly state: ServerMapState };
 
-/** The account's state for every region and location, as the server decided it. */
+/** A chapter's games, in the order the server lists them (ADR 0006). */
+export type GameId = Schemas["GameState"]["id"];
+
+/** A game's state. Only the server decides it: `locked` until the lesson is done. */
+export type GameState = Schemas["GameState"]["state"];
+
+/**
+ * A chapter's lesson and games, as the server decided them (ADR 0006). The
+ * frontend never computes a lock: it draws these.
+ */
+export type ChapterState = {
+  readonly id: string;
+  /** `done` once the lesson has been seen to its last card. */
+  readonly lesson: Schemas["ChapterState"]["lesson"];
+  /** Always `memory`, then `match`. */
+  readonly games: readonly { readonly id: GameId; readonly state: GameState }[];
+};
+
+/**
+ * The account's state for every region and location, and for the chapters of
+ * every place that is not locked, as the server decided it.
+ */
 export type Progress = {
   readonly regions: readonly ProgressEntry[];
   readonly locations: readonly ProgressEntry[];
+  readonly chapters: readonly ChapterState[];
 };
 
 /**
@@ -28,7 +50,34 @@ export function toProgress(data: Schemas["ProgressState"]): Progress {
   return {
     regions: data.regions.map(({ id, state }) => ({ id, state })),
     locations: data.locations.map(({ id, state }) => ({ id, state })),
+    chapters: data.chapters.map(({ id, lesson, games }) => ({
+      id,
+      lesson,
+      games: games.map((game) => ({ id: game.id, state: game.state })),
+    })),
   };
+}
+
+/** A chapter with its lesson and games' state, `null` when progress has none. */
+export type WithChapterState<Chapter> = Chapter & {
+  chapterState: ChapterState | null;
+};
+
+/**
+ * Gives every chapter its state from progress, keeping content order. A
+ * chapter progress has no entry for, or every chapter when progress failed,
+ * gets `null`: its state is not known, and only the server decides it.
+ */
+export function joinChapterStates<Chapter extends Identified>(
+  chapters: readonly Chapter[],
+  progress: ProgressResult,
+): WithChapterState<Chapter>[] {
+  const entries = progress.status === "ready" ? progress.progress.chapters : [];
+  const states = new Map(entries.map((state) => [state.id, state]));
+  return chapters.map((chapter) => ({
+    ...chapter,
+    chapterState: states.get(chapter.id) ?? null,
+  }));
 }
 
 /**

@@ -115,8 +115,25 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
 type ProgressBody = {
   regions: { id: string; state: string }[];
   locations: { id: string; state: string }[];
-  chapters: { id: string; lesson: string; games: unknown[] }[];
+  chapters: Schemas["ChapterState"][];
 };
+
+// A chapter's state as the server sends it: both games, `memory` then `match`.
+function apiChapterState(
+  id: string,
+  lesson: Schemas["ChapterState"]["lesson"],
+  memory: Schemas["GameState"]["state"],
+  match: Schemas["GameState"]["state"],
+): Schemas["ChapterState"] {
+  return {
+    id,
+    lesson,
+    games: [
+      { id: "memory", state: memory },
+      { id: "match", state: match },
+    ],
+  };
+}
 
 // A new account: the coast and Budva open, everything else locked.
 const NEW_ACCOUNT_PROGRESS: ProgressBody = {
@@ -131,7 +148,11 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
       state: id === "budva" ? "available" : "locked",
     })),
   ),
-  chapters: [],
+  // The server sends the chapters of every place that is not locked.
+  chapters: [
+    apiChapterState("budva-beach", "todo", "locked", "locked"),
+    apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
+  ],
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -146,7 +167,15 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     { id: "kotor", state: "locked" },
     { id: "podgorica", state: "available" },
   ],
-  chapters: [],
+  // Budva's chapters done; Podgorica's in every state a chapter can be in.
+  chapters: [
+    apiChapterState("budva-beach", "done", "completed", "completed"),
+    apiChapterState("budva-summer-clothes", "done", "completed", "completed"),
+    apiChapterState("podgorica-home", "done", "completed", "available"),
+    apiChapterState("podgorica-vegetables", "done", "available", "available"),
+    apiChapterState("podgorica-kitchen", "todo", "locked", "locked"),
+    apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
+  ],
 };
 
 /**

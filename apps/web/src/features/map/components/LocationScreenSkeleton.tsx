@@ -5,6 +5,8 @@ import { SkeletonTextLine } from "@/components/ui/SkeletonTextLine";
 
 // A chapter has 10 words.
 const WORD_COUNT = 10;
+// A chapter's lesson and its two games (ADR 0006).
+const CHAPTER_PILL_COUNT = 3;
 
 /**
  * Stands in for LocationScreen while a place loads: the heading and the line
@@ -22,17 +24,22 @@ export function LocationScreenSkeleton() {
           <SkeletonTextLine className="w-56 text-lg" />
         </div>
       </div>
-      {/* GamesArea: its heading, then the icon beside one line of text. Its
-          box and the icon's block are not SkeletonTextLines, so it hides
-          itself. */}
+      {/* GamesArea: its heading, then one chapter's row: its title and its
+          three pills (the lesson and two games). Its box and the pills are
+          not SkeletonTextLines, so it hides itself. */}
       <div
         aria-hidden="true"
-        className="flex animate-pulse flex-col gap-2 rounded-tile bg-surface-muted p-4"
+        className="flex animate-pulse flex-col gap-3 rounded-tile bg-surface-muted p-4"
       >
         <SkeletonTextLine className="w-24 text-xl" />
-        <div className="flex items-center gap-3">
-          <div className="size-8 shrink-0 rounded-full bg-surface-sunken" />
-          <SkeletonTextLine className="w-72 text-lg" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <SkeletonTextLine className="w-32 text-lg" />
+          {Array.from({ length: CHAPTER_PILL_COUNT }, (_, index) => (
+            <div
+              key={index}
+              className="h-8 w-44 rounded-badge bg-surface-sunken"
+            />
+          ))}
         </div>
       </div>
       {/* WordGroup: the chapter's title, then its words. */}

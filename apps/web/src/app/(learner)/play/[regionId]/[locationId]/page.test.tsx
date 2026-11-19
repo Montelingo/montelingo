@@ -85,6 +85,34 @@ describe("LocationPage", () => {
     expect(navigation.notFound).not.toHaveBeenCalled();
   });
 
+  it("shows each chapter's lesson and games in the states GET /progress sent", async () => {
+    await renderPage("central", "podgorica");
+
+    const pills = (title: string) =>
+      within(screen.getByRole("list", { name: `${title} lesson and games` }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent);
+    expect(pills("Kod kuće")).toEqual([
+      "Lesson, Done",
+      "Memory, Completed",
+      "Match, Ready to play",
+    ]);
+    expect(pills("Povrće i ručak")).toEqual([
+      "Lesson, Done",
+      "Memory, Ready to play",
+      "Match, Ready to play",
+    ]);
+    expect(pills("U kuhinji")).toEqual([
+      "Lesson, Start here",
+      "Memory, First watch the lesson",
+      "Match, First watch the lesson",
+    ]);
+    expect(
+      screen.queryByText("This chapter's lesson and games did not load."),
+    ).not.toBeInTheDocument();
+    expect(navigation.notFound).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["an unknown place", "central", "atlantis"],
     ["an unknown region", "atlantis", "podgorica"],
