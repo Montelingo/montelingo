@@ -434,3 +434,158 @@ async def test_two_accounts_only_see_their_own_chapters(
         {"id": "budva-beach", "lesson": "todo", "games": LOCKED_GAMES},
         {"id": "budva-old-town", "lesson": "todo", "games": LOCKED_GAMES},
     ]
+
+
+# Issue #125: POST lesson seen
+
+
+async def test_complete_lesson_records_completion_and_starts_location(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach, _ = await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    await sign_in(integration_client, user)
+
+    response = await integration_client.post(
+        "/api/v1/chapters/budva-beach/lesson", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "id": "budva-beach",
+        "lesson": "done",
+        "games": [
+            {"id": "memory", "state": "available"},
+            {"id": "match", "state": "available"},
+        ],
+    }
+    row = await db_session.get(ChapterProgress, (profile.id, beach.id))
+    assert row is not None and row.lesson_completed_at is not None
+    place = await db_session.get(LocationProgress, (profile.id, budva.id))
+    assert place is not None and place.started_at is not None
+
+    progress = await integration_client.get("/api/v1/progress")
+    assert progress.status_code == 200
+    assert states(progress.json(), "locations")["budva"] == "in-progress"
+
+
+async def test_complete_lesson_is_idempotent_and_keeps_first_timestamp(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach, _ = await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    await sign_in(integration_client, user)
+    path = "/api/v1/chapters/budva-beach/lesson"
+
+    first = await integration_client.post(path, headers={"Origin": ORIGIN})
+    assert first.status_code == 200, first.text
+    first_chapter = await db_session.get(ChapterProgress, (profile.id, beach.id))
+    first_location = await db_session.get(LocationProgress, (profile.id, budva.id))
+    assert first_chapter is not None and first_location is not None
+    completed_at = first_chapter.lesson_completed_at
+    started_at = first_location.started_at
+
+    second = await integration_client.post(path, headers={"Origin": ORIGIN})
+    assert second.status_code == 200, second.text
+    assert second.json() == first.json()
+    db_session.expire_all()
+    await db_session.refresh(profile)
+    await db_session.refresh(beach)
+    await db_session.refresh(budva)
+    chapter = await db_session.get(ChapterProgress, (profile.id, beach.id))
+    location = await db_session.get(LocationProgress, (profile.id, budva.id))
+    assert chapter is not None and chapter.lesson_completed_at == completed_at
+    assert location is not None and location.started_at == started_at
+
+
+async def test_complete_lesson_does_not_reset_existing_location_start(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    initial_start = datetime(2026, 1, 1, tzinfo=UTC)
+    db_session.add(
+        LocationProgress(
+            learning_profile_id=profile.id, location_id=budva.id, started_at=initial_start
+        )
+    )
+    await db_session.flush()
+    await sign_in(integration_client, user)
+
+    response = await integration_client.post(
+        "/api/v1/chapters/budva-beach/lesson", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 200, response.text
+    db_session.expire_all()
+    await db_session.refresh(profile)
+    await db_session.refresh(budva)
+    place = await db_session.get(LocationProgress, (profile.id, budva.id))
+    assert place is not None and place.started_at == initial_start
+
+
+async def test_complete_lesson_unknown_chapter_returns_404(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    user, _ = await create_user(db_session)
+    await sign_in(integration_client, user)
+    response = await integration_client.post(
+        "/api/v1/chapters/not-a-chapter/lesson", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "content_not_found"
+
+
+async def test_complete_lesson_locked_place_returns_409_without_writes(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    await sign_in(integration_client, user)
+    response = await integration_client.post(
+        "/api/v1/chapters/kotor-walls/lesson", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conflict"
+    assert await db_session.get(LocationProgress, (profile.id, kotor.id)) is None
+
+
+async def test_complete_lesson_without_session_returns_401(integration_client: AsyncClient) -> None:
+    response = await integration_client.post(
+        "/api/v1/chapters/budva-beach/lesson", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "authentication_error"
+
+
+async def test_complete_lesson_isolated_between_two_accounts(
+    integration_app: FastAPI, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    await seed_chapters(db_session, budva, kotor)
+    first_user, _ = await create_user(db_session)
+    second_user, _ = await create_user(db_session)
+
+    async with (
+        AsyncClient(transport=ASGITransport(app=integration_app), base_url="http://test") as first,
+        AsyncClient(transport=ASGITransport(app=integration_app), base_url="http://test") as second,
+    ):
+        await sign_in(first, first_user)
+        await sign_in(second, second_user)
+        completed = await first.post(
+            "/api/v1/chapters/budva-beach/lesson", headers={"Origin": ORIGIN}
+        )
+        first_state = await first.get("/api/v1/progress")
+        second_state = await second.get("/api/v1/progress")
+
+    assert completed.status_code == 200, completed.text
+    assert first_state.status_code == 200
+    assert second_state.status_code == 200
+    assert first_state.json()["chapters"][0]["lesson"] == "done"
+    assert second_state.json()["chapters"][0]["lesson"] == "todo"
+    assert states(first_state.json(), "locations")["budva"] == "in-progress"
+    assert states(second_state.json(), "locations")["budva"] == "available"

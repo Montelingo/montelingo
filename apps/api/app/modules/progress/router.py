@@ -16,7 +16,7 @@ from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
 from .schemas import ChapterState, Profile, ProfileUpdate, ProgressState
-from .service import ChildProfileService, DatabaseProgressService
+from .service import ChildProfileService, DatabaseProgressService, LessonProgressService
 
 # The module owns three top-level resources, /progress, /chapters and /profile,
 # so its routes carry their paths and tags.
@@ -28,6 +28,15 @@ def get_progress_service(
 ) -> DatabaseProgressService:
     repository = SqlAlchemyProgressRepository(session)
     return DatabaseProgressService(repository)
+
+
+def get_lesson_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> LessonProgressService:
+    return LessonProgressService(
+        repository=SqlAlchemyProgressRepository(session),
+        transaction_manager=SessionTransactionManager(session),
+    )
 
 
 def get_child_profile_service(
@@ -62,7 +71,7 @@ _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
 
 
 def _not_implemented() -> Never:
-    # The contract is frozen in ADR 0006; #125 and #126 replace these stubs.
+    # The game-result route is implemented separately in #126.
     raise ApiError(
         ErrorCode.NOT_IMPLEMENTED,
         "Recording chapter progress is not implemented.",
@@ -78,8 +87,12 @@ def _not_implemented() -> Never:
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
-async def complete_lesson(chapter_id: Slug) -> ChapterState:
-    _not_implemented()
+async def complete_lesson(
+    chapter_id: Slug,
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+    service: LessonProgressService = Depends(get_lesson_service),
+) -> ChapterState:
+    return await service.complete_lesson(learning_profile.id, chapter_id)
 
 
 @router.post(

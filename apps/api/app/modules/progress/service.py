@@ -11,6 +11,7 @@ from .domain import ChapterState as ChapterStateRecord
 from .domain import (
     ChildProfile,
     InvalidChildProfile,
+    calculate_chapter_state,
     calculate_chapter_states,
     calculate_map_states,
 )
@@ -45,6 +46,41 @@ class DatabaseProgressService:
                 LocationState(id=slug, state=state) for slug, state in states.locations.items()
             ],
             chapters=[_chapter_state(chapter) for chapter in chapter_states],
+        )
+
+
+class LessonProgressService:
+    """Record lesson completion once, scoped to the authenticated learner."""
+
+    def __init__(
+        self, repository: ProgressRepository, transaction_manager: TransactionManager
+    ) -> None:
+        self.repository = repository
+        self.transaction_manager = transaction_manager
+
+    async def complete_lesson(self, learning_profile_id: UUID, chapter_slug: str) -> ChapterState:
+        content, location_progress = await self.repository.read_map(learning_profile_id)
+        chapters = await self.repository.read_chapters(learning_profile_id)
+        chapter = next((item for item in chapters if item.chapter_slug == chapter_slug), None)
+        if chapter is None:
+            raise ApiError(ErrorCode.CONTENT_NOT_FOUND, "Chapter not found.", status_code=404)
+
+        location_states = calculate_map_states(content, location_progress).locations
+        if location_states.get(chapter.location_slug, "locked") == "locked":
+            raise ApiError(ErrorCode.CONFLICT, "Chapter is in a locked location.", status_code=409)
+
+        async with self.transaction_manager.transaction():
+            await self.repository.record_lesson(
+                learning_profile_id, chapter_slug, chapter.location_slug
+            )
+
+        # Re-read after commit so concurrent/repeated requests return persisted state.
+        updated = await self.repository.read_chapters(learning_profile_id)
+        recorded = next(item for item in updated if item.chapter_slug == chapter_slug)
+        return _chapter_state(
+            calculate_chapter_state(
+                recorded.chapter_slug, recorded.lesson_completed_at, recorded.completed_games
+            )
         )
 
 
