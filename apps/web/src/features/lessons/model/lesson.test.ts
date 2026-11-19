@@ -5,6 +5,7 @@ import {
   cardPositionLabel,
   INITIAL_LESSON,
   isFirstCard,
+  isLastCard,
   type LessonAction,
   lessonReducer,
   type LessonState,
@@ -33,7 +34,6 @@ describe("lessonReducer", () => {
       mode: "pictures",
       index: 0,
       finished: false,
-      watchedToEnd: false,
     });
   });
 
@@ -54,7 +54,6 @@ describe("lessonReducer", () => {
       mode: "pictures",
       index: 2,
       finished: true,
-      watchedToEnd: true,
     });
   });
 
@@ -67,7 +66,6 @@ describe("lessonReducer", () => {
       mode: "words",
       index: 0,
       finished: false,
-      watchedToEnd: true,
     });
   });
 
@@ -121,10 +119,17 @@ describe("lessonReducer", () => {
   });
 });
 
-describe("cardIndex and isFirstCard", () => {
+describe("cardIndex, isFirstCard and isLastCard", () => {
   it("know the lesson's first card", () => {
     expect(isFirstCard(INITIAL_LESSON, 2)).toBe(true);
     expect(isFirstCard(lessonReducer(INITIAL_LESSON, NEXT, 2), 2)).toBe(false);
+  });
+
+  it("know the lesson's last card, even when the words have become fewer", () => {
+    expect(isLastCard(INITIAL_LESSON, 2)).toBe(false);
+    expect(isLastCard(lessonReducer(INITIAL_LESSON, NEXT, 2), 2)).toBe(true);
+    expect(isLastCard({ ...INITIAL_LESSON, index: 9 }, 8)).toBe(true);
+    expect(isLastCard(INITIAL_LESSON, 1)).toBe(true);
   });
 
   it("keep the card within the words there are", () => {

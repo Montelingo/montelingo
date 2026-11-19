@@ -17,19 +17,22 @@ import {
   useState,
 } from "react";
 import { preload } from "react-dom";
-import { useSwipeable } from "react-swipeable";
 
 import { BIG_BUTTON, FOCUS_RING } from "@/components/ui/kid-styles";
 import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import { useSettled } from "@/lib/use-settled";
 
+import { useCardSwipe } from "../hooks/use-card-swipe";
+import { useLessonKeys } from "../hooks/use-lesson-keys";
 import {
   cardIndex,
   cardPositionLabel,
   INITIAL_LESSON,
   isFirstCard,
+  isLastCard,
   type LessonAction,
   LESSON_MODES,
   type LessonMode,
@@ -60,18 +63,10 @@ const MODE_LABELS: Record<LessonMode, string> = {
   words: "Riječi",
 };
 
-const KEY_ACTIONS: Partial<Record<string, LessonAction>> = {
-  ArrowRight: { type: "next" },
-  ArrowLeft: { type: "back" },
-};
-
-// A swipe must travel this far (CSS px) to turn the card; less is a tap.
-const SWIPE_DISTANCE = 40;
-
 /**
- * How long a screen ignores presses after it appears. A child tapping quickly
- * through the cards would otherwise press a "Bravo!" button with the tap after
- * the last card, and a held Enter on "Pogledaj ponovo" would repeat on Next.
+ * How long the "Bravo!" buttons ignore presses after the screen appears. A
+ * child tapping quickly through the cards would otherwise press one with the
+ * tap after the last card.
  */
 export const SETTLE_DELAY_MS = 600;
 
@@ -91,7 +86,9 @@ export function LessonCards({
     INITIAL_LESSON,
   );
   const { finished } = state;
-  const reachedLastCard = finished || cardIndex(state, count) === count - 1;
+  const reachedLastCard = finished || isLastCard(state, count);
+  // After "Pogledaj ponovo", the cards mount with the focus on Next.
+  const [restarted, setRestarted] = useState(false);
 
   // The lesson is reported once per visit, however often it is watched again.
   const reported = useRef(false);
@@ -115,10 +112,18 @@ export function LessonCards({
       {finished ? (
         <FinishScreen
           placeHref={placeHref}
-          onRestart={() => dispatch({ type: "restart" })}
+          onRestart={() => {
+            setRestarted(true);
+            dispatch({ type: "restart" });
+          }}
         />
       ) : (
-        <LessonScreen words={words} state={state} dispatch={dispatch} />
+        <LessonScreen
+          words={words}
+          state={state}
+          dispatch={dispatch}
+          focusNextOnMount={restarted}
+        />
       )}
     </div>
   );
@@ -128,6 +133,11 @@ type LessonScreenProps = {
   words: readonly LessonWord[];
   state: LessonState;
   dispatch: Dispatch<LessonAction>;
+  /**
+   * Gives Next the focus on mount: after "Pogledaj ponovo", the focus was on a
+   * button that is gone.
+   */
+  focusNextOnMount: boolean;
 };
 
 // The cards themselves. A switch starts again from the first card (the second
@@ -135,77 +145,27 @@ type LessonScreenProps = {
 // its word. A row of dots shows the card; Next on the last card ends the
 // lesson. Mounted only while a card is on screen, so its swipe, arrow keys and
 // preloading stop on the "Bravo!" screen.
-function LessonScreen({ words, state, dispatch }: LessonScreenProps) {
+function LessonScreen({
+  words,
+  state,
+  dispatch,
+  focusNextOnMount,
+}: LessonScreenProps) {
   const count = words.length;
   const index = cardIndex(state, count);
   const word = words[index];
   const next = () => dispatch({ type: "next" });
   const back = () => dispatch({ type: "back" });
+  const swipe = useCardSwipe(next, back);
+  useLessonKeys(dispatch);
 
-  // After "Watch again" the focus was on a button that is gone: give it to
-  // Next. Only on mount, as the cards mount again after "Watch again".
   const nextButtonRef = useRef<HTMLButtonElement>(null);
-  const [focusNextOnMount] = useState(state.watchedToEnd);
+  // `focusNextOnMount` never changes while the cards are on screen.
   useEffect(() => {
     if (focusNextOnMount) {
       nextButtonRef.current?.focus();
     }
   }, [focusNextOnMount]);
-  // There, Next waits a moment, so a held Enter does not skip cards.
-  const settled = useSettled(SETTLE_DELAY_MS);
-  const pressNext = () => {
-    if (!focusNextOnMount || settled()) {
-      next();
-    }
-  };
-
-  // A swipe (with a finger, or a mouse drag) ends with a click on the card
-  // when the mouse is let go: that click is the swipe's, not a tap for Next.
-  const swiped = useRef(false);
-  const swipe = useSwipeable({
-    onTouchStartOrOnMouseDown: () => {
-      swiped.current = false;
-    },
-    onSwiped: () => {
-      swiped.current = true;
-    },
-    onSwipedLeft: next,
-    onSwipedRight: back,
-    delta: SWIPE_DISTANCE,
-    trackMouse: true,
-  });
-  const handleCardClick = () => {
-    if (swiped.current) {
-      swiped.current = false;
-      return;
-    }
-    next();
-  };
-
-  // The arrow keys turn the card wherever the focus is: the lesson is the
-  // whole screen, and nothing on it takes arrow keys.
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (
-        event.defaultPrevented ||
-        event.repeat ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        isEditable(event.target)
-      ) {
-        return;
-      }
-      const action = KEY_ACTIONS[event.key];
-      if (action !== undefined) {
-        event.preventDefault();
-        dispatch(action);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch]);
 
   // Fetch the next picture while this one is on screen, so it is there at once.
   const upcoming = words[index + 1];
@@ -243,8 +203,8 @@ function LessonScreen({ words, state, dispatch }: LessonScreenProps) {
 
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a tap on the card is a pointer-only Next; on the keyboard, Next is the button and the right arrow key */}
       <div
-        {...swipe}
-        onClick={handleCardClick}
+        {...swipe.handlers}
+        onClick={swipe.onClick}
         className="relative min-h-0 flex-1 cursor-pointer touch-pan-y select-none overflow-hidden rounded-kid-lg border-3 border-kid-line bg-white shadow-raised-line-4"
       >
         <div className="absolute inset-0 flex">
@@ -277,12 +237,7 @@ function LessonScreen({ words, state, dispatch }: LessonScreenProps) {
           </p>
         </div>
         {/* On the last card, Next ends the lesson. */}
-        <NavButton
-          ref={nextButtonRef}
-          label="Dalje"
-          onPress={pressNext}
-          primary
-        >
+        <NavButton ref={nextButtonRef} label="Dalje" onPress={next} primary>
           <ArrowRightIcon aria-hidden="true" className="size-9" />
         </NavButton>
       </div>
@@ -429,6 +384,7 @@ type NavButtonProps = {
 
 // Next and Back: big round buttons. Back stays focusable on the first card
 // (aria-disabled), so the keyboard focus is not lost when it stops working.
+// A held Enter presses once: its repeats would otherwise run through the cards.
 function NavButton({
   ref,
   label,
@@ -444,6 +400,11 @@ function NavButton({
       aria-label={label}
       aria-disabled={disabled}
       onClick={disabled ? undefined : onPress}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.repeat) {
+          event.preventDefault();
+        }
+      }}
       className={cn(
         "inline-flex size-touch-xl items-center justify-center rounded-full border-3 border-kid-ink shadow-raised-4",
         primary ? "bg-kid-yellow" : "bg-white",
@@ -453,28 +414,5 @@ function NavButton({
     >
       {children}
     </button>
-  );
-}
-
-/**
- * Returns a check that is true once `delayMs` have passed since the component
- * mounted. Read it in event handlers, not while rendering.
- */
-function useSettled(delayMs: number): () => boolean {
-  const mountedAt = useRef<number | null>(null);
-  useEffect(() => {
-    mountedAt.current = Date.now();
-  }, []);
-  return () =>
-    mountedAt.current !== null && Date.now() - mountedAt.current >= delayMs;
-}
-
-function isEditable(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable ||
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement)
   );
 }

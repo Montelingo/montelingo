@@ -238,7 +238,7 @@ describe("LessonCards", () => {
     await user.click(modeButton("Riječi"));
 
     expect(currentDot()).toBe(2);
-    expect(dots()[0]?.className).toBe(dots()[2]?.className);
+    expect(dots()[0]).toHaveAttribute("data-current", "false");
   });
 
   it("tells the grown-up to read each word aloud", () => {
@@ -334,21 +334,54 @@ describe("LessonCards", () => {
     expect(picture("majica")).toBeInTheDocument();
   });
 
+  it("turns one card on a held Enter on Next, however long it is held", async () => {
+    const { user } = renderLesson();
+    nextButton().focus();
+
+    // Held: one press, then the key's repeats.
+    await user.keyboard("{Enter>5/}");
+    expect(screen.getByRole("status")).toHaveTextContent(/ 2 od 10$/);
+
+    settle();
+    settle();
+    await user.keyboard("{Enter>5/}");
+    expect(screen.getByRole("status")).toHaveTextContent(/ 3 od 10$/);
+  });
+
   it("does not let a held Enter on Watch again skip cards", async () => {
     const { user } = renderLesson();
 
     await finishLesson(user);
     watchAgainButton().focus();
-    await user.keyboard("{Enter}");
+    // The key's repeats land on Next, which now has the focus.
+    await user.keyboard("{Enter>5/}");
+
     expect(nextButton()).toHaveFocus();
-
-    // The key's repeats now land on Next, which waits a moment.
-    await user.keyboard("{Enter}{Enter}");
     expect(screen.getByRole("status")).toHaveTextContent(/ 1 od 10$/);
+  });
 
-    settle();
-    await user.keyboard("{Enter}");
-    expect(screen.getByRole("status")).toHaveTextContent(/ 2 od 10$/);
+  it("does not call onFinished again on a switch after the last card was reached", async () => {
+    const { user, onFinished } = renderLesson();
+
+    await goToCard(user, 10);
+    await user.click(modeButton("Riječi"));
+    await goToCard(user, 10);
+
+    expect(screen.getByText("marama")).toBeInTheDocument();
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onFinished again on a new visit, as recording a lesson twice is harmless", async () => {
+    const { user, onFinished, unmount } = renderLesson();
+    await goToCard(user, 10);
+    unmount();
+
+    // ADR 0006: recording is idempotent, so each visit reports.
+    const again = renderLesson();
+    await goToCard(again.user, 10);
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+    expect(again.onFinished).toHaveBeenCalledTimes(1);
   });
 
   it("calls onFinished on reaching the last card in Riječi too", async () => {

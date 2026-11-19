@@ -22,8 +22,6 @@ export type LessonState = {
   index: number;
   /** Past the last card: the "Bravo!" screen is showing. */
   finished: boolean;
-  /** The lesson has reached "Bravo!" at least once (it stays true on "Watch again"). */
-  watchedToEnd: boolean;
 };
 
 export type LessonAction =
@@ -37,7 +35,6 @@ export const INITIAL_LESSON: LessonState = {
   mode: "pictures",
   index: 0,
   finished: false,
-  watchedToEnd: false,
 };
 
 export function lessonReducer(
@@ -53,8 +50,8 @@ export function lessonReducer(
   switch (action.type) {
     case "next":
       // Next on the last card ends the lesson.
-      return index === count - 1
-        ? { ...state, index, finished: true, watchedToEnd: true }
+      return isLastCard(state, count)
+        ? { ...state, index, finished: true }
         : { ...state, index: index + 1 };
     case "back":
       return index === 0 ? state : { ...state, index: index - 1 };
@@ -82,6 +79,10 @@ export function cardIndex(state: LessonState, count: number): number {
 
 export function isFirstCard(state: LessonState, count: number): boolean {
   return cardIndex(state, count) === 0;
+}
+
+export function isLastCard(state: LessonState, count: number): boolean {
+  return cardIndex(state, count) === count - 1;
 }
 
 /** The card's place in the lesson, as screen readers hear it: "3 od 10". */
