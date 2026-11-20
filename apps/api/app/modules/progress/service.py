@@ -7,18 +7,22 @@ from uuid import UUID
 from app.core.errors import ApiError, ErrorCode
 from app.db.transaction import TransactionManager
 
-from .domain import ChapterState as ChapterStateRecord
 from .domain import (
+    ChapterProgressRecord,
     ChildProfile,
     InvalidChildProfile,
+    calculate_chapter_state,
     calculate_chapter_states,
     calculate_map_states,
 )
+from .domain import ChapterState as ChapterStateRecord
 from .repository import ChildProfileRepository, ProgressRepository
 from .schemas import (
+    GAME_IDS,
     AgeBand,
     Avatar,
     ChapterState,
+    GameId,
     GameState,
     LocationState,
     Profile,
@@ -46,6 +50,84 @@ class DatabaseProgressService:
             ],
             chapters=[_chapter_state(chapter) for chapter in chapter_states],
         )
+
+
+class GameProgressService:
+    """Record a finished game once, for the current account's learning profile."""
+
+    def __init__(
+        self,
+        repository: ProgressRepository,
+        transaction_manager: TransactionManager,
+    ) -> None:
+        self.repository = repository
+        self.transaction_manager = transaction_manager
+
+    async def complete_game(
+        self,
+        learning_profile_id: UUID,
+        chapter_slug: str,
+        game_slug: str,
+    ) -> ChapterState:
+        content, location_progress = await self.repository.read_map(learning_profile_id)
+        chapters = await self.repository.read_chapters(learning_profile_id)
+        chapter = _find_chapter(chapters, chapter_slug)
+        game = _find_game(game_slug)
+
+        location_states = calculate_map_states(content, location_progress).locations
+        if location_states.get(chapter.location_slug, "locked") == "locked":
+            raise ApiError(
+                ErrorCode.CHAPTER_LOCKED,
+                "The chapter's place is locked.",
+                status_code=409,
+            )
+
+        state = _calculate(chapter)
+        game_state = next(item.state for item in state.games if item.id == game)
+        if game_state == "locked":
+            raise ApiError(
+                ErrorCode.GAME_LOCKED,
+                "The game is locked until the lesson is seen.",
+                status_code=409,
+            )
+        if game_state == "completed":
+            # Recorded once (ADR 0006): a replay answers 200 and changes nothing.
+            return _chapter_state(state)
+
+        async with self.transaction_manager.transaction():
+            await self.repository.record_game(learning_profile_id, chapter_slug, game)
+
+        # Read back what was stored, so a concurrent call answers the same state.
+        recorded = _find_chapter(
+            await self.repository.read_chapters(learning_profile_id), chapter_slug
+        )
+        return _chapter_state(_calculate(recorded))
+
+
+def _find_chapter(
+    chapters: list[ChapterProgressRecord], chapter_slug: str
+) -> ChapterProgressRecord:
+    chapter = next((item for item in chapters if item.chapter_slug == chapter_slug), None)
+    if chapter is None:
+        raise ApiError(ErrorCode.CONTENT_NOT_FOUND, "Chapter not found.", status_code=404)
+    return chapter
+
+
+def _find_game(game_slug: str) -> GameId:
+    # Game ids are a fixed set in code, not content, but an unknown one is a 404
+    # like an unknown chapter (ADR 0006).
+    game = next((game_id for game_id in GAME_IDS if game_id == game_slug), None)
+    if game is None:
+        raise ApiError(ErrorCode.CONTENT_NOT_FOUND, "Game not found.", status_code=404)
+    return game
+
+
+def _calculate(chapter: ChapterProgressRecord) -> ChapterStateRecord:
+    return calculate_chapter_state(
+        chapter.chapter_slug,
+        chapter.lesson_completed_at,
+        chapter.completed_games,
+    )
 
 
 def _chapter_state(chapter: ChapterStateRecord) -> ChapterState:
