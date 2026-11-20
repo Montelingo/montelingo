@@ -9,7 +9,8 @@ import { getProfile } from "@/features/profile/server";
 import { redirectOnSignedOut } from "../errors";
 import type { Region } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
-import { locationPath, regionPath } from "../model/paths";
+import { locationPath, PRIZES_PATH, regionPath } from "../model/paths";
+import { type PrizesData, toPrizesData } from "../model/prizes";
 import {
   closedLocationRedirect,
   type LocationScreenData,
@@ -66,6 +67,23 @@ async function mapOf(
     progress,
     profile === null ? null : toExplorer(profile),
   );
+}
+
+/**
+ * The Prizes screen: every region, a locked one with its sticker count, an
+ * open one with a sticker per place. Redirects to sign in when the session
+ * has ended; a progress failure still renders, with nothing earned.
+ */
+export async function loadPrizes(): Promise<PrizesData> {
+  const [regions, progress] = await signedIn(PRIZES_PATH, [
+    listRegions(),
+    getProgress(),
+  ]);
+  const details = await signedIn(
+    PRIZES_PATH,
+    regions.map(({ id }) => getRegion(id)),
+  );
+  return toPrizesData(regions, details, progress);
 }
 
 /**

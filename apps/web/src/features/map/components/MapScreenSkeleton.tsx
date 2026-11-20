@@ -25,7 +25,7 @@ export function MapScreenSkeleton() {
             <div className="size-touch-lg rounded-full bg-white/70" />
             <div className="h-touch-lg w-44 rounded-kid-md bg-white/70" />
           </div>
-          <div className="absolute inset-x-0 bottom-0 h-24 rounded-t-kid-lg bg-white/70 lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-[32.5rem] lg:-translate-x-1/2 lg:rounded-kid-lg" />
+          <div className="absolute inset-x-0 bottom-0 h-24 rounded-t-kid-lg bg-white/70 lg:inset-x-auto lg:bottom-5 lg:left-1/2 lg:w-bottom-nav lg:-translate-x-1/2 lg:rounded-kid-lg" />
         </div>
       </SkeletonScreen>
     </div>

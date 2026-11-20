@@ -156,6 +156,10 @@ const config: Config = {
         // The map chrome's big play button.
         "touch-xl": "4.5rem",
       },
+      width: {
+        // The bottom nav, floating from 1024px wide.
+        "bottom-nav": "32.5rem",
+      },
       // Tailwind 3.4 derives these from `spacing` too; listed so the touch
       // sizes do not depend on that.
       size: touchSizes,
@@ -171,6 +175,8 @@ const config: Config = {
       },
       maxWidth: {
         learner: "72rem",
+        // The Prizes screen's centred column.
+        prizes: "44rem",
       },
       borderRadius: {
         tile: "1.25rem",
