@@ -302,3 +302,82 @@ async def test_one_account_lesson_does_not_unlock_another_accounts_games(
         "games": LOCKED_GAMES,
     }
     assert await game_results(db_session, second_profile) == []
+
+
+async def location_progress(
+    session: AsyncSession, profile: LearningProfile, location: Location
+) -> LocationProgress:
+    row = await session.scalar(
+        select(LocationProgress).where(
+            LocationProgress.learning_profile_id == profile.id,
+            LocationProgress.location_id == location.id,
+        )
+    )
+    assert row is not None
+    await session.refresh(row)
+    return row
+
+
+async def test_the_last_game_of_a_place_completes_it_and_opens_the_next(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach, old_town = await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    await see_lesson(db_session, profile, beach, budva)
+    await see_lesson(db_session, profile, old_town)
+    await sign_in(integration_client, user)
+
+    await record(integration_client, BEACH_MEMORY)
+    await record(integration_client, BEACH_MATCH)
+    await record(integration_client, "/api/v1/chapters/budva-old-town/games/memory/result")
+
+    # Part of a place: Budva is still in progress and Kotor stays locked.
+    partway = (await integration_client.get("/api/v1/progress")).json()
+    assert states(partway, "locations")["budva"] == "in-progress"
+    assert states(partway, "locations")["kotor"] == "locked"
+    assert (await location_progress(db_session, profile, budva)).completed_at is None
+
+    await record(integration_client, "/api/v1/chapters/budva-old-town/games/match/result")
+
+    assert (await location_progress(db_session, profile, budva)).completed_at is not None
+    after = (await integration_client.get("/api/v1/progress")).json()
+    assert states(after, "locations") == {
+        "budva": "completed",
+        "kotor": "available",
+        "kolasin": "locked",
+    }
+    assert [chapter["id"] for chapter in after["chapters"]] == [
+        "budva-beach",
+        "budva-old-town",
+        "kotor-walls",
+    ]
+    # Kotor is open: its game waits for its lesson, not for the place.
+    response = await integration_client.post(
+        "/api/v1/chapters/kotor-walls/games/memory/result", headers={"Origin": ORIGIN}
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "game_locked"
+
+
+async def test_replaying_a_completed_place_keeps_its_completion(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach, old_town = await seed_chapters(db_session, budva, kotor)
+    user, profile = await create_user(db_session)
+    await see_lesson(db_session, profile, beach, budva)
+    await see_lesson(db_session, profile, old_town)
+    await sign_in(integration_client, user)
+    for path in (
+        BEACH_MEMORY,
+        BEACH_MATCH,
+        "/api/v1/chapters/budva-old-town/games/memory/result",
+        "/api/v1/chapters/budva-old-town/games/match/result",
+    ):
+        await record(integration_client, path)
+    completed_at = (await location_progress(db_session, profile, budva)).completed_at
+
+    await record(integration_client, BEACH_MEMORY)
+
+    assert (await location_progress(db_session, profile, budva)).completed_at == completed_at
