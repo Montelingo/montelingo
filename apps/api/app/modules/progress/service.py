@@ -14,6 +14,7 @@ from .domain import (
     calculate_chapter_state,
     calculate_chapter_states,
     calculate_map_states,
+    is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
 from .repository import ChildProfileRepository, ProgressRepository
@@ -96,12 +97,13 @@ class GameProgressService:
 
         async with self.transaction_manager.transaction():
             await self.repository.record_game(learning_profile_id, chapter_slug, game)
+            # Read back what was stored, so a concurrent call answers the same state.
+            recorded = await self.repository.read_chapters(learning_profile_id)
+            # The place's last game completes it, which opens the next place (#139).
+            if is_location_completed(chapter.location_slug, recorded):
+                await self.repository.complete_location(learning_profile_id, chapter.location_slug)
 
-        # Read back what was stored, so a concurrent call answers the same state.
-        recorded = _find_chapter(
-            await self.repository.read_chapters(learning_profile_id), chapter_slug
-        )
-        return _chapter_state(_calculate(recorded))
+        return _chapter_state(_calculate(_find_chapter(recorded, chapter_slug)))
 
 
 def _find_chapter(
