@@ -191,8 +191,8 @@ def test_profile_bands_and_avatars_are_the_figma_values(app: FastAPI) -> None:
     assert update["properties"]["name"]["maxLength"] == 30
 
 
-# The phase 2 chapter contract, frozen in ADR 0006 (epic #120). The routes answer 501
-# until #125 and #126, but the client is complete. Writes also document 403 for an
+# The phase 2 chapter contract, frozen in ADR 0006 (epic #120). The lesson route answers
+# 501 until #125, but the client is complete. Writes also document 403 for an
 # untrusted Origin, and 422 because their path parameters are slugs.
 CHAPTER_CONTRACT = [
     ("/api/v1/chapters/{chapter_id}/lesson", "progress_complete_lesson", {"chapter_id"}),

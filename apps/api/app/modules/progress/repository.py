@@ -6,6 +6,7 @@ from typing import Protocol, cast
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content import Content, read_map_chapters, read_map_content
@@ -92,6 +93,13 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
     ) -> list[ChapterProgressRecord]: ...
 
+    async def record_game(
+        self,
+        learning_profile_id: UUID,
+        chapter_slug: str,
+        game: GameId,
+    ) -> None: ...
+
 
 class SqlAlchemyProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -156,3 +164,40 @@ class SqlAlchemyProgressRepository:
             )
             for chapter in chapters
         ]
+
+    async def record_game(
+        self,
+        learning_profile_id: UUID,
+        chapter_slug: str,
+        game: GameId,
+    ) -> None:
+        """Record a finished game once, and start its place if it wasn't started.
+
+        `ON CONFLICT DO NOTHING` keeps the first result, so a repeated or a
+        concurrent call changes nothing (ADR 0006). The caller has checked the
+        chapter exists and owns the transaction.
+        """
+
+        chapters = await read_map_chapters(self.session)
+        chapter = next((item for item in chapters if item.slug == chapter_slug), None)
+        if chapter is None:
+            raise LookupError(f"Chapter {chapter_slug!r} is no longer in the content.")
+
+        _, location_slugs = await read_map_content(self.session)
+        location_id = next(
+            (key for key, slug in location_slugs.items() if slug == chapter.location_slug), None
+        )
+        if location_id is None:
+            raise LookupError(f"Place {chapter.location_slug!r} is no longer in the content.")
+
+        # Doing anything in a place starts it (ADR 0006).
+        await self.session.execute(
+            insert(LocationProgress)
+            .values(learning_profile_id=learning_profile_id, location_id=location_id)
+            .on_conflict_do_nothing()
+        )
+        await self.session.execute(
+            insert(GameResult)
+            .values(learning_profile_id=learning_profile_id, chapter_id=chapter.id, game=game)
+            .on_conflict_do_nothing()
+        )
