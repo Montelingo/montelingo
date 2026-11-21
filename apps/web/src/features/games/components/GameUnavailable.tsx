@@ -25,6 +25,24 @@ export type GameUnavailableProps = {
   placeHref: string;
 };
 
+/**
+ * Why a game's page cannot show the game, or `null` when it can. `gameState`
+ * is the game's state as the server sent it (`null` when it sent none), and
+ * `canDeal` whether the chapter's words deal the game.
+ */
+export function gameUnavailableReason(
+  gameState: "locked" | "available" | "completed" | null,
+  canDeal: boolean,
+): GameUnavailableProps["reason"] | null {
+  if (gameState === null) {
+    return "not-loaded";
+  }
+  if (gameState === "locked") {
+    return "locked";
+  }
+  return canDeal ? null : "no-pictures";
+}
+
 const COPY = {
   locked: {
     Icon: LockClosedIcon,

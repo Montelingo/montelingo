@@ -4,10 +4,10 @@
 export {
   GameUnavailable,
   type GameUnavailableProps,
+  gameUnavailableReason,
 } from "./components/GameUnavailable";
-export {
-  MemoryGame,
-  type MemoryGameProps,
-  type MemoryReward,
-} from "./components/MemoryGame";
+export { MatchGame, type MatchGameProps } from "./components/MatchGame";
+export { MemoryGame, type MemoryGameProps } from "./components/MemoryGame";
+export { type GameReward } from "./components/BravoScreen";
+export { canDealMatchGame, type MatchWord } from "./model/match";
 export { canDealMemoryGame, type MemoryWord } from "./model/memory";

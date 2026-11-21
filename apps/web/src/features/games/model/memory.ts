@@ -3,6 +3,8 @@
 // (#132) drives `memoryReducer` with `useReducer` and renders `cardFace`.
 // No timer, no score, no fail state: a miss simply turns back.
 
+import { type Random, shuffle } from "./random";
+
 /** How many pairs a game deals, at most. Tune after testing with children. */
 export const PAIRS = 6;
 
@@ -37,9 +39,6 @@ export type MemoryAction =
   | { type: "flip"; cardId: string }
   /** Turn a miss back over. The board sends it about a second after a miss. */
   | { type: "hide-miss" };
-
-/** A random number in [0, 1), like `Math.random`, injected so tests repeat. */
-export type Random = () => number;
 
 export type CardFace = "down" | "up" | "matched";
 
@@ -156,18 +155,6 @@ function distinctPictureWords(words: readonly MemoryWord[]): PictureWord[] {
     seenWords.add(word.id);
     seenPictures.add(imageUrl);
     result.push({ ...word, imageUrl });
-  }
-  return result;
-}
-
-/** A shuffled copy (Fisher–Yates), drawing from `random`. */
-function shuffle<T>(items: readonly T[], random: Random): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(random() * (i + 1));
-    const item = result[i] as T;
-    result[i] = result[j] as T;
-    result[j] = item;
   }
   return result;
 }

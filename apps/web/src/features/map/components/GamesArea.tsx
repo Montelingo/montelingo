@@ -1,4 +1,4 @@
-import { ClockIcon, StarIcon } from "@heroicons/react/24/solid";
+import { StarIcon } from "@heroicons/react/24/solid";
 import { type ComponentProps, useId } from "react";
 
 import {
@@ -13,7 +13,7 @@ import {
   LOCKED_GAME_MESSAGE,
   type WithChapterState,
 } from "../model/progress";
-import { gamePath, hasScreen, lessonPath } from "../model/paths";
+import { gamePath, lessonPath } from "../model/paths";
 import { ChapterPill } from "./ChapterPill";
 
 /**
@@ -43,14 +43,6 @@ const GAME_PILLS: Record<GameState, PillLook> = {
   locked: { state: "locked", label: LOCKED_GAME_MESSAGE },
   available: { state: "available", label: "Ready to play" },
   completed: { state: "completed", label: "Completed", Icon: StarIcon },
-};
-
-// A game that has no screen yet, whatever its state: nothing to open, so it
-// never looks open.
-const COMING_SOON_PILL: PillLook = {
-  state: "locked",
-  label: "Coming soon",
-  Icon: ClockIcon,
 };
 
 const LESSON_PILLS: Record<ChapterState["lesson"], PillLook> = {
@@ -131,19 +123,15 @@ function ChapterRow({
         </li>
         {chapterState?.games.map(({ id, state }) => (
           <li key={id}>
-            {hasScreen(id) ? (
-              <ChapterPill
-                title={GAME_NAMES[id]}
-                {...GAME_PILLS[state]}
-                href={
-                  state === "locked"
-                    ? null
-                    : gamePath(regionId, locationId, chapterId, id)
-                }
-              />
-            ) : (
-              <ChapterPill title={GAME_NAMES[id]} {...COMING_SOON_PILL} />
-            )}
+            <ChapterPill
+              title={GAME_NAMES[id]}
+              {...GAME_PILLS[state]}
+              href={
+                state === "locked"
+                  ? null
+                  : gamePath(regionId, locationId, chapterId, id)
+              }
+            />
           </li>
         ))}
       </ul>

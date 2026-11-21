@@ -30,14 +30,7 @@ export {
   type MapRegionLink,
 } from "./model/map-state";
 export { parseMapNotice } from "./model/notices";
-export {
-  gamePath,
-  type GameWithAScreen,
-  hasScreen,
-  lessonPath,
-  locationPath,
-  regionPath,
-} from "./model/paths";
+export { gamePath, lessonPath, locationPath, regionPath } from "./model/paths";
 export {
   joinProgress,
   pickNextPlace,

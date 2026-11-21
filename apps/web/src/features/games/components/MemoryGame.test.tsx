@@ -10,8 +10,6 @@ import {
   type MemoryGameProps,
   MISS_DELAY_MS,
   SETTLE_DELAY_MS,
-  starsText,
-  wordsLearnedText,
 } from "./MemoryGame";
 
 // "Na plaži" (Budva, words 1–6): six pictures, so a full board of 12 cards.
@@ -289,20 +287,6 @@ describe("MemoryGame", () => {
     playToBravo();
 
     expect(screen.queryByText("Nova naljepnica")).not.toBeInTheDocument();
-  });
-});
-
-describe("MemoryGame copy", () => {
-  it("counts the words in Montenegrin's forms", () => {
-    expect(wordsLearnedText(1)).toBe("Sad znaš još 1 novu riječ.");
-    expect(wordsLearnedText(3)).toBe("Sad znaš još 3 nove riječi.");
-    expect(wordsLearnedText(6)).toBe("Sad znaš još 6 novih riječi.");
-  });
-
-  it("counts the stars in Montenegrin's forms", () => {
-    expect(starsText(1)).toBe("+1 zvjezdica");
-    expect(starsText(3)).toBe("+3 zvjezdice");
-    expect(starsText(5)).toBe("+5 zvjezdica");
   });
 });
 

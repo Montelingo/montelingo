@@ -48,28 +48,14 @@ export function lessonPath(
 }
 
 /**
- * The games that have a screen, each at app/(learner)/play/[regionId]/
- * [locationId]/[chapterId]/<game>/page.tsx; a test keeps the two in step.
- * `match` gets its screen with its game (#137).
+ * A chapter's game. Each game's screen is at app/(learner)/play/[regionId]/
+ * [locationId]/[chapterId]/<game>/page.tsx; a test checks every game has one.
  */
-export const GAMES_WITH_A_SCREEN = [
-  "memory",
-] as const satisfies readonly GameId[];
-
-/** A game that has a screen, so a path. */
-export type GameWithAScreen = (typeof GAMES_WITH_A_SCREEN)[number];
-
-/** Whether `gameId` has a screen yet. */
-export function hasScreen(gameId: GameId): gameId is GameWithAScreen {
-  return (GAMES_WITH_A_SCREEN as readonly GameId[]).includes(gameId);
-}
-
-/** A chapter's game. */
 export function gamePath(
   regionId: string,
   locationId: string,
   chapterId: string,
-  gameId: GameWithAScreen,
+  gameId: GameId,
 ): string {
   return `${chapterPath(regionId, locationId, chapterId)}/${gameId}`;
 }

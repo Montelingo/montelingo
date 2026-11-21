@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 
-import { GameUnavailable, type GameUnavailableProps } from "./GameUnavailable";
+import {
+  GameUnavailable,
+  type GameUnavailableProps,
+  gameUnavailableReason,
+} from "./GameUnavailable";
 
 const LESSON = "/play/coast/budva/budva-beach/lesson";
 const PLACE = "/play/coast/budva";
@@ -53,4 +57,25 @@ describe("GameUnavailable", () => {
       expect(await axe(container)).toHaveNoViolations();
     },
   );
+});
+
+describe("gameUnavailableReason", () => {
+  it("shows an open game the chapter's words deal", () => {
+    expect(gameUnavailableReason("available", true)).toBeNull();
+    expect(gameUnavailableReason("completed", true)).toBeNull();
+  });
+
+  it("says the game did not load when the server sent no state, whatever the words", () => {
+    expect(gameUnavailableReason(null, true)).toBe("not-loaded");
+    expect(gameUnavailableReason(null, false)).toBe("not-loaded");
+  });
+
+  it("keeps a locked game locked, even when its words would deal it", () => {
+    expect(gameUnavailableReason("locked", true)).toBe("locked");
+  });
+
+  it("says the pictures are coming for an open game the words cannot deal", () => {
+    expect(gameUnavailableReason("available", false)).toBe("no-pictures");
+    expect(gameUnavailableReason("completed", false)).toBe("no-pictures");
+  });
 });
