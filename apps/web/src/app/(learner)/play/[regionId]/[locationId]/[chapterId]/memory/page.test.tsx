@@ -156,6 +156,35 @@ describe("MemoryPage", () => {
     },
   );
 
+  it("renders the not-found page for a game the chapter's state does not list", async () => {
+    // Progress lists only `match` for "Povrće i ručak".
+    const serve = fetchMock.getMockImplementation();
+    if (serve === undefined) {
+      throw new Error("serveApi() set no implementation");
+    }
+    fetchMock.mockImplementation(async (request) => {
+      const response = await serve(request);
+      if (new URL(request.url).pathname !== "/api/v1/progress") {
+        return response;
+      }
+      const body = (await response.json()) as {
+        chapters: { id: string; games: { id: string }[] }[];
+      };
+      return Response.json({
+        ...body,
+        chapters: body.chapters.map((chapter) => ({
+          ...chapter,
+          games: chapter.games.filter(({ id }) => id !== "memory"),
+        })),
+      });
+    });
+
+    await expect(
+      MemoryPage(pageProps("central", "podgorica", "podgorica-vegetables")),
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(navigation.redirect).not.toHaveBeenCalled();
+  });
+
   it("sends a game in a locked place back to the place's region, which says why", async () => {
     await expect(
       MemoryPage(pageProps("coast", "kotor", "kotor-old-town")),

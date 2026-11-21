@@ -33,6 +33,18 @@ describe("BackControl", () => {
     );
   });
 
+  it("skips a depth that has no screen", () => {
+    usePathname.mockReturnValue("/play/coast/budva/budva-beach/lesson");
+    render(
+      <BackControl homeHref="/play" exitHref="/" screenlessDepths={[3]} />,
+    );
+
+    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute(
+      "href",
+      "/play/coast/budva",
+    );
+  });
+
   it("is reached from the keyboard", async () => {
     const user = userEvent.setup();
     renderBack("/play/kotor");

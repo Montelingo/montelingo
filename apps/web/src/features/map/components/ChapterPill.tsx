@@ -27,9 +27,8 @@ type ChapterPillProps = {
 // One of a chapter's lesson and games, as a compact pill in its state's badge
 // colours: the state's icon, the name, then the state's words, so the state
 // never rests on colour alone. One line high, so a place's chapters fit above
-// its first words, and touch-sized, so a pill that opens its lesson or game
-// is easy to tap; one that cannot be opened is the same size, so every row
-// lines up.
+// its first words. A pill that opens its lesson or game is a link; one that
+// cannot be opened is plain text.
 export function ChapterPill({
   title,
   state,
@@ -40,7 +39,7 @@ export function ChapterPill({
   const style = TILE_STATE_STYLES[state];
   const PillIcon = Icon ?? style.Icon;
   const className = cn(
-    "inline-flex min-h-touch items-center gap-1.5 rounded-badge px-3 py-1.5 text-base",
+    "inline-flex items-center gap-1.5 rounded-badge px-3 py-1.5 text-base",
     style.badge,
   );
   const content = (

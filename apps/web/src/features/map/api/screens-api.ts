@@ -10,8 +10,9 @@ import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
 import {
-  chapterPath,
   gamePath,
+  type GameWithAScreen,
+  lessonPath,
   locationPath,
   PRIZES_PATH,
   regionPath,
@@ -29,7 +30,7 @@ import {
   toLocationScreen,
   toRegionScreen,
 } from "../model/screens";
-import type { GameId, ProgressResult } from "../model/progress";
+import type { ProgressResult } from "../model/progress";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
 
@@ -185,19 +186,18 @@ export async function assertLocationOpen(
 }
 
 /**
- * The gate for a chapter's lesson, and for the chapter's own URL, which leads
- * to its place: the place's gate, then `notFound()` for a chapter the place
- * does not have. `returnTo` is the page's own path, where sign in returns.
- * The lesson is never locked (ADR 0006): once its place is open, it is.
+ * A chapter's lesson screen: the place's gate, then `notFound()` for a
+ * chapter the place does not have. The lesson is never locked (ADR 0006):
+ * once its place is open, it is.
  *
  * Call it outside any try/catch: `notFound()` and `redirect()` throw.
  */
-export async function assertChapterOpen(
+export async function loadLessonScreen(
   regionId: string,
   locationId: string,
   chapterId: string,
-  returnTo: string,
 ): Promise<ChapterScreenData> {
+  const returnTo = lessonPath(regionId, locationId, chapterId);
   const [region, location, progress] = await signedIn(returnTo, [
     getRegion(regionId),
     getLocation(locationId),
@@ -209,9 +209,10 @@ export async function assertChapterOpen(
 /**
  * A chapter's game screen: the chapter's gate, the game's state as the server
  * sent it, and the child's name for "Bravo, Mia!" (`null` until the profile
- * is set up, or when it cannot be read). The page shows the game only when its
- * state is `available` or `completed`: a locked game, opened by URL, shows the
- * lock message instead, since only the server opens a game.
+ * is set up, or when it cannot be read). Calls `notFound()` for a game the
+ * chapter's state does not list. The page shows the game only when its state
+ * is `available` or `completed`: a locked game, opened by URL, shows the lock
+ * message instead, since only the server opens a game.
  *
  * Call it outside any try/catch: `notFound()` and `redirect()` throw.
  */
@@ -219,11 +220,9 @@ export async function loadGameScreen(
   regionId: string,
   locationId: string,
   chapterId: string,
-  gameId: GameId,
+  gameId: GameWithAScreen,
 ): Promise<GameScreenData> {
-  const returnTo =
-    gamePath(regionId, locationId, chapterId, gameId) ??
-    chapterPath(regionId, locationId, chapterId);
+  const returnTo = gamePath(regionId, locationId, chapterId, gameId);
   const [region, location, progress, profile] = await signedIn(returnTo, [
     getRegion(regionId),
     getLocation(locationId),
@@ -234,9 +233,13 @@ export async function loadGameScreen(
     openLocationScreen(region, location, progress),
     chapterId,
   );
+  const game = gameStateOf(screen.chapter, gameId);
+  if (game === null) {
+    notFound();
+  }
   return {
     ...screen,
-    gameState: gameStateOf(screen.chapter, gameId),
+    gameState: game.state,
     learnerName: profile?.name ?? null,
   };
 }

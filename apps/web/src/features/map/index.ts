@@ -31,8 +31,9 @@ export {
 } from "./model/map-state";
 export { parseMapNotice } from "./model/notices";
 export {
-  chapterPath,
   gamePath,
+  type GameWithAScreen,
+  hasScreen,
   lessonPath,
   locationPath,
   regionPath,

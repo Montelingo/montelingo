@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import type { GameId } from "./progress";
 import {
-  chapterPath,
   gamePath,
+  hasScreen,
   lessonPath,
   locationPath,
   regionPath,
@@ -28,33 +32,43 @@ describe("locationPath", () => {
   });
 });
 
-describe("chapterPath", () => {
-  it("puts the chapter under its place, each id in one segment", () => {
-    expect(chapterPath("coast", "budva", "budva-beach")).toBe(
-      "/play/coast/budva/budva-beach",
-    );
-    expect(chapterPath("coast", "budva", "a/b")).toBe(
-      "/play/coast/budva/a%2Fb",
-    );
-  });
-});
-
 describe("lessonPath", () => {
-  it("puts the lesson under its chapter", () => {
+  it("puts the lesson under its chapter, under its place", () => {
     expect(lessonPath("coast", "budva", "budva-beach")).toBe(
       "/play/coast/budva/budva-beach/lesson",
+    );
+  });
+
+  it("keeps each id in one path segment", () => {
+    expect(lessonPath("coast", "budva", "a/b")).toBe(
+      "/play/coast/budva/a%2Fb/lesson",
     );
   });
 });
 
 describe("gamePath", () => {
-  it("puts a game with a screen under its chapter", () => {
+  it("puts a game under its chapter", () => {
     expect(gamePath("coast", "budva", "budva-beach", "memory")).toBe(
       "/play/coast/budva/budva-beach/memory",
     );
   });
+});
 
-  it("has no path for a game without a screen yet", () => {
-    expect(gamePath("coast", "budva", "budva-beach", "match")).toBeNull();
-  });
+// Every game id, so a new one fails to compile here until it is listed.
+const EVERY_GAME: Record<GameId, true> = { memory: true, match: true };
+
+const GAME_ROUTES = join(
+  __dirname,
+  "../../../app/(learner)/play/[regionId]/[locationId]/[chapterId]",
+);
+
+describe("hasScreen", () => {
+  it.each(Object.keys(EVERY_GAME) as GameId[])(
+    "says %s has a screen exactly when its route has a page",
+    (gameId) => {
+      expect(hasScreen(gameId)).toBe(
+        existsSync(join(GAME_ROUTES, gameId, "page.tsx")),
+      );
+    },
+  );
 });

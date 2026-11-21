@@ -1,5 +1,6 @@
 import {
   CheckCircleIcon,
+  ClockIcon,
   LockClosedIcon,
   PlayIcon,
   StarIcon,
@@ -112,47 +113,48 @@ describe("GamesArea", () => {
     it("locked: the lock icon and 'first watch the lesson'", () => {
       renderHomeWithGames("locked");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, First watch the lesson`);
-        expect(hasIcon(item, LockClosedIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, First watch the lesson");
+      expect(hasIcon(item, LockClosedIcon)).toBe(true);
     });
 
     it("available: ready to play, with no lock", () => {
       renderHomeWithGames("available");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, Ready to play`);
-        expect(hasIcon(item, PlayIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, Ready to play");
+      expect(hasIcon(item, PlayIcon)).toBe(true);
     });
 
     it("completed: a star", () => {
       renderHomeWithGames("completed");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, Completed`);
-        expect(hasIcon(item, StarIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, Completed");
+      expect(hasIcon(item, StarIcon)).toBe(true);
     });
 
     it("draws each game in its own state, never derived from the lesson", () => {
       // A combination the server would not send today: the area still draws
       // exactly what it was given, rather than deciding a lock itself.
       renderArea([
-        makeChapterState(HOME, {
-          lesson: "todo",
-          memory: "completed",
-          match: "available",
-        }),
+        makeChapterState(HOME, { lesson: "todo", memory: "completed" }),
       ]);
 
       expect(hasIcon(card("Kod kuće", "Memory"), StarIcon)).toBe(true);
-      expect(hasIcon(card("Kod kuće", "Match"), PlayIcon)).toBe(true);
     });
+
+    it.each<GameState>(["locked", "available", "completed"])(
+      "says a game with no screen yet is coming, never open, when it is %s",
+      (state) => {
+        renderHomeWithGames(state);
+
+        const item = card("Kod kuće", "Match");
+        expect(item).toHaveTextContent("Match, Coming soon");
+        expect(hasIcon(item, ClockIcon)).toBe(true);
+        expect(linkOf(item)).toBeNull();
+      },
+    );
 
     it("lists the games in the server's order", () => {
       renderArea([
@@ -192,16 +194,18 @@ describe("GamesArea", () => {
     });
   });
 
-  it("says a chapter progress has no state for did not load, with no card that looks locked or open", () => {
+  it("still opens the lesson of a chapter progress has no state for, and says its games did not load, with nothing that looks locked or open", () => {
     renderArea([makeChapterState(HOME)]);
 
     // Only "Kod kuće" has a state.
-    expect(
-      screen.queryByRole("list", { name: "Povrće i ručak lesson and games" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText("This chapter's lesson and games did not load."),
-    ).toHaveLength(3);
+    const items = cardsOf("Povrće i ručak");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Lesson, Watch");
+    expect(linkOf(items[0] as HTMLElement)).toHaveAttribute(
+      "href",
+      "/play/central/podgorica/podgorica-vegetables/lesson",
+    );
+    expect(screen.getAllByText("Its games did not load.")).toHaveLength(3);
     expect(cardsOf("Kod kuće")).toHaveLength(3);
   });
 
@@ -236,13 +240,6 @@ describe("GamesArea", () => {
         );
       },
     );
-
-    it("does not link a game that has no screen yet, even when open", () => {
-      renderHomeWithGames("available");
-
-      // Match gets its screen with #137.
-      expect(linkOf(card("Kod kuće", "Match"))).toBeNull();
-    });
   });
 
   it.each<GameState>(["locked", "available", "completed"])(

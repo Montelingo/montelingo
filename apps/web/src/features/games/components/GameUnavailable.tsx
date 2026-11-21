@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ACTION_SIZE_STYLES, ACTION_STYLE } from "@/components/ui/action-style";
+import { LOCKED_GAME_MESSAGE } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 
 export type GameUnavailableProps = {
@@ -27,7 +28,7 @@ export type GameUnavailableProps = {
 const COPY = {
   locked: {
     Icon: LockClosedIcon,
-    message: "First watch the lesson. Then you can play.",
+    message: `${LOCKED_GAME_MESSAGE}. Then you can play.`,
     action: "Watch the lesson",
   },
   "not-loaded": {

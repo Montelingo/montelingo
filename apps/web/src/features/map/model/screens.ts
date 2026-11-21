@@ -89,17 +89,22 @@ export function toChapterScreen(
 }
 
 /**
- * A game's state in a chapter, as the server sent it, or `null` when progress
- * has no state for the chapter or the game. Only the server decides a lock
- * (ADR 0006), so `null` is never read as open or locked.
+ * A game's state in a chapter, as the server sent it: `{ state }`, where
+ * `state` is `null` when progress has no state for the chapter (only the
+ * server decides a lock, ADR 0006, so it is never read as open or locked); or
+ * `null` when the chapter's state does not list the game, which is then not
+ * one of the chapter's games.
  */
 export function gameStateOf(
   chapter: WithChapterState<Chapter>,
   gameId: GameId,
-): GameState | null {
-  return (
-    chapter.chapterState?.games.find(({ id }) => id === gameId)?.state ?? null
-  );
+): { state: GameState | null } | null {
+  const { chapterState } = chapter;
+  if (chapterState === null) {
+    return { state: null };
+  }
+  const game = chapterState.games.find(({ id }) => id === gameId);
+  return game === undefined ? null : { state: game.state };
 }
 
 /** A region and its locations, each with its state, the next place marked. */

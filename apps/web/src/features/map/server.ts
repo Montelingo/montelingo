@@ -6,9 +6,9 @@ import "server-only";
 export { getLocation, getRegion, listRegions } from "./api/content-api";
 export { getProgress } from "./api/progress-api";
 export {
-  assertChapterOpen,
   assertLocationOpen,
   loadGameScreen,
+  loadLessonScreen,
   loadMap,
   loadPrizes,
   loadRegionMap,

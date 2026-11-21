@@ -254,7 +254,8 @@ describe("LocationScreen", () => {
       expect(cards.map((item) => item.textContent)).toEqual([
         "Lesson, Done",
         "Memory, Completed",
-        "Match, Ready to play",
+        // No screen yet (#137), so it never looks open.
+        "Match, Coming soon",
       ]);
     });
   });

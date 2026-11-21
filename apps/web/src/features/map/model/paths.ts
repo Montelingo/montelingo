@@ -21,18 +21,22 @@ export function locationPath(regionId: string, locationId: string): string {
 /** The Prizes tab's screen: a sticker per place, by region. */
 export const PRIZES_PATH = `${PLAY_PATH}/prizes`;
 
-/**
- * A chapter, under its place. It has no screen of its own: it sends the
- * learner to the place, so Back from a lesson or game, which goes up the URL,
- * lands there.
- */
-export function chapterPath(
+// A chapter's lesson and games are under the chapter, but the chapter itself
+// has no screen: its lesson and games are on its place's screen.
+function chapterPath(
   regionId: string,
   locationId: string,
   chapterId: string,
 ): string {
   return `${locationPath(regionId, locationId)}/${encodeURIComponent(chapterId)}`;
 }
+
+/**
+ * Depths below /play whose URLs have no screen: a chapter's (3), between its
+ * place (2) and its lesson or game (4). The learner area's Back skips them, so
+ * Back from a lesson or a game returns to the place.
+ */
+export const SCREENLESS_PLAY_DEPTHS: readonly number[] = [3];
 
 /** A chapter's lesson. */
 export function lessonPath(
@@ -44,19 +48,28 @@ export function lessonPath(
 }
 
 /**
- * The games that have a screen. `match` gets its route with its game (#137);
- * until then its card on the place's screen links nowhere.
+ * The games that have a screen, each at app/(learner)/play/[regionId]/
+ * [locationId]/[chapterId]/<game>/page.tsx; a test keeps the two in step.
+ * `match` gets its screen with its game (#137).
  */
-const GAMES_WITH_A_SCREEN: ReadonlySet<GameId> = new Set<GameId>(["memory"]);
+export const GAMES_WITH_A_SCREEN = [
+  "memory",
+] as const satisfies readonly GameId[];
 
-/** A chapter's game, or `null` for a game that has no screen yet. */
+/** A game that has a screen, so a path. */
+export type GameWithAScreen = (typeof GAMES_WITH_A_SCREEN)[number];
+
+/** Whether `gameId` has a screen yet. */
+export function hasScreen(gameId: GameId): gameId is GameWithAScreen {
+  return (GAMES_WITH_A_SCREEN as readonly GameId[]).includes(gameId);
+}
+
+/** A chapter's game. */
 export function gamePath(
   regionId: string,
   locationId: string,
   chapterId: string,
-  gameId: GameId,
-): string | null {
-  return GAMES_WITH_A_SCREEN.has(gameId)
-    ? `${chapterPath(regionId, locationId, chapterId)}/${gameId}`
-    : null;
+  gameId: GameWithAScreen,
+): string {
+  return `${chapterPath(regionId, locationId, chapterId)}/${gameId}`;
 }

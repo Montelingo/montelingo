@@ -63,10 +63,10 @@ export function createMemoryGame(
   words: readonly MemoryWord[],
   random: Random,
 ): MemoryState | null {
-  if (!canDealMemoryGame(words)) {
+  const withPictures = distinctPictureWords(words);
+  if (withPictures.length < MIN_PAIRS) {
     return null;
   }
-  const withPictures = distinctPictureWords(words);
 
   const chosen = shuffle(withPictures, random).slice(0, PAIRS);
   const cards = chosen.flatMap((word) =>

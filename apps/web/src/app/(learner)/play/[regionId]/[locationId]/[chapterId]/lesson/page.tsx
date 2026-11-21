@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 
 import { LessonCards } from "@/features/lessons";
-import { lessonPath } from "@/features/map";
 import { CONTENT_LANG } from "@/features/map/edge";
-import { assertChapterOpen } from "@/features/map/server";
+import { loadLessonScreen } from "@/features/map/server";
 
 type LessonPageProps = {
   params: Promise<{ regionId: string; locationId: string; chapterId: string }>;
@@ -11,12 +10,7 @@ type LessonPageProps = {
 
 async function loadLesson({ params }: LessonPageProps) {
   const { regionId, locationId, chapterId } = await params;
-  return assertChapterOpen(
-    regionId,
-    locationId,
-    chapterId,
-    lessonPath(regionId, locationId, chapterId),
-  );
+  return loadLessonScreen(regionId, locationId, chapterId);
 }
 
 // Through the same gate as the page, over the same cached calls.
@@ -29,7 +23,8 @@ export async function generateMetadata(
 
 // A chapter's lesson (ADR 0006). The gate renders the not-found page for an
 // unknown place or chapter, and sends a closed place back as the place's page
-// does; the lesson itself is never locked. The page's h1 is for screen
+// does; the lesson itself is never locked. Back skips the chapter's URL,
+// which has no screen, and returns to the place. The page's h1 is for screen
 // readers only, so the lesson keeps the whole screen; the lesson's "Bravo!"
 // is its h2.
 export default async function LessonPage(props: LessonPageProps) {
