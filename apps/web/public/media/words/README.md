@@ -1,17 +1,25 @@
 # Word images
 
-One picture per word, served as static files at `/media/words/<file>` (ADR 0006).
+One picture per word, served as static files at `/media/words/<file>` (ADR 0006). Why these rules: [`docs/architecture/word-images.md`](../../../../../docs/architecture/word-images.md).
 
 - **Name:** the word's recording number, four digits: word 1 is `0001.webp`. It is the same number as the future audio file (`0001.mp3`) and is stable across environments.
-- **Format:** WebP, square, 1024 × 1024, transparent background, at most 150 KB.
-- **Source files:** keep the original PNGs outside the repository. Commit only the WebP files.
-- **Data:** a word gets its image only when its number is in `WORD_IMAGES` (`apps/api/app/modules/content/media.py`). Add the number there in the same pull request as the file. `apps/api/tests/unit/modules/content/test_media.py` fails if the list and the files here disagree.
+- **Two files per word**, both WebP, square, with a transparent background:
 
-To convert a PNG (Fedora: `sudo dnf install libwebp-tools`):
+  | File            | Size        | Budget | Used for                                      |
+  | --------------- | ----------- | ------ | --------------------------------------------- |
+  | `NNNN.webp`     | 1024 × 1024 | 80 KB  | The lesson's big card                         |
+  | `NNNN-512.webp` | 512 × 512   | 30 KB  | The memory and match boards, the place screen |
+
+- **Source files:** the illustrator's 2048 px PNG masters, named `NNNN.png`, stay outside the repository. Commit only the WebP files.
+- **Data:** a word gets its image only when its number is in `WORD_IMAGES` (`apps/api/app/modules/content/media.py`). Add the number there in the same pull request as the files. `apps/api/tests/unit/modules/content/test_media.py` fails if the list and the files disagree, or if a file has the wrong size, is over budget or has no alpha channel.
+
+Make both files with the script, never by hand (Fedora: `sudo dnf install libwebp-tools`):
 
 ```bash
-cwebp -q 80 -resize 1024 1024 -alpha_q 100 0011.png -o 0011.webp
+scripts/word-images.sh ~/masters/kotor
 ```
+
+It reads every `NNNN.png` in the folder, writes both variants here, prints their sizes and fails if one is over budget. If an image is over budget, simplify the drawing. Don't lower the quality. A folder of 1024 px `NNNN.webp` files also works when the PNG master is lost: the 1024 file is copied unchanged, and only the 512 file is made.
 
 | Numbers | Chapter                | Added in |
 | ------- | ---------------------- | -------- |
