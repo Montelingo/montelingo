@@ -11,7 +11,6 @@ import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG } from "../model/content";
-import { MAP_GEOMETRY } from "../model/map-geometry";
 import { isOpenState } from "../model/map-state";
 import {
   LEVEL_CARD_PARAM,
@@ -20,7 +19,7 @@ import {
 } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
 import { closeLevelCard } from "./level-card-navigation";
-import { MapBaseImage } from "./MapBaseImage";
+import { PlaceCloseUp } from "./PlaceCloseUp";
 import { ICON_BUTTON_CLASS } from "./chrome-styles";
 
 type LevelCardProps = {
@@ -145,38 +144,16 @@ export function LevelCard({ regions, places }: LevelCardProps) {
 const PICTURE_WIDTH = 220;
 const PICTURE_RATIO = 336 / 170;
 
-// The place on the map, close up: the map's own art (the country, the
-// region's decorations and buildings), centred on the place's building. Left
-// out on a short screen (a phone on its side), so the card fits without
+// The place on the map, close up, centred on the place's building. Left out
+// on a short screen (a phone on its side), so the card fits without
 // scrolling.
 function PlacePicture({ place }: { place: MapPlace }) {
-  const geometry =
-    MAP_GEOMETRY.locations[place.id as keyof typeof MAP_GEOMETRY.locations];
-  const [, , mapWidth, mapHeight] = MAP_GEOMETRY.viewBox;
-  if (geometry === undefined) {
-    return null;
-  }
-  const { art } = geometry;
-  const height = PICTURE_WIDTH / PICTURE_RATIO;
-  const x = art.x + art.width / 2 - PICTURE_WIDTH / 2;
-  const y = art.y + art.height / 2 - height / 2;
   return (
-    <svg
-      aria-hidden="true"
-      viewBox={`${x} ${y} ${PICTURE_WIDTH} ${height}`}
+    <PlaceCloseUp
+      placeId={place.id}
+      width={PICTURE_WIDTH}
+      height={PICTURE_WIDTH / PICTURE_RATIO}
       className="aspect-[336/170] w-full rounded-kid border-3 border-kid-ink bg-kid-sea short:hidden"
-    >
-      <MapBaseImage />
-      <image
-        href={`/maps/decorations-${place.regionId}.svg`}
-        width={mapWidth}
-        height={mapHeight}
-      />
-      <image
-        href={`/maps/places-${place.regionId}.svg`}
-        width={mapWidth}
-        height={mapHeight}
-      />
-    </svg>
+    />
   );
 }

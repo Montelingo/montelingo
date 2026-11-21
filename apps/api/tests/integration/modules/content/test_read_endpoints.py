@@ -73,10 +73,12 @@ async def seed_content(session: AsyncSession) -> None:
     session.add_all([second_chapter, first_chapter])
     await session.flush()
 
+    # Chapter two's numbers are not real words, so they never get an image
+    # (WORD_IMAGES only lists words in content.json) and stay null below.
     words = []
     for chapter, offset in (
         (first_chapter, 0),
-        (second_chapter, 10),
+        (second_chapter, 1000),
     ):
         for position in range(1, 11):
             number = offset + position
@@ -177,14 +179,14 @@ async def test_location_detail_recording_order(
     assert len(chapters[1]["words"]) == 10
 
     assert [word["number"] for word in chapters[0]["words"]] == list(range(1, 11))
-    assert [word["number"] for word in chapters[1]["words"]] == list(range(11, 21))
+    assert [word["number"] for word in chapters[1]["words"]] == list(range(1001, 1011))
 
     for chapter in chapters:
         for word in chapter["words"]:
             assert word["audio_url"] is None
             assert word["id"]
 
-    # Words 1–10 have an image (Na plaži, #127); the rest keep null.
+    # Words 1–10 have an image (Na plaži, #127); words without one keep null.
     assert chapters[0]["words"][0]["image_url"] == "/media/words/0001.webp"
     assert chapters[0]["words"][9]["image_url"] == "/media/words/0010.webp"
     assert all(word["image_url"] is None for word in chapters[1]["words"])
