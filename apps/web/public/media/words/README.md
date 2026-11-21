@@ -27,6 +27,7 @@ It reads every `NNNN.png` in the folder, writes both variants here, prints their
 | 11–20   | U luci (Kotor)                    | #188     |
 | 31–40   | Šetnja uz more (Herceg Novi)      | #190     |
 | 41–50   | Putujemo (Tivat)                  | #191     |
+| 51–60   | Voće na pijaci (Bar)              | #192     |
 | 61–70   | Ljeto i odjeća (Budva)            | #120     |
 | 71–80   | Boje oko nas (Kotor)              | #188     |
 | 91–100  | Šta radimo na obali (Herceg Novi) | #190     |
