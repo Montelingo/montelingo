@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from datetime import UTC, datetime
+from uuid import UUID
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.modules.content.models import Chapter, Location
+from app.db.transaction import SessionTransactionManager
+from app.modules.content.models import Chapter, Location, Region
 from app.modules.progress.models import (
     ChapterProgress,
     GameResult,
     LearningProfile,
     LocationProgress,
 )
+from app.modules.progress.repository import SqlAlchemyProgressRepository
+from app.modules.progress.schemas import GameId
+from app.modules.progress.service import GameProgressService
+from app.modules.users.models import User
 
 from .test_progress_endpoint import (
     LOCKED_GAMES,
@@ -32,6 +40,13 @@ pytestmark = pytest.mark.integration
 
 BEACH_MEMORY = "/api/v1/chapters/budva-beach/games/memory/result"
 BEACH_MATCH = "/api/v1/chapters/budva-beach/games/match/result"
+OLD_TOWN_MEMORY = "/api/v1/chapters/budva-old-town/games/memory/result"
+OLD_TOWN_MATCH = "/api/v1/chapters/budva-old-town/games/match/result"
+
+# What `seed_map` and `seed_chapters` create, for tests that commit them.
+REGION_SLUGS = ("coast", "north")
+LOCATION_SLUGS = ("budva", "kotor", "kolasin")
+CHAPTER_SLUGS = ("budva-beach", "kotor-walls", "budva-old-town")
 
 
 async def record(client: AsyncClient, path: str) -> dict:
@@ -318,19 +333,28 @@ async def location_progress(
     return row
 
 
+async def seed_budva_lessons(
+    session: AsyncSession,
+) -> tuple[User, LearningProfile, Location]:
+    """Seed the map with both of Budva's lessons seen. Returns Budva."""
+
+    budva, kotor = await seed_map(session)
+    beach, old_town = await seed_chapters(session, budva, kotor)
+    user, profile = await create_user(session)
+    await see_lesson(session, profile, beach, budva)
+    await see_lesson(session, profile, old_town)
+    return user, profile, budva
+
+
 async def test_the_last_game_of_a_place_completes_it_and_opens_the_next(
     integration_client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    budva, kotor = await seed_map(db_session)
-    beach, old_town = await seed_chapters(db_session, budva, kotor)
-    user, profile = await create_user(db_session)
-    await see_lesson(db_session, profile, beach, budva)
-    await see_lesson(db_session, profile, old_town)
+    user, profile, budva = await seed_budva_lessons(db_session)
     await sign_in(integration_client, user)
 
     await record(integration_client, BEACH_MEMORY)
     await record(integration_client, BEACH_MATCH)
-    await record(integration_client, "/api/v1/chapters/budva-old-town/games/memory/result")
+    await record(integration_client, OLD_TOWN_MEMORY)
 
     # Part of a place: Budva is still in progress and Kotor stays locked.
     partway = (await integration_client.get("/api/v1/progress")).json()
@@ -338,7 +362,7 @@ async def test_the_last_game_of_a_place_completes_it_and_opens_the_next(
     assert states(partway, "locations")["kotor"] == "locked"
     assert (await location_progress(db_session, profile, budva)).completed_at is None
 
-    await record(integration_client, "/api/v1/chapters/budva-old-town/games/match/result")
+    await record(integration_client, OLD_TOWN_MATCH)
 
     assert (await location_progress(db_session, profile, budva)).completed_at is not None
     after = (await integration_client.get("/api/v1/progress")).json()
@@ -363,21 +387,114 @@ async def test_the_last_game_of_a_place_completes_it_and_opens_the_next(
 async def test_replaying_a_completed_place_keeps_its_completion(
     integration_client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    budva, kotor = await seed_map(db_session)
-    beach, old_town = await seed_chapters(db_session, budva, kotor)
-    user, profile = await create_user(db_session)
-    await see_lesson(db_session, profile, beach, budva)
-    await see_lesson(db_session, profile, old_town)
+    user, profile, budva = await seed_budva_lessons(db_session)
     await sign_in(integration_client, user)
-    for path in (
-        BEACH_MEMORY,
-        BEACH_MATCH,
-        "/api/v1/chapters/budva-old-town/games/memory/result",
-        "/api/v1/chapters/budva-old-town/games/match/result",
-    ):
+    for path in (BEACH_MEMORY, BEACH_MATCH, OLD_TOWN_MEMORY, OLD_TOWN_MATCH):
         await record(integration_client, path)
     completed_at = (await location_progress(db_session, profile, budva)).completed_at
 
     await record(integration_client, BEACH_MEMORY)
 
     assert (await location_progress(db_session, profile, budva)).completed_at == completed_at
+
+
+async def test_replaying_a_game_completes_a_place_finished_before_it_was_marked(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user, profile, budva = await seed_budva_lessons(db_session)
+    await sign_in(integration_client, user)
+    for path in (BEACH_MEMORY, BEACH_MATCH, OLD_TOWN_MEMORY, OLD_TOWN_MATCH):
+        await record(integration_client, path)
+    # Every game is done but the place isn't marked, like a place finished
+    # before #139 was deployed.
+    await db_session.execute(
+        update(LocationProgress)
+        .where(
+            LocationProgress.learning_profile_id == profile.id,
+            LocationProgress.location_id == budva.id,
+        )
+        .values(completed_at=None)
+    )
+    stuck = (await integration_client.get("/api/v1/progress")).json()
+    assert states(stuck, "locations")["kotor"] == "locked"
+
+    await record(integration_client, BEACH_MEMORY)
+
+    assert (await location_progress(db_session, profile, budva)).completed_at is not None
+    after = (await integration_client.get("/api/v1/progress")).json()
+    assert states(after, "locations")["budva"] == "completed"
+    assert states(after, "locations")["kotor"] == "available"
+
+
+class RecordsAtOnce(SqlAlchemyProgressRepository):
+    """After recording its game, waits up to a second for the other call to record one.
+
+    That makes both calls record their game before either reads the chapters
+    back, unless the place's row lock makes the second call wait for the
+    first to commit. Then the first gives up waiting and goes on.
+    """
+
+    def __init__(self, session: AsyncSession, recorded: asyncio.Event, other: asyncio.Event):
+        super().__init__(session)
+        self.recorded = recorded
+        self.other = other
+
+    async def record_game(self, learning_profile_id: UUID, chapter_slug: str, game: GameId) -> None:
+        await super().record_game(learning_profile_id, chapter_slug, game)
+        self.recorded.set()
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(self.other.wait(), timeout=1)
+
+
+async def test_the_last_two_games_finished_at_once_complete_the_place(
+    test_engine: AsyncEngine,
+) -> None:
+    # Two requests need two connections, so this test commits its rows and
+    # deletes them at the end instead of using the rolled-back `db_session`.
+    session_factory = async_sessionmaker(test_engine, expire_on_commit=False)
+    user: User | None = None
+    try:
+        async with session_factory() as session:
+            user, profile, budva = await seed_budva_lessons(session)
+            await record_games_directly(session, profile, ("budva-beach", "budva-old-town"))
+            await session.commit()
+
+        beach_recorded, old_town_recorded = asyncio.Event(), asyncio.Event()
+        async with session_factory() as first, session_factory() as second:
+            first_service = GameProgressService(
+                RecordsAtOnce(first, beach_recorded, old_town_recorded),
+                SessionTransactionManager(first),
+            )
+            second_service = GameProgressService(
+                RecordsAtOnce(second, old_town_recorded, beach_recorded),
+                SessionTransactionManager(second),
+            )
+            await asyncio.gather(
+                first_service.complete_game(profile.id, "budva-beach", "match"),
+                second_service.complete_game(profile.id, "budva-old-town", "match"),
+            )
+
+        async with session_factory() as session:
+            assert (await location_progress(session, profile, budva)).completed_at is not None
+    finally:
+        async with session_factory() as session:
+            if user is not None:
+                # Deleting the user deletes its learning profile and progress.
+                await session.execute(delete(User).where(User.id == user.id))
+            await session.execute(delete(Chapter).where(Chapter.slug.in_(CHAPTER_SLUGS)))
+            await session.execute(delete(Location).where(Location.slug.in_(LOCATION_SLUGS)))
+            await session.execute(delete(Region).where(Region.slug.in_(REGION_SLUGS)))
+            await session.commit()
+
+
+async def record_games_directly(
+    session: AsyncSession, profile: LearningProfile, chapter_slugs: tuple[str, ...]
+) -> None:
+    """Store a finished memory game for each chapter, without the endpoint."""
+
+    chapters = await session.scalars(select(Chapter).where(Chapter.slug.in_(chapter_slugs)))
+    session.add_all(
+        GameResult(learning_profile_id=profile.id, chapter_id=chapter.id, game="memory")
+        for chapter in chapters.all()
+    )
+    await session.flush()

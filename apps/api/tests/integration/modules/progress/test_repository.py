@@ -277,3 +277,45 @@ async def test_read_chapters_uses_fixed_number_of_queries(
         assert len(statements) == 3
     finally:
         event.remove(engine, "before_cursor_execute", count_queries)
+
+
+async def test_complete_location_keeps_the_first_completion(
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    profile = await create_profile(db_session, "complete-place@example.com")
+    first_completed_at = datetime(2026, 1, 1, tzinfo=UTC)
+    db_session.add_all(
+        [
+            LocationProgress(
+                learning_profile_id=profile.id,
+                location_id=budva.id,
+                started_at=NOW,
+                completed_at=first_completed_at,
+            ),
+            LocationProgress(learning_profile_id=profile.id, location_id=kotor.id, started_at=NOW),
+        ]
+    )
+    await db_session.flush()
+    repository = SqlAlchemyProgressRepository(db_session)
+
+    await repository.complete_location(profile.id, "budva")
+    await repository.complete_location(profile.id, "kotor")
+
+    _, progress = await repository.read_map(profile.id)
+    completed = {row.location_slug: row.completed_at for row in progress}
+    assert completed["budva"] == first_completed_at
+    assert completed["kotor"] is not None
+
+
+async def test_complete_location_does_nothing_for_a_place_never_started(
+    db_session: AsyncSession,
+) -> None:
+    await seed_map(db_session)
+    profile = await create_profile(db_session, "never-started@example.com")
+    repository = SqlAlchemyProgressRepository(db_session)
+
+    await repository.complete_location(profile.id, "budva")
+
+    _, progress = await repository.read_map(profile.id)
+    assert progress == []

@@ -52,7 +52,7 @@ def calculate_map_states(
     progress_by_slug = {row.location_slug: row for row in progress}
 
     location_states: dict[str, MapState] = {}
-    previous_completed = False
+    previous_place_completed = False
 
     for location in content.locations:
         row = progress_by_slug.get(location.slug)
@@ -61,13 +61,13 @@ def calculate_map_states(
             state: MapState = "completed"
         elif row is not None and row.started_at is not None:
             state = "in-progress"
-        elif location.is_starting or previous_completed:
+        elif location.is_starting or previous_place_completed:
             state = "available"
         else:
             state = "locked"
 
         location_states[location.slug] = state
-        previous_completed = state == "completed"
+        previous_place_completed = state == "completed"
 
     region_states: dict[str, MapState] = {}
 
@@ -180,9 +180,21 @@ def is_location_completed(
 
     place_chapters = [chapter for chapter in chapters if chapter.location_slug == location_slug]
     return bool(place_chapters) and all(
-        chapter.lesson_completed_at is not None and set(GAME_IDS) <= set(chapter.completed_games)
+        _is_chapter_completed(
+            calculate_chapter_state(
+                chapter.chapter_slug,
+                chapter.lesson_completed_at,
+                chapter.completed_games,
+            )
+        )
         for chapter in place_chapters
     )
+
+
+def _is_chapter_completed(chapter: ChapterState) -> bool:
+    # A recorded game counts as `completed` even without the lesson, so the
+    # lesson is checked too.
+    return chapter.lesson == "done" and all(game.state == "completed" for game in chapter.games)
 
 
 class InvalidChildProfile(ValueError):

@@ -9,7 +9,12 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content import Content, read_map_chapters, read_map_content
+from app.modules.content import (
+    Content,
+    read_location_id,
+    read_map_chapters,
+    read_map_content,
+)
 
 from .domain import ChapterProgressRecord, ChildProfile, LocationProgressRecord
 from .models import ChapterProgress, GameResult, LearningProfile, LocationProgress
@@ -98,7 +103,22 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
         chapter_slug: str,
         game: GameId,
-    ) -> None: ...
+    ) -> None:
+        """Record a finished game once, and start its place if it wasn't started.
+
+        Must be called in a transaction. It also locks the place's progress
+        row until that transaction ends, so two games finished at once in one
+        place are recorded one after the other. A `read_chapters` after it in
+        the same transaction then sees every game recorded before it,
+        including the other call's, which `GameProgressService.complete_game`
+        relies on to complete the place (#139).
+
+        That holds under PostgreSQL's default READ COMMITTED isolation, where
+        each statement sees what was committed before it started. Under
+        REPEATABLE READ the second transaction would keep its first snapshot
+        and miss the other game.
+        """
+        ...
 
     async def complete_location(
         self,
@@ -183,10 +203,8 @@ class SqlAlchemyProgressRepository:
         concurrent call changes nothing (ADR 0006). The caller has checked the
         chapter exists and owns the transaction.
 
-        The place's progress row stays locked until the transaction ends, so
-        two games finished at once in the same place are recorded one after
-        the other and the second sees the first when it checks whether the
-        place is completed (#139).
+        The place's progress row stays locked until the transaction ends; see
+        `ProgressRepository.record_game` for why (#139).
         """
 
         chapters = await read_map_chapters(self.session)
@@ -223,7 +241,9 @@ class SqlAlchemyProgressRepository:
     ) -> None:
         """Mark a started place completed. The first completion is kept.
 
-        The caller has started the place in the same transaction.
+        `completed_at IS NULL` makes it safe to call again: a replay that
+        finds a place complete but not marked calls it too (#139). A place
+        that was never started has no row, so nothing changes.
         """
 
         location_id = await self._location_id(location_slug)
@@ -238,10 +258,7 @@ class SqlAlchemyProgressRepository:
         )
 
     async def _location_id(self, location_slug: str) -> UUID:
-        _, location_slugs = await read_map_content(self.session)
-        location_id = next(
-            (key for key, slug in location_slugs.items() if slug == location_slug), None
-        )
+        location_id = await read_location_id(self.session, location_slug)
         if location_id is None:
             raise LookupError(f"Place {location_slug!r} is no longer in the content.")
         return location_id

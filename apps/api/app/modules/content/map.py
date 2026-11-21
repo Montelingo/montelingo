@@ -74,6 +74,16 @@ async def read_map_content(
     return content, location_slugs
 
 
+async def read_location_id(session: AsyncSession, location_slug: str) -> UUID | None:
+    """Return one location's ID by slug, or None when content no longer has it.
+
+    Like `read_map_content`'s mapping, this lets the progress module write
+    progress rows without querying content models.
+    """
+
+    return await session.scalar(select(Location.id).where(Location.slug == location_slug))
+
+
 @dataclass(frozen=True, slots=True)
 class MapChapter:
     """A chapter's identity and the place it belongs to, without its words."""
