@@ -5,11 +5,16 @@ from __future__ import annotations
 from typing import Protocol, cast
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content import Content, read_map_chapters, read_map_content
+from app.modules.content import (
+    Content,
+    read_location_id,
+    read_map_chapters,
+    read_map_content,
+)
 
 from .domain import ChapterProgressRecord, ChildProfile, LocationProgressRecord
 from .models import ChapterProgress, GameResult, LearningProfile, LocationProgress
@@ -98,6 +103,27 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
         chapter_slug: str,
         game: GameId,
+    ) -> None:
+        """Record a finished game once, and start its place if it wasn't started.
+
+        Must be called in a transaction. It also locks the place's progress
+        row until that transaction ends, so two games finished at once in one
+        place are recorded one after the other. A `read_chapters` after it in
+        the same transaction then sees every game recorded before it,
+        including the other call's, which `GameProgressService.complete_game`
+        relies on to complete the place (#139).
+
+        That holds under PostgreSQL's default READ COMMITTED isolation, where
+        each statement sees what was committed before it started. Under
+        REPEATABLE READ the second transaction would keep its first snapshot
+        and miss the other game.
+        """
+        ...
+
+    async def complete_location(
+        self,
+        learning_profile_id: UUID,
+        location_slug: str,
     ) -> None: ...
 
 
@@ -176,6 +202,9 @@ class SqlAlchemyProgressRepository:
         `ON CONFLICT DO NOTHING` keeps the first result, so a repeated or a
         concurrent call changes nothing (ADR 0006). The caller has checked the
         chapter exists and owns the transaction.
+
+        The place's progress row stays locked until the transaction ends; see
+        `ProgressRepository.record_game` for why (#139).
         """
 
         chapters = await read_map_chapters(self.session)
@@ -183,12 +212,7 @@ class SqlAlchemyProgressRepository:
         if chapter is None:
             raise LookupError(f"Chapter {chapter_slug!r} is no longer in the content.")
 
-        _, location_slugs = await read_map_content(self.session)
-        location_id = next(
-            (key for key, slug in location_slugs.items() if slug == chapter.location_slug), None
-        )
-        if location_id is None:
-            raise LookupError(f"Place {chapter.location_slug!r} is no longer in the content.")
+        location_id = await self._location_id(chapter.location_slug)
 
         # Doing anything in a place starts it (ADR 0006).
         await self.session.execute(
@@ -197,7 +221,44 @@ class SqlAlchemyProgressRepository:
             .on_conflict_do_nothing()
         )
         await self.session.execute(
+            select(LocationProgress.location_id)
+            .where(
+                LocationProgress.learning_profile_id == learning_profile_id,
+                LocationProgress.location_id == location_id,
+            )
+            .with_for_update()
+        )
+        await self.session.execute(
             insert(GameResult)
             .values(learning_profile_id=learning_profile_id, chapter_id=chapter.id, game=game)
             .on_conflict_do_nothing()
         )
+
+    async def complete_location(
+        self,
+        learning_profile_id: UUID,
+        location_slug: str,
+    ) -> None:
+        """Mark a started place completed. The first completion is kept.
+
+        `completed_at IS NULL` makes it safe to call again: a replay that
+        finds a place complete but not marked calls it too (#139). A place
+        that was never started has no row, so nothing changes.
+        """
+
+        location_id = await self._location_id(location_slug)
+        await self.session.execute(
+            update(LocationProgress)
+            .where(
+                LocationProgress.learning_profile_id == learning_profile_id,
+                LocationProgress.location_id == location_id,
+                LocationProgress.completed_at.is_(None),
+            )
+            .values(completed_at=func.now())
+        )
+
+    async def _location_id(self, location_slug: str) -> UUID:
+        location_id = await read_location_id(self.session, location_slug)
+        if location_id is None:
+            raise LookupError(f"Place {location_slug!r} is no longer in the content.")
+        return location_id
