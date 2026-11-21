@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from typing import Never
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import error_responses
-from app.core.errors import ApiError, ErrorCode
 from app.db.session import get_db_session
 from app.db.transaction import SessionTransactionManager
 from app.modules.auth import require_trusted_origin
@@ -16,7 +13,12 @@ from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
 from .schemas import ChapterState, Profile, ProfileUpdate, ProgressState
-from .service import ChildProfileService, DatabaseProgressService, LessonProgressService
+from .service import (
+    ChildProfileService,
+    DatabaseProgressService,
+    GameProgressService,
+    LessonProgressService,
+)
 
 # The module owns three top-level resources, /progress, /chapters and /profile,
 # so its routes carry their paths and tags.
@@ -34,6 +36,15 @@ def get_lesson_service(
     session: AsyncSession = Depends(get_db_session),
 ) -> LessonProgressService:
     return LessonProgressService(
+        repository=SqlAlchemyProgressRepository(session),
+        transaction_manager=SessionTransactionManager(session),
+    )
+
+
+def get_game_progress_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> GameProgressService:
+    return GameProgressService(
         repository=SqlAlchemyProgressRepository(session),
         transaction_manager=SessionTransactionManager(session),
     )
@@ -70,15 +81,6 @@ _RECORD_DEPENDENCIES = [Depends(get_learning_profile), Depends(require_trusted_o
 _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
 
 
-def _not_implemented() -> Never:
-    # The game-result route is implemented separately in #126.
-    raise ApiError(
-        ErrorCode.NOT_IMPLEMENTED,
-        "Recording chapter progress is not implemented.",
-        status_code=501,
-    )
-
-
 @router.post(
     "/chapters/{chapter_id}/lesson",
     operation_id="progress_complete_lesson",
@@ -103,10 +105,15 @@ async def complete_lesson(
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
-async def complete_game(chapter_id: Slug, game_id: Slug) -> ChapterState:
-    # `game_id` is a slug, not the game literal, so an unknown game is a 404
+async def complete_game(
+    chapter_id: Slug,
+    # A slug, not the game literal, so an unknown game is a 404
     # `content_not_found` like an unknown chapter, not a 422.
-    _not_implemented()
+    game_id: Slug,
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+    service: GameProgressService = Depends(get_game_progress_service),
+) -> ChapterState:
+    return await service.complete_game(learning_profile.id, chapter_id, game_id)
 
 
 @router.get(

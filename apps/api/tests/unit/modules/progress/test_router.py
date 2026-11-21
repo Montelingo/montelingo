@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.modules.auth import get_current_user
 from app.modules.progress.dependencies import get_learning_profile
-from app.modules.progress.router import get_progress_service
+from app.modules.progress.router import get_game_progress_service, get_progress_service
 from app.modules.progress.schemas import (
     ChapterState,
     GameState,
@@ -122,7 +122,7 @@ def test_get_progress_uses_different_profile_ids(
 
 
 ORIGIN = "http://localhost:3000"
-# The chapter routes are frozen in ADR 0006; #125 and #126 implement them.
+# The chapter routes are frozen in ADR 0006 (#125, #126).
 RECORD_ROUTES = [
     "/api/v1/chapters/budva-beach/lesson",
     "/api/v1/chapters/budva-beach/games/memory/result",
@@ -153,13 +153,59 @@ def test_record_routes_require_a_trusted_origin(
         app.dependency_overrides.clear()
 
 
-@pytest.mark.parametrize("path", [RECORD_ROUTES[1]])
-def test_record_routes_are_not_implemented_yet(app: FastAPI, client: TestClient, path: str) -> None:
-    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
-    try:
-        response = client.post(path, headers={"Origin": ORIGIN})
+class FakeGameProgressService:
+    def __init__(self) -> None:
+        self.received: tuple[UUID, str, str] | None = None
 
-        assert response.status_code == 501
-        assert response.json()["error"]["code"] == "not_implemented"
+    async def complete_game(
+        self, learning_profile_id: UUID, chapter_slug: str, game_slug: str
+    ) -> ChapterState:
+        self.received = (learning_profile_id, chapter_slug, game_slug)
+        return ChapterState(
+            id=chapter_slug,
+            lesson="done",
+            games=[
+                GameState(id="memory", state="completed"),
+                GameState(id="match", state="available"),
+            ],
+        )
+
+
+def test_game_route_records_for_the_current_learning_profile(
+    app: FastAPI, client: TestClient
+) -> None:
+    profile_id = uuid4()
+    service = FakeGameProgressService()
+    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=profile_id)
+    app.dependency_overrides[get_game_progress_service] = lambda: service
+    try:
+        response = client.post(
+            "/api/v1/chapters/budva-beach/games/memory/result", headers={"Origin": ORIGIN}
+        )
+
+        assert response.status_code == 200
+        assert service.received == (profile_id, "budva-beach", "memory")
+        assert response.json() == {
+            "id": "budva-beach",
+            "lesson": "done",
+            "games": [
+                {"id": "memory", "state": "completed"},
+                {"id": "match", "state": "available"},
+            ],
+        }
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_game_route_rejects_a_malformed_game_slug(app: FastAPI, client: TestClient) -> None:
+    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
+    app.dependency_overrides[get_game_progress_service] = FakeGameProgressService
+    try:
+        response = client.post(
+            "/api/v1/chapters/budva-beach/games/Not_A_Slug/result", headers={"Origin": ORIGIN}
+        )
+
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "validation_error"
     finally:
         app.dependency_overrides.clear()

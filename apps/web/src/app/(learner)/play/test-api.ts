@@ -72,13 +72,15 @@ function wordUuid(number: number): string {
   return `00000000-0000-4000-8000-${String(number).padStart(12, "0")}`;
 }
 
-// A chapter of 10 words, numbered on from `first`. The words themselves do not
-// matter here: LocationScreen's tests check the seed's.
+// A chapter of 10 words, numbered on from `first`, each with its picture or
+// none. The words themselves do not matter here: LocationScreen's tests check
+// the seed's.
 function apiChapter(
   id: string,
   title: string,
   position: number,
   first: number,
+  pictures: "pictures" | "no-pictures" = "no-pictures",
 ): Schemas["Chapter"] {
   return {
     id,
@@ -89,14 +91,18 @@ function apiChapter(
       number: first + index,
       text: `riječ ${first + index}`,
       note: null,
-      image_url: null,
+      image_url:
+        pictures === "pictures"
+          ? `/media/words/${String(first + index).padStart(4, "0")}.webp`
+          : null,
       audio_url: null,
     })),
   };
 }
 
-// Podgorica with the seed's four word groups, and Kotor, which tests only
-// ever find locked, so its words are never shown.
+// Podgorica with the seed's four word groups, only "Povrće i ručak" with its
+// pictures, and Kotor, which tests only ever find locked, so its words are
+// never shown.
 const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
   podgorica: {
     id: "podgorica",
@@ -104,7 +110,7 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
     region_id: "central",
     chapters: [
       apiChapter("podgorica-home", "Kod kuće", 11, 101),
-      apiChapter("podgorica-vegetables", "Povrće i ručak", 14, 131),
+      apiChapter("podgorica-vegetables", "Povrće i ručak", 14, 131, "pictures"),
       apiChapter("podgorica-kitchen", "U kuhinji", 15, 141),
       apiChapter("podgorica-kindergarten", "U vrtiću", 18, 171),
     ],
@@ -115,8 +121,25 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
 type ProgressBody = {
   regions: { id: string; state: string }[];
   locations: { id: string; state: string }[];
-  chapters: { id: string; lesson: string; games: unknown[] }[];
+  chapters: Schemas["ChapterState"][];
 };
+
+// A chapter's state as the server sends it: both games, `memory` then `match`.
+function apiChapterState(
+  id: string,
+  lesson: Schemas["ChapterState"]["lesson"],
+  memory: Schemas["GameState"]["state"],
+  match: Schemas["GameState"]["state"],
+): Schemas["ChapterState"] {
+  return {
+    id,
+    lesson,
+    games: [
+      { id: "memory", state: memory },
+      { id: "match", state: match },
+    ],
+  };
+}
 
 // A new account: the coast and Budva open, everything else locked.
 const NEW_ACCOUNT_PROGRESS: ProgressBody = {
@@ -131,7 +154,11 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
       state: id === "budva" ? "available" : "locked",
     })),
   ),
-  chapters: [],
+  // The server sends the chapters of every place that is not locked.
+  chapters: [
+    apiChapterState("budva-beach", "todo", "locked", "locked"),
+    apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
+  ],
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -146,16 +173,26 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     { id: "kotor", state: "locked" },
     { id: "podgorica", state: "available" },
   ],
-  chapters: [],
+  // Budva's chapters done; Podgorica's in every state a chapter can be in.
+  chapters: [
+    apiChapterState("budva-beach", "done", "completed", "completed"),
+    apiChapterState("budva-summer-clothes", "done", "completed", "completed"),
+    apiChapterState("podgorica-home", "done", "completed", "available"),
+    apiChapterState("podgorica-vegetables", "done", "available", "available"),
+    apiChapterState("podgorica-kitchen", "todo", "locked", "locked"),
+    apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
+  ],
 };
 
 /**
- * What the progress route answers: a new account's progress, Podgorica open,
- * a server error, no entries at all, or a session that has ended.
+ * What the progress route answers: a new account's progress, Podgorica open
+ * (with its chapters' states, or without any), a server error, no entries at
+ * all, or a session that has ended.
  */
 export type ProgressAnswer =
   | "new-account"
   | "podgorica-open"
+  | "podgorica-open-without-chapters"
   | "failed"
   | "empty"
   | "signed-out";
@@ -166,6 +203,8 @@ function progressResponse(progress: ProgressAnswer): Response {
       return jsonResponse(200, NEW_ACCOUNT_PROGRESS);
     case "podgorica-open":
       return jsonResponse(200, PODGORICA_OPEN_PROGRESS);
+    case "podgorica-open-without-chapters":
+      return jsonResponse(200, { ...PODGORICA_OPEN_PROGRESS, chapters: [] });
     case "failed":
       return errorResponse(500, "internal_server_error");
     case "empty":

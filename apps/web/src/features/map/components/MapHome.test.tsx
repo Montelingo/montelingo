@@ -39,6 +39,7 @@ const uncovered = toMapData(seedRegionDetails(), {
       { id: "central", state: "locked" },
     ],
     locations: [{ id: "budva", state: "available" }],
+    chapters: [],
   },
 });
 

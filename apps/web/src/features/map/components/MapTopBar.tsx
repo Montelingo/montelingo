@@ -6,9 +6,7 @@ import { CONTENT_LANG } from "../model/content";
 import type { MapRegion } from "../model/map-view";
 import { ChromeIcon } from "./ChromeIcon";
 import { ICON_BUTTON_CLASS } from "./chrome-styles";
-
-const PILL_CLASS =
-  "rounded-badge border-3 border-kid-ink bg-white shadow-raised-4";
+import { Counter } from "./Counter";
 
 type MapTopBarProps = {
   /** Where Back goes: out of the area from the map, the map from a region. */
@@ -73,30 +71,6 @@ function RegionPill({ region }: { region: MapRegion }) {
         {/* Inline style: the width is the region's progress, at run time. */}
         <div className="h-full bg-kid-green" style={{ width: `${percent}%` }} />
       </div>
-    </div>
-  );
-}
-
-type CounterProps = {
-  icon: "star" | "heart";
-  label: string;
-  value: number;
-};
-
-function Counter({ icon, label, value }: CounterProps) {
-  return (
-    <div
-      role="group"
-      aria-label={`${label}: ${value}`}
-      className={cn("flex items-center gap-1.5 py-1.5 pl-2 pr-3.5", PILL_CLASS)}
-    >
-      <ChromeIcon name={icon} size={26} />
-      <span
-        aria-hidden="true"
-        className="text-2xl font-semibold leading-tight text-kid-ink"
-      >
-        {value}
-      </span>
     </div>
   );
 }

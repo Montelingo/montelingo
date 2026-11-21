@@ -1,8 +1,16 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { axe } from "vitest-axe";
 
 import type { MemoryWord } from "../model/memory";
-import { MemoryGame, MISS_DELAY_MS } from "./MemoryGame";
+import {
+  BRAVO_DELAY_MS,
+  MemoryGame,
+  type MemoryGameProps,
+  MISS_DELAY_MS,
+  SETTLE_DELAY_MS,
+} from "./MemoryGame";
 
 // "Na plaži" (Budva, words 1–6): six pictures, so a full board of 12 cards.
 const TEXTS = ["more", "plaža", "pijesak", "sunce", "talas", "obala"];
@@ -23,8 +31,40 @@ function makeWords(): MemoryWord[] {
 // each: cards 1 and 2 are "more", 3 and 4 "plaža", and so on.
 const NO_SHUFFLE = () => 0.999;
 
-function renderGame() {
-  return render(<MemoryGame words={makeWords()} random={NO_SHUFFLE} />);
+const PLACE_HREF = "/play/coast/kotor";
+
+function renderGame(props: Partial<MemoryGameProps> = {}) {
+  return render(
+    <MemoryGame
+      words={makeWords()}
+      placeHref={PLACE_HREF}
+      random={NO_SHUFFLE}
+      {...props}
+    />,
+  );
+}
+
+/** Finds every pair of an unshuffled board: cards 1 and 2, 3 and 4, … */
+function findAllPairs() {
+  for (let position = 1; position <= TEXTS.length * 2; position += 2) {
+    tap(position);
+    tap(position + 1);
+  }
+}
+
+/** Every pair found, the last one shown, and "Bravo!" settled. */
+function playToBravo() {
+  findAllPairs();
+  wait(BRAVO_DELAY_MS);
+  wait(SETTLE_DELAY_MS);
+}
+
+function bravo() {
+  return screen.queryByRole("heading", { name: /^Bravo/ });
+}
+
+function playAgain() {
+  return screen.getByRole("button", { name: "Igraj ponovo" });
 }
 
 /** Tap a card. A plain click: the miss's timer is faked, so a tap must not wait. */
@@ -137,5 +177,154 @@ describe("MemoryGame", () => {
     expect(card(5)).toHaveAttribute("aria-disabled", "false");
     tap(5);
     expect(card(5)).toHaveAccessibleName("pijesak");
+  });
+
+  it("shows the last pair a moment, then Bravo! with the focus on it", () => {
+    renderGame();
+
+    findAllPairs();
+    expect(bravo()).not.toBeInTheDocument();
+    expect(card(12)).toHaveAccessibleName("obala, par pronađen");
+
+    wait(BRAVO_DELAY_MS);
+    expect(bravo()).toHaveTextContent("Bravo!");
+    expect(bravo()).toHaveFocus();
+    expect(screen.getByText("Sad znaš još 6 novih riječi.")).toBeVisible();
+    expect(bravo()?.closest("[lang]")).toHaveAttribute("lang", "sr-Latn-ME");
+    expect(
+      screen.getByRole("link", { name: "Nazad na mjesto" }),
+    ).toHaveAttribute("href", PLACE_HREF);
+    expect(playAgain()).toBeVisible();
+  });
+
+  it("praises the learner by name", () => {
+    renderGame({ learnerName: "Mia" });
+
+    playToBravo();
+
+    expect(bravo()).toHaveTextContent("Bravo, Mia!");
+  });
+
+  it("calls onCompleted once, when the last pair is found, and not again on a second game", () => {
+    const onCompleted = vi.fn();
+    renderGame({ onCompleted });
+
+    findAllPairs();
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+
+    wait(BRAVO_DELAY_MS);
+    wait(SETTLE_DELAY_MS);
+    fireEvent.click(playAgain());
+    playToBravo();
+
+    expect(bravo()).toBeInTheDocument();
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it("deals a new shuffle on Igraj ponovo, with the focus on the first card", () => {
+    const random = vi.fn(NO_SHUFFLE);
+    renderGame({ random });
+    playToBravo();
+
+    // Just above 0 moves the last item to the front, every swap: the words
+    // come out plaža … obala, more, and the cards one step further on, so
+    // card 1 is plaža's second card.
+    random.mockImplementation(() => 0);
+    fireEvent.click(playAgain());
+
+    expect(bravo()).not.toBeInTheDocument();
+    expect(card(1)).toHaveFocus();
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).toHaveAccessibleName(/licem dolje$/);
+    }
+    tap(1);
+    expect(card(1)).toHaveAccessibleName("plaža");
+  });
+
+  it("ignores the Bravo! buttons for a moment, so a tap meant for a card presses neither", () => {
+    renderGame();
+    findAllPairs();
+    wait(BRAVO_DELAY_MS);
+
+    fireEvent.click(playAgain());
+    expect(bravo()).toBeInTheDocument();
+
+    wait(SETTLE_DELAY_MS);
+    fireEvent.click(playAgain());
+    expect(bravo()).not.toBeInTheDocument();
+  });
+
+  it("shows the place's sticker when the game completes the place", () => {
+    renderGame({
+      reward: { placeId: "kotor", name: "Kotorske zidine", stars: 3 },
+    });
+
+    playToBravo();
+
+    expect(screen.getByText("Nova naljepnica")).toBeVisible();
+    expect(screen.getByText("Kotorske zidine")).toBeVisible();
+    expect(screen.getByText("+3 zvjezdice")).toBeVisible();
+  });
+
+  it("gives the sticker and the new words once: a second game only praises", () => {
+    renderGame({
+      reward: { placeId: "kotor", name: "Kotorske zidine", stars: 3 },
+    });
+    playToBravo();
+    fireEvent.click(playAgain());
+
+    playToBravo();
+
+    expect(bravo()).toBeInTheDocument();
+    expect(screen.queryByText("Nova naljepnica")).not.toBeInTheDocument();
+    expect(screen.queryByText(/novih riječi/)).not.toBeInTheDocument();
+    expect(screen.getByText("Svi parovi su pronađeni!")).toBeVisible();
+  });
+
+  it("shows no sticker otherwise", () => {
+    renderGame();
+
+    playToBravo();
+
+    expect(screen.queryByText("Nova naljepnica")).not.toBeInTheDocument();
+  });
+});
+
+// Real timers: user-event and axe wait on them.
+describe("MemoryGame with the keyboard and axe", () => {
+  it("plays with the keyboard: Tab to a card, Enter or Space turns it", async () => {
+    const user = userEvent.setup();
+    renderGame();
+
+    await user.tab();
+    expect(card(1)).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await user.tab();
+    await user.keyboard(" ");
+
+    expect(card(1)).toHaveAccessibleName("more, par pronađen");
+    expect(card(2)).toHaveAccessibleName("more, par pronađen");
+  });
+
+  it("has no axe violations on the board", async () => {
+    const { container } = renderGame();
+    tap(1);
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no axe violations on Bravo! with a sticker", async () => {
+    const { container } = renderGame({
+      learnerName: "Mia",
+      reward: { placeId: "kotor", name: "Kotorske zidine", stars: 3 },
+    });
+    findAllPairs();
+    await screen.findByRole(
+      "heading",
+      { name: "Bravo, Mia!" },
+      { timeout: 3000 },
+    );
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

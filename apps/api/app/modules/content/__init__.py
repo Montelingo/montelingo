@@ -2,7 +2,7 @@
 
 from .domain import Chapter, Content, Location, Region, Word
 from .loader import load_content
-from .map import MapChapter, read_map_chapters, read_map_content
+from .map import MapChapter, read_location_id, read_map_chapters, read_map_content
 
 __all__ = [
     "Chapter",
@@ -12,6 +12,7 @@ __all__ = [
     "Region",
     "Word",
     "load_content",
+    "read_location_id",
     "read_map_chapters",
     "read_map_content",
 ]

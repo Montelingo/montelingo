@@ -8,6 +8,8 @@ type LearnerShellProps = {
   homeHref: string;
   /** Where Back leads from the top of the area, out of it. */
   exitHref: string;
+  /** Depths below `homeHref` whose URLs have no screen, which Back skips. */
+  screenlessDepths?: readonly number[];
   children: ReactNode;
 };
 
@@ -18,20 +20,25 @@ type LearnerShellProps = {
 export function LearnerShell({
   homeHref,
   exitHref,
+  screenlessDepths,
   children,
 }: LearnerShellProps) {
   return (
-    // A map screen (data-map-screen) brings its own top bar and bottom nav,
-    // and a full-screen page (data-full-screen, the profile setup) its own
-    // Back, so this Back and Home bar is dropped there (display: none, so it
-    // is gone for screen readers and the keyboard too).
+    // A map screen or the Prizes screen (data-map-screen) brings its own top
+    // bar and bottom nav, and a full-screen page (data-full-screen, the
+    // profile setup) its own Back, so this Back and Home bar is dropped there
+    // (display: none, so it is gone for screen readers and the keyboard too).
     <div className="flex flex-1 flex-col gap-4 pb-safe-b pl-safe-l pr-safe-r pt-safe-t [&:has([data-full-screen])>nav]:hidden [&:has([data-map-screen])>nav]:hidden">
       {/* Above the page, so a full-screen map can lie under it. */}
       <nav
         aria-label="Learner"
         className="relative z-10 flex items-center justify-between"
       >
-        <BackControl homeHref={homeHref} exitHref={exitHref} />
+        <BackControl
+          homeHref={homeHref}
+          exitHref={exitHref}
+          screenlessDepths={screenlessDepths}
+        />
         <HomeControl homeHref={homeHref} />
       </nav>
       <main id="main-content" className="flex min-w-0 flex-1 flex-col">

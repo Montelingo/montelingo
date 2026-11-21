@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  makeChapterState,
   makeLocation,
   newAccountProgress,
   seedLocationDetail,
@@ -10,6 +11,7 @@ import { MAP_ELEMENT_STATES, type MapElementState } from "./map-state";
 import type { ProgressResult } from "./progress";
 import {
   closedLocationRedirect,
+  gameStateOf,
   lockedRegionRedirect,
   needsProgressRetry,
   toLocationScreen,
@@ -101,6 +103,7 @@ describe("toRegionScreen", () => {
           { id: "kotor", state: "in-progress" },
           { id: "tivat", state: "available" },
         ],
+        chapters: [],
       },
     };
 
@@ -128,7 +131,7 @@ describe("toRegionScreen", () => {
   it("gives the region the loading state when progress does not cover it", () => {
     const screen = toRegionScreen(seedRegionDetail("coast"), {
       status: "ready",
-      progress: { regions: [], locations: [] },
+      progress: { regions: [], locations: [], chapters: [] },
     });
 
     expect(screen.region.state).toBe("loading");
@@ -147,8 +150,46 @@ describe("toLocationScreen", () => {
   it("gives the location and its region their states, keeping the chapters", () => {
     expect(toLocationScreen(coast, budva, newAccountProgress())).toEqual({
       region: { id: "coast", name: "Obala", state: "available" },
-      location: { ...budva, state: "available" },
+      location: {
+        ...budva,
+        state: "available",
+        chapters: [{ ...budva.chapters[0], chapterState: null }],
+      },
     });
+  });
+
+  it("gives the location's chapters their states from progress, in chapter order, null where progress has none", () => {
+    const podgorica = seedLocationDetail("podgorica");
+    const home = makeChapterState("podgorica-home", { lesson: "done" });
+    const kitchen = makeChapterState("podgorica-kitchen");
+
+    const screen = toLocationScreen(seedRegionDetail("central"), podgorica, {
+      status: "ready",
+      progress: {
+        regions: [],
+        locations: [],
+        // Out of order, with another place's chapter, and one chapter missing.
+        chapters: [kitchen, makeChapterState("budva-beach"), home],
+      },
+    });
+
+    expect(
+      screen.location.chapters.map(({ id, chapterState }) => [
+        id,
+        chapterState,
+      ]),
+    ).toEqual([
+      ["podgorica-home", home],
+      ["podgorica-vegetables", null],
+      ["podgorica-kitchen", kitchen],
+      ["podgorica-kindergarten", null],
+    ]);
+  });
+
+  it("gives every chapter a null state when progress failed", () => {
+    expect(
+      toLocationScreen(coast, budva, { status: "error" }).location.chapters,
+    ).toEqual([{ ...budva.chapters[0], chapterState: null }]);
   });
 
   it("puts both in the error state when progress failed", () => {
@@ -161,7 +202,7 @@ describe("toLocationScreen", () => {
   it("gives both the loading state when progress does not cover them", () => {
     const screen = toLocationScreen(coast, budva, {
       status: "ready",
-      progress: { regions: [], locations: [] },
+      progress: { regions: [], locations: [], chapters: [] },
     });
 
     expect(screen.region.state).toBe("loading");
@@ -178,7 +219,9 @@ describe("toLocationScreen", () => {
       newAccountProgress(),
     );
 
-    expect(screen.location.chapters).toEqual(podgorica.chapters);
+    expect(screen.location.chapters).toEqual(
+      podgorica.chapters.map((chapter) => ({ ...chapter, chapterState: null })),
+    );
   });
 });
 
@@ -253,5 +296,43 @@ describe("needsProgressRetry", () => {
 
   it("is false for no items", () => {
     expect(needsProgressRetry([])).toBe(false);
+  });
+});
+
+describe("gameStateOf", () => {
+  const [travel] = seedLocationDetail("tivat").chapters;
+  if (travel === undefined) {
+    throw new Error("Tivat has no chapters");
+  }
+
+  it("gives the game's state as the server sent it", () => {
+    const chapter = {
+      ...travel,
+      chapterState: makeChapterState(travel.id, {
+        lesson: "done",
+        memory: "available",
+      }),
+    };
+
+    expect(gameStateOf(chapter, "memory")).toEqual({ state: "available" });
+  });
+
+  it("gives no state, rather than a lock, when progress has none for the chapter", () => {
+    expect(gameStateOf({ ...travel, chapterState: null }, "memory")).toEqual({
+      state: null,
+    });
+  });
+
+  it("has no game the chapter's state does not list", () => {
+    const chapter = {
+      ...travel,
+      chapterState: {
+        id: travel.id,
+        lesson: "done" as const,
+        games: [{ id: "match" as const, state: "available" as const }],
+      },
+    };
+
+    expect(gameStateOf(chapter, "memory")).toBeNull();
   });
 });

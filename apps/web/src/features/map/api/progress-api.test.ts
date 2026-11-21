@@ -110,6 +110,16 @@ describe("fetchProgress", () => {
           { id: "budva", state: "available" },
           { id: "kotor", state: "locked" },
         ],
+        chapters: [
+          {
+            id: "budva-beach",
+            lesson: "todo",
+            games: [
+              { id: "memory", state: "locked" },
+              { id: "match", state: "locked" },
+            ],
+          },
+        ],
       },
     });
   });

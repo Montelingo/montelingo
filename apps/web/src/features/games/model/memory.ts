@@ -3,6 +3,8 @@
 // (#132) drives `memoryReducer` with `useReducer` and renders `cardFace`.
 // No timer, no score, no fail state: a miss simply turns back.
 
+import { type Random, shuffle } from "./random";
+
 /** How many pairs a game deals, at most. Tune after testing with children. */
 export const PAIRS = 6;
 
@@ -38,12 +40,18 @@ export type MemoryAction =
   /** Turn a miss back over. The board sends it about a second after a miss. */
   | { type: "hide-miss" };
 
-/** A random number in [0, 1), like `Math.random`, injected so tests repeat. */
-export type Random = () => number;
-
 export type CardFace = "down" | "up" | "matched";
 
 type PictureWord = MemoryWord & { imageUrl: string };
+
+/**
+ * Whether `words` deal a game: at least `MIN_PAIRS` of them have a picture of
+ * their own. The route asks first, so a chapter without enough pictures yet
+ * says so instead of showing an empty board.
+ */
+export function canDealMemoryGame(words: readonly MemoryWord[]): boolean {
+  return distinctPictureWords(words).length >= MIN_PAIRS;
+}
 
 /**
  * Deal a new game: up to `PAIRS` words that have a picture, chosen at random,
@@ -147,18 +155,6 @@ function distinctPictureWords(words: readonly MemoryWord[]): PictureWord[] {
     seenWords.add(word.id);
     seenPictures.add(imageUrl);
     result.push({ ...word, imageUrl });
-  }
-  return result;
-}
-
-/** A shuffled copy (Fisher–Yates), drawing from `random`. */
-function shuffle<T>(items: readonly T[], random: Random): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(random() * (i + 1));
-    const item = result[i] as T;
-    result[i] = result[j] as T;
-    result[j] = item;
   }
   return result;
 }

@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 
 import { PLAY_PATH } from "@/features/auth";
 import { LearnerShell } from "@/features/learner";
+import { SCREENLESS_PLAY_DEPTHS } from "@/features/map/edge";
 
 // Lets the learner area draw edge to edge on devices with a notch or rounded
 // corners: env(safe-area-inset-*) is only non-zero with viewport-fit=cover,
@@ -21,7 +22,11 @@ type LearnerLayoutProps = Readonly<{
 // loading.tsx (which sit inside this layout) cover the check.
 export default function LearnerLayout({ children }: LearnerLayoutProps) {
   return (
-    <LearnerShell homeHref={PLAY_PATH} exitHref="/">
+    <LearnerShell
+      homeHref={PLAY_PATH}
+      exitHref="/"
+      screenlessDepths={SCREENLESS_PLAY_DEPTHS}
+    >
       {children}
     </LearnerShell>
   );

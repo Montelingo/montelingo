@@ -85,7 +85,7 @@ export function MapScreen({
             <NextStopCard place={nextPlace} />
           </div>
         ) : null}
-        <MapBottomNav />
+        <MapBottomNav current="map" />
       </div>
       <LevelCard regions={regions} places={places} />
     </section>

@@ -156,14 +156,16 @@ async def test_progress_rows_change_endpoint_states(
     assert response.status_code == 200
     data = response.json()
 
+    # A completed place opens the next one in content order (#139): here the
+    # first place of the next region.
     assert states(data, "locations") == {
         "budva": "in-progress",
         "kotor": "completed",
-        "kolasin": "locked",
+        "kolasin": "available",
     }
     assert states(data, "regions") == {
         "coast": "available",
-        "north": "locked",
+        "north": "available",
     }
 
 
@@ -550,7 +552,7 @@ async def test_complete_lesson_locked_place_returns_409_without_writes(
         "/api/v1/chapters/kotor-walls/lesson", headers={"Origin": ORIGIN}
     )
     assert response.status_code == 409
-    assert response.json()["error"]["code"] == "conflict"
+    assert response.json()["error"]["code"] == "chapter_locked"
     assert await db_session.get(LocationProgress, (profile.id, kotor.id)) is None
 
 

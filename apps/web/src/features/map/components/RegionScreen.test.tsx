@@ -32,7 +32,11 @@ vi.mock("next/navigation", () => ({
 // Progress answered, but without an entry for the coast's places.
 const UNCOVERED: ProgressResult = {
   status: "ready",
-  progress: { regions: [{ id: "coast", state: "available" }], locations: [] },
+  progress: {
+    regions: [{ id: "coast", state: "available" }],
+    locations: [],
+    chapters: [],
+  },
 };
 
 function renderCoast(

@@ -1,30 +1,49 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import { SETTLE_DELAY_MS } from "@/lib/use-settled";
 
 import {
   type CardFace,
   cardFace,
   createMemoryGame,
+  isComplete,
   isMissShowing,
   type MemoryCard,
   memoryReducer,
   type MemoryState,
   type MemoryWord,
-  type Random,
 } from "../model/memory";
+import type { Random } from "../model/random";
+import { useGameVisit } from "../hooks/use-game-visit";
+import { BravoScreen, type GameReward, wordsLearnedText } from "./BravoScreen";
 
 export type MemoryGameProps = {
   /**
-   * The chapter's words. The game is dealt once, when it mounts, so a new
-   * chapter needs a new `key`.
+   * The chapter's words. The game is dealt when it mounts and again on "Igraj
+   * ponovo", so a new chapter needs a new `key`.
    */
   words: readonly MemoryWord[];
+  /** The place's screen, where "Nazad na mjesto" leads from "Bravo!". */
+  placeHref: string;
+  /**
+   * Called once, when every pair is found: the game then counts as played
+   * (ADR 0006). Playing again does not call it a second time.
+   */
+  onCompleted?: () => void;
+  /** The learner's name, for "Bravo, Mia!". Without it, "Bravo!". */
+  learnerName?: string;
+  /**
+   * The place's sticker, when this game completes the place. The first
+   * "Bravo!" screen shows it; a second game gives nothing new, so its "Bravo!"
+   * leaves the card and the new words out.
+   */
+  reward?: GameReward | null;
   /** Shuffles the deal. Tests pass their own, so a deal repeats. */
   random?: Random;
 };
@@ -34,17 +53,103 @@ const NO_GAME: MemoryState = { cards: [], faceUp: [], matched: [] };
 /** How long a miss stays turned over, so the child sees both pictures. */
 export const MISS_DELAY_MS = 1000;
 
-// A chapter's memory game (#132, ADR 0006): #131's model on a board of up to
-// 12 cards. It takes the chapter's words and does no fetching; the route
-// (#135) loads them. The copy is Montenegrin, so the board carries the
-// content's language.
-export function MemoryGame({ words, random = Math.random }: MemoryGameProps) {
+/** How long the last pair shows before "Bravo!", so the child sees it. */
+export const BRAVO_DELAY_MS = 800;
+
+/** How long the "Bravo!" buttons ignore presses after the screen appears. */
+export { SETTLE_DELAY_MS };
+
+type Phase = "playing" | "complete" | "bravo";
+
+// A chapter's memory game (#132, #133, ADR 0006): #131's model on a board of
+// up to 12 cards, then a "Bravo!" screen once every pair is found. It takes
+// the chapter's words and does no fetching; the route (#135) loads them. The
+// copy is Montenegrin, so the game carries the content's language.
+//
+// "Igraj ponovo" deals a new game: the board mounts again under a new key, so
+// it shuffles again and keeps no state from the last round.
+export function MemoryGame({
+  words,
+  placeHref,
+  onCompleted,
+  learnerName,
+  reward,
+  random = Math.random,
+}: MemoryGameProps) {
+  const [phase, setPhase] = useState<Phase>("playing");
+  const [pairs, setPairs] = useState(0);
+
+  const handleComplete = useCallback((found: number) => {
+    setPairs(found);
+    setPhase((current) => (current === "playing" ? "complete" : current));
+  }, []);
+
+  // The last pair stays on the board a moment, then "Bravo!".
+  useEffect(() => {
+    if (phase !== "complete") {
+      return;
+    }
+    const timer = setTimeout(() => setPhase("bravo"), BRAVO_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  const { game, isReplay, playAgain } = useGameVisit(
+    phase !== "playing",
+    onCompleted,
+  );
+
+  if (phase === "bravo") {
+    return (
+      <BravoScreen
+        message={
+          isReplay ? "Svi parovi su pronađeni!" : wordsLearnedText(pairs)
+        }
+        placeHref={placeHref}
+        learnerName={learnerName}
+        reward={isReplay ? null : (reward ?? null)}
+        onPlayAgain={() => {
+          playAgain();
+          setPhase("playing");
+        }}
+      />
+    );
+  }
+
+  return (
+    <Board
+      key={game}
+      words={words}
+      random={random}
+      shouldFocusFirstOnMount={isReplay}
+      onComplete={handleComplete}
+    />
+  );
+}
+
+type BoardProps = {
+  words: readonly MemoryWord[];
+  random: Random;
+  /** After "Igraj ponovo" the focus was on a button that is gone. */
+  shouldFocusFirstOnMount: boolean;
+  /** Called when every pair is found, with the number of pairs. */
+  onComplete: (pairs: number) => void;
+};
+
+// One round: the cards, dealt once, when the board mounts.
+function Board({
+  words,
+  random,
+  shouldFocusFirstOnMount,
+  onComplete,
+}: BoardProps) {
   const [state, dispatch] = useReducer(
     memoryReducer,
     undefined,
     () => createMemoryGame(words, random) ?? NO_GAME,
   );
   const missShowing = isMissShowing(state);
+  const complete = isComplete(state);
+  const pairs = state.cards.length / 2;
 
   useEffect(() => {
     if (!missShowing) {
@@ -57,12 +162,28 @@ export function MemoryGame({ words, random = Math.random }: MemoryGameProps) {
     return () => clearTimeout(timer);
   }, [missShowing]);
 
+  useEffect(() => {
+    if (complete) {
+      onComplete(pairs);
+    }
+  }, [complete, pairs, onComplete]);
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (shouldFocusFirstOnMount) {
+      boardRef.current?.querySelector("button")?.focus();
+    }
+    // Only on mount: a new deal is a new board.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, []);
+
   if (state.cards.length === 0) {
     return null;
   }
 
   return (
     <div
+      ref={boardRef}
       role="group"
       aria-label="Memorija"
       lang={CONTENT_LANG}

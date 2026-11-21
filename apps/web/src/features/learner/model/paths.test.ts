@@ -76,4 +76,34 @@ describe("backHref", () => {
   it("leaves the area from a page outside it", () => {
     expect(backHref("/account", targets)).toBe("/");
   });
+
+  describe("with a depth that has no screen", () => {
+    const skipping = { ...targets, screenlessDepths: [3] };
+
+    it.each([
+      ["/play/coast/budva/budva-beach/lesson", "/play/coast/budva"],
+      ["/play/coast/budva/budva-beach/memory/", "/play/coast/budva"],
+      ["/play/coast//budva/budva-beach//memory", "/play/coast/budva"],
+    ])("skips it: %j goes back to %j", (pathname, expected) => {
+      expect(backHref(pathname, skipping)).toBe(expected);
+    });
+
+    it.each([
+      ["/play/coast/budva/budva-beach", "/play/coast/budva"],
+      ["/play/coast/budva", "/play/coast"],
+      ["/play/coast", "/play"],
+      ["/play", "/"],
+    ])(
+      "leaves the other levels as they are: %j goes back to %j",
+      (pathname, expected) => {
+        expect(backHref(pathname, skipping)).toBe(expected);
+      },
+    );
+
+    it("skips several levels in a row", () => {
+      expect(
+        backHref("/play/a/b/c/d", { ...targets, screenlessDepths: [2, 3] }),
+      ).toBe("/play/a");
+    });
+  });
 });
