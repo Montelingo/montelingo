@@ -14,6 +14,7 @@ from .domain import (
     calculate_chapter_state,
     calculate_chapter_states,
     calculate_map_states,
+    is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
 from .repository import ChildProfileRepository, ProgressRepository
@@ -91,17 +92,29 @@ class GameProgressService:
                 status_code=409,
             )
         if game_state == "completed":
-            # Recorded once (ADR 0006): a replay answers 200 and changes nothing.
+            # Recorded once (ADR 0006): a replay answers 200 and records nothing.
+            # It does complete a place whose games are all done but that isn't
+            # marked, like one finished before #139 or before content changed.
+            if location_states[chapter.location_slug] != "completed" and is_location_completed(
+                chapter.location_slug, chapters
+            ):
+                async with self.transaction_manager.transaction():
+                    await self.repository.complete_location(
+                        learning_profile_id, chapter.location_slug
+                    )
             return _chapter_state(state)
 
         async with self.transaction_manager.transaction():
+            # `record_game` locks the place's progress row, so the read below
+            # sees a game recorded at the same moment in the same place.
             await self.repository.record_game(learning_profile_id, chapter_slug, game)
+            # Read back what was stored, so a concurrent call answers the same state.
+            recorded = await self.repository.read_chapters(learning_profile_id)
+            # The place's last game completes it, which opens the next place (#139).
+            if is_location_completed(chapter.location_slug, recorded):
+                await self.repository.complete_location(learning_profile_id, chapter.location_slug)
 
-        # Read back what was stored, so a concurrent call answers the same state.
-        recorded = _find_chapter(
-            await self.repository.read_chapters(learning_profile_id), chapter_slug
-        )
-        return _chapter_state(_calculate(recorded))
+        return _chapter_state(_calculate(_find_chapter(recorded, chapter_slug)))
 
 
 def _find_chapter(

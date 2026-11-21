@@ -5,7 +5,13 @@ from datetime import UTC, datetime
 import pytest
 
 from app.modules.content.domain import Content, Location, Region
-from app.modules.progress.domain import LocationProgressRecord, calculate_map_states
+from app.modules.progress.domain import (
+    ChapterProgressRecord,
+    LocationProgressRecord,
+    calculate_map_states,
+    is_location_completed,
+)
+from app.modules.progress.schemas import GameId
 
 NOW = datetime(2026, 10, 22, tzinfo=UTC)
 
@@ -73,7 +79,7 @@ def example_content() -> Content:
                 "coast": "available",
                 "north": "locked",
             },
-            id="one-started",
+            id="part-of-a-place-opens-nothing",
         ),
         pytest.param(
             [
@@ -85,14 +91,14 @@ def example_content() -> Content:
             ],
             {
                 "budva": "completed",
-                "kotor": "locked",
+                "kotor": "available",
                 "kolasin": "locked",
             },
             {
                 "coast": "available",
                 "north": "locked",
             },
-            id="one-completed",
+            id="whole-place-opens-the-next",
         ),
         pytest.param(
             [
@@ -110,13 +116,13 @@ def example_content() -> Content:
             {
                 "budva": "completed",
                 "kotor": "completed",
-                "kolasin": "locked",
+                "kolasin": "available",
             },
             {
                 "coast": "completed",
-                "north": "locked",
+                "north": "available",
             },
-            id="whole-region-completed",
+            id="region-last-place-opens-the-next-region",
         ),
         pytest.param(
             [
@@ -191,3 +197,96 @@ def test_empty_region_is_locked() -> None:
     result = calculate_map_states(content, [])
 
     assert result.regions["empty"] == "locked"
+
+
+def test_a_completed_place_opens_only_the_next_one() -> None:
+    result = calculate_map_states(
+        example_content(),
+        [LocationProgressRecord(location_slug="budva", started_at=NOW, completed_at=NOW)],
+    )
+
+    assert result.locations["kotor"] == "available"
+    assert result.locations["kolasin"] == "locked"
+
+
+def test_the_next_place_keeps_its_own_progress() -> None:
+    result = calculate_map_states(
+        example_content(),
+        [
+            LocationProgressRecord(location_slug="budva", started_at=NOW, completed_at=NOW),
+            LocationProgressRecord(location_slug="kotor", started_at=NOW),
+        ],
+    )
+
+    assert result.locations["kotor"] == "in-progress"
+    assert result.locations["kolasin"] == "locked"
+
+
+def chapter(
+    slug: str,
+    *,
+    location: str = "budva",
+    lesson: bool = True,
+    games: tuple[GameId, ...] = (),
+) -> ChapterProgressRecord:
+    return ChapterProgressRecord(
+        chapter_slug=slug,
+        location_slug=location,
+        lesson_completed_at=NOW if lesson else None,
+        completed_games=games,
+    )
+
+
+@pytest.mark.parametrize(
+    ("chapters", "expected"),
+    [
+        pytest.param(
+            [chapter("beach", lesson=False), chapter("old-town", lesson=False)],
+            False,
+            id="no-progress",
+        ),
+        pytest.param(
+            [chapter("beach", games=("memory",)), chapter("old-town")],
+            False,
+            id="lesson-and-one-game",
+        ),
+        pytest.param(
+            [chapter("beach", games=("memory", "match")), chapter("old-town")],
+            False,
+            id="one-chapter-of-two",
+        ),
+        pytest.param(
+            [
+                chapter("beach", games=("memory", "match")),
+                chapter("old-town", games=("match", "memory")),
+            ],
+            True,
+            id="every-chapter",
+        ),
+        pytest.param(
+            [
+                chapter("beach", games=("memory", "match")),
+                chapter("old-town", games=("memory", "match")),
+                chapter("walls", location="kotor"),
+            ],
+            True,
+            id="other-places-do-not-count",
+        ),
+        pytest.param(
+            [chapter("walls", location="kotor", games=("memory", "match"))],
+            False,
+            id="place-without-chapters",
+        ),
+    ],
+)
+def test_a_place_is_completed_when_every_lesson_and_game_is_done(
+    chapters: list[ChapterProgressRecord],
+    expected: bool,
+) -> None:
+    assert is_location_completed("budva", chapters) is expected
+
+
+def test_games_without_the_lesson_do_not_complete_a_place() -> None:
+    chapters = [chapter("beach", lesson=False, games=("memory", "match"))]
+
+    assert is_location_completed("budva", chapters) is False

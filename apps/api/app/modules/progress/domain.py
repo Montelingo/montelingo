@@ -42,11 +42,17 @@ def calculate_map_states(
     content: Content,
     progress: Iterable[LocationProgressRecord],
 ) -> MapStates:
-    """Calculate map states without database access or side effects."""
+    """Calculate map states without database access or side effects.
+
+    A completed place opens the next one in content order (#139). Content
+    lists places by region, then by position in the region, so after a
+    region's last place the next is the first place of the next region.
+    """
 
     progress_by_slug = {row.location_slug: row for row in progress}
 
     location_states: dict[str, MapState] = {}
+    previous_place_completed = False
 
     for location in content.locations:
         row = progress_by_slug.get(location.slug)
@@ -55,12 +61,13 @@ def calculate_map_states(
             state: MapState = "completed"
         elif row is not None and row.started_at is not None:
             state = "in-progress"
-        elif location.is_starting:
+        elif location.is_starting or previous_place_completed:
             state = "available"
         else:
             state = "locked"
 
         location_states[location.slug] = state
+        previous_place_completed = state == "completed"
 
     region_states: dict[str, MapState] = {}
 
@@ -160,6 +167,34 @@ def calculate_chapter_states(
         for chapter in chapters
         if location_states.get(chapter.location_slug, "locked") != "locked"
     )
+
+
+def is_location_completed(
+    location_slug: str,
+    chapters: Iterable[ChapterProgressRecord],
+) -> bool:
+    """Whether every chapter of a place has its lesson seen and every game completed.
+
+    A place without chapters has nothing to complete, so it is never completed.
+    """
+
+    place_chapters = [chapter for chapter in chapters if chapter.location_slug == location_slug]
+    return bool(place_chapters) and all(
+        _is_chapter_completed(
+            calculate_chapter_state(
+                chapter.chapter_slug,
+                chapter.lesson_completed_at,
+                chapter.completed_games,
+            )
+        )
+        for chapter in place_chapters
+    )
+
+
+def _is_chapter_completed(chapter: ChapterState) -> bool:
+    # A recorded game counts as `completed` even without the lesson, so the
+    # lesson is checked too.
+    return chapter.lesson == "done" and all(game.state == "completed" for game in chapter.games)
 
 
 class InvalidChildProfile(ValueError):
