@@ -24,4 +24,6 @@ It reads every `NNNN.png` in the folder, writes both variants here, prints their
 | Numbers | Chapter                | Added in |
 | ------- | ---------------------- | -------- |
 | 1–10    | Na plaži (Budva)       | #127     |
+| 11–20   | U luci (Kotor)         | #188     |
 | 61–70   | Ljeto i odjeća (Budva) | #120     |
+| 71–80   | Boje oko nas (Kotor)   | #188     |

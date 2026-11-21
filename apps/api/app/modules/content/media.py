@@ -12,7 +12,9 @@ from __future__ import annotations
 WORD_IMAGES: frozenset[int] = frozenset(
     [
         *range(1, 11),  # Na plaži (Budva), #127
+        *range(11, 21),  # U luci (Kotor), #188
         *range(61, 71),  # Ljeto i odjeća (Budva)
+        *range(71, 81),  # Boje oko nas (Kotor), #188
     ]
 )
 """Recording numbers of the words that have an image."""
