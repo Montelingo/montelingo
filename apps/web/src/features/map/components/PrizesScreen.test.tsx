@@ -29,6 +29,7 @@ const BUDVA_DONE: ProgressResult = {
       { id: "tivat", state: "locked" },
       { id: "bar", state: "locked" },
     ],
+    chapters: [],
   },
 };
 

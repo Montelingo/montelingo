@@ -22,7 +22,7 @@ const locations = [
 function ready(progress: Partial<Progress>): ProgressResult {
   return {
     status: "ready",
-    progress: { regions: [], locations: [], ...progress },
+    progress: { regions: [], locations: [], chapters: [], ...progress },
   };
 }
 
@@ -205,6 +205,22 @@ describe("toProgress", () => {
     ).toEqual({
       regions: [{ id: "coast", state: "available" }],
       locations: [{ id: "budva", state: "in-progress" }],
+      chapters: [],
     });
+  });
+
+  it("keeps each chapter's lesson and games, in the server's order", () => {
+    const chapter = {
+      id: "budva-beach",
+      lesson: "done" as const,
+      games: [
+        { id: "memory" as const, state: "completed" as const },
+        { id: "match" as const, state: "available" as const },
+      ],
+    };
+
+    expect(
+      toProgress({ regions: [], locations: [], chapters: [chapter] }).chapters,
+    ).toEqual([chapter]);
   });
 });

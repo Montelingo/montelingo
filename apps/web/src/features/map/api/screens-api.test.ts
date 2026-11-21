@@ -6,6 +6,8 @@ import type { Profile } from "@/features/profile/edge";
 import type { LocationDetail, RegionDetail } from "../model/content";
 import type { ProgressResult } from "../model/progress";
 import {
+  makeChapter,
+  makeChapterState,
   makeLocationDetail,
   newAccountProgress,
   seedRegionDetail,
@@ -265,7 +267,10 @@ describe("loadRegionScreen", () => {
     ["progress failed", { status: "error" }],
     [
       "progress does not cover the region",
-      { status: "ready", progress: { regions: [], locations: [] } },
+      {
+        status: "ready",
+        progress: { regions: [], locations: [], chapters: [] },
+      },
     ],
   ] as const)("still opens the region when %s", async (_case, progress) => {
     adapters.getProgress.mockResolvedValue(progress);
@@ -333,7 +338,13 @@ describe("assertLocationOpen", () => {
   it("returns an open location with its region and both states", async () => {
     await expect(assertLocationOpen("coast", "budva")).resolves.toEqual({
       region: { id: "coast", name: "Obala", state: "available" },
-      location: { ...makeLocationDetail(), state: "available" },
+      location: {
+        ...makeLocationDetail(),
+        state: "available",
+        chapters: [
+          { ...makeChapter(), chapterState: makeChapterState("budva-beach") },
+        ],
+      },
     });
     expect(adapters.getRegion).toHaveBeenCalledWith("coast");
     expect(adapters.getLocation).toHaveBeenCalledWith("budva");
@@ -389,6 +400,7 @@ describe("assertLocationOpen", () => {
         progress: {
           regions: [{ id: "coast", state: regionState }],
           locations: [{ id: "budva", state: locationState }],
+          chapters: [],
         },
       });
 
@@ -406,7 +418,10 @@ describe("assertLocationOpen", () => {
     ["progress failed", { status: "error" }],
     [
       "progress covers neither",
-      { status: "ready", progress: { regions: [], locations: [] } },
+      {
+        status: "ready",
+        progress: { regions: [], locations: [], chapters: [] },
+      },
     ],
     [
       "progress does not cover the location",
@@ -415,6 +430,7 @@ describe("assertLocationOpen", () => {
         progress: {
           regions: [{ id: "coast", state: "available" }],
           locations: [],
+          chapters: [],
         },
       },
     ],
@@ -425,6 +441,7 @@ describe("assertLocationOpen", () => {
         progress: {
           regions: [],
           locations: [{ id: "budva", state: "available" }],
+          chapters: [],
         },
       },
     ],

@@ -126,8 +126,9 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
       page.getByRole("heading", { level: 2, name: "Na plaži" }),
     ).toBeVisible();
 
-    // The chapter's word list is named by its heading.
-    const words = page.getByRole("list", { name: "Na plaži" });
+    // The chapter's word list is named by its heading. `exact` keeps out the
+    // games area's "Na plaži lesson and games" list (#134).
+    const words = page.getByRole("list", { name: "Na plaži", exact: true });
     await expect(words.getByRole("listitem")).toHaveCount(10);
     await expect(words.locator("figcaption")).toHaveText(NA_PLAZI_WORDS);
   });

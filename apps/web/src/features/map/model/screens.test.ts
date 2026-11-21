@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  makeChapterState,
   makeLocation,
   newAccountProgress,
   seedLocationDetail,
@@ -101,6 +102,7 @@ describe("toRegionScreen", () => {
           { id: "kotor", state: "in-progress" },
           { id: "tivat", state: "available" },
         ],
+        chapters: [],
       },
     };
 
@@ -128,7 +130,7 @@ describe("toRegionScreen", () => {
   it("gives the region the loading state when progress does not cover it", () => {
     const screen = toRegionScreen(seedRegionDetail("coast"), {
       status: "ready",
-      progress: { regions: [], locations: [] },
+      progress: { regions: [], locations: [], chapters: [] },
     });
 
     expect(screen.region.state).toBe("loading");
@@ -147,8 +149,46 @@ describe("toLocationScreen", () => {
   it("gives the location and its region their states, keeping the chapters", () => {
     expect(toLocationScreen(coast, budva, newAccountProgress())).toEqual({
       region: { id: "coast", name: "Obala", state: "available" },
-      location: { ...budva, state: "available" },
+      location: {
+        ...budva,
+        state: "available",
+        chapters: [{ ...budva.chapters[0], chapterState: null }],
+      },
     });
+  });
+
+  it("gives the location's chapters their states from progress, in chapter order, null where progress has none", () => {
+    const podgorica = seedLocationDetail("podgorica");
+    const home = makeChapterState("podgorica-home", { lesson: "done" });
+    const kitchen = makeChapterState("podgorica-kitchen");
+
+    const screen = toLocationScreen(seedRegionDetail("central"), podgorica, {
+      status: "ready",
+      progress: {
+        regions: [],
+        locations: [],
+        // Out of order, with another place's chapter, and one chapter missing.
+        chapters: [kitchen, makeChapterState("budva-beach"), home],
+      },
+    });
+
+    expect(
+      screen.location.chapters.map(({ id, chapterState }) => [
+        id,
+        chapterState,
+      ]),
+    ).toEqual([
+      ["podgorica-home", home],
+      ["podgorica-vegetables", null],
+      ["podgorica-kitchen", kitchen],
+      ["podgorica-kindergarten", null],
+    ]);
+  });
+
+  it("gives every chapter a null state when progress failed", () => {
+    expect(
+      toLocationScreen(coast, budva, { status: "error" }).location.chapters,
+    ).toEqual([{ ...budva.chapters[0], chapterState: null }]);
   });
 
   it("puts both in the error state when progress failed", () => {
@@ -161,7 +201,7 @@ describe("toLocationScreen", () => {
   it("gives both the loading state when progress does not cover them", () => {
     const screen = toLocationScreen(coast, budva, {
       status: "ready",
-      progress: { regions: [], locations: [] },
+      progress: { regions: [], locations: [], chapters: [] },
     });
 
     expect(screen.region.state).toBe("loading");
@@ -178,7 +218,9 @@ describe("toLocationScreen", () => {
       newAccountProgress(),
     );
 
-    expect(screen.location.chapters).toEqual(podgorica.chapters);
+    expect(screen.location.chapters).toEqual(
+      podgorica.chapters.map((chapter) => ({ ...chapter, chapterState: null })),
+    );
   });
 });
 

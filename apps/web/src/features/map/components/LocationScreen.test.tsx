@@ -4,20 +4,30 @@ import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 
 import type { LocationDetail } from "../model/content";
+import type { ChapterState } from "../model/progress";
 import { type LocationScreenData, toLocationScreen } from "../model/screens";
-import { seedLocationDetail, seedRegionDetail } from "../test-fixtures";
+import {
+  makeChapterState,
+  seedLocationDetail,
+  seedRegionDetail,
+} from "../test-fixtures";
 import { LocationScreen } from "./LocationScreen";
 
-// A place the server has opened, in its open region, as the gate returns it.
+// A place the server has opened, in its open region, as the gate returns it:
+// by default its chapters not started yet.
 function openPlace(
   regionId: Parameters<typeof seedRegionDetail>[0],
   location: LocationDetail,
+  chapters: readonly ChapterState[] = location.chapters.map(({ id }) =>
+    makeChapterState(id),
+  ),
 ): LocationScreenData {
   return toLocationScreen(seedRegionDetail(regionId), location, {
     status: "ready",
     progress: {
       regions: [{ id: regionId, state: "in-progress" }],
       locations: [{ id: location.id, state: "available" }],
+      chapters,
     },
   });
 }
@@ -156,12 +166,9 @@ describe("LocationScreen", () => {
     );
     expect(regionLink.parentElement?.closest("[lang]")).toBeNull();
 
-    const games = screen.getByRole("region", { name: "Games" });
-    expect(within(games).getByText("Podgorica")).toHaveAttribute(
-      "lang",
-      "sr-Latn-ME",
-    );
-    expect(games.closest("[lang]")).toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Games" }).closest("[lang]"),
+    ).toBeNull();
   });
 
   it("says a word's note after the word, without showing it", () => {
@@ -227,18 +234,28 @@ describe("LocationScreen", () => {
       ).toBeTruthy();
     });
 
-    it("says the place's games are coming, with nothing to press", () => {
-      renderScreen(podgorica);
+    it("shows each chapter's lesson and games in the states from progress", () => {
+      renderScreen(
+        openPlace("coast", seedLocationDetail("tivat"), [
+          makeChapterState("tivat-travel", {
+            lesson: "done",
+            memory: "completed",
+            match: "available",
+          }),
+        ]),
+      );
 
-      const games = screen.getByRole("region", { name: "Games" });
-      const note = within(games).getByText(/^Games for/);
-      expect(note).toHaveTextContent("Games for Podgorica are coming soon.");
-      expect(note).toBeVisible();
-      expect(within(games).queryByRole("button")).not.toBeInTheDocument();
-      expect(within(games).queryByRole("link")).not.toBeInTheDocument();
-      expect(within(games).queryByRole("status")).not.toBeInTheDocument();
-      expect(within(games).queryByRole("alert")).not.toBeInTheDocument();
-      expect(games.querySelector("[aria-disabled], [tabindex]")).toBeNull();
+      const cards = within(
+        within(screen.getByRole("region", { name: "Games" })).getByRole(
+          "list",
+          { name: "Putujemo lesson and games" },
+        ),
+      ).getAllByRole("listitem");
+      expect(cards.map((item) => item.textContent)).toEqual([
+        "Lesson, Done",
+        "Memory, Completed",
+        "Match, Ready to play",
+      ]);
     });
   });
 

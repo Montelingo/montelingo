@@ -1,6 +1,6 @@
 import { PLAY_PATH } from "@/features/auth/edge";
 
-import type { LocationDetail, RegionDetail } from "./content";
+import type { Chapter, LocationDetail, RegionDetail } from "./content";
 import {
   isOpenState,
   type MapLocationLink,
@@ -9,9 +9,11 @@ import {
 import { withMapNotice } from "./notices";
 import { locationPath, regionPath } from "./paths";
 import {
+  joinChapterStates,
   joinProgress,
   pickNextPlace,
   type ProgressResult,
+  type WithChapterState,
   type WithState,
 } from "./progress";
 
@@ -26,10 +28,15 @@ export type RegionScreenData = {
   locations: MapLocationLink[];
 };
 
+/** A location with its chapters, each with its lesson and games' state. */
+export type LocationWithChapterStates = Omit<LocationDetail, "chapters"> & {
+  chapters: readonly WithChapterState<Chapter>[];
+};
+
 /** A location's screen: the location with its chapters, and its region. */
 export type LocationScreenData = {
   region: RegionWithState;
-  location: WithState<LocationDetail>;
+  location: WithState<LocationWithChapterStates>;
 };
 
 /** A region and its locations, each with its state, the next place marked. */
@@ -54,7 +61,7 @@ export function toRegionScreen(
   };
 }
 
-/** A location and its region, each with its state. */
+/** A location and its region, each with its state, and its chapters' states. */
 export function toLocationScreen(
   region: RegionDetail,
   location: LocationDetail,
@@ -66,7 +73,11 @@ export function toLocationScreen(
   );
   return {
     region: regionWithState(region, joined.regions),
-    location: { ...location, state: stateOf(joined.locations, location.id) },
+    location: {
+      ...location,
+      state: stateOf(joined.locations, location.id),
+      chapters: joinChapterStates(location.chapters, progress),
+    },
   };
 }
 
