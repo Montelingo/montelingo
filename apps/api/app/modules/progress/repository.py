@@ -98,6 +98,10 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
     ) -> list[ChapterProgressRecord]: ...
 
+    async def record_lesson(
+        self, learning_profile_id: UUID, chapter_slug: str, location_slug: str
+    ) -> None: ...
+
     async def record_game(
         self,
         learning_profile_id: UUID,
@@ -190,6 +194,46 @@ class SqlAlchemyProgressRepository:
             )
             for chapter in chapters
         ]
+
+    async def record_lesson(
+        self, learning_profile_id: UUID, chapter_slug: str, location_slug: str
+    ) -> None:
+        """Record the first time a lesson is seen, and start its place if it wasn't started.
+
+        `ON CONFLICT` keeps the first completion time, so a repeated or a
+        concurrent call changes nothing (ADR 0006). The caller has checked the
+        chapter exists and owns the transaction.
+        """
+
+        chapters = await read_map_chapters(self.session)
+        chapter = next((item for item in chapters if item.slug == chapter_slug), None)
+        if chapter is None or chapter.location_slug != location_slug:
+            raise LookupError(f"Chapter {chapter_slug!r} is no longer in the content.")
+
+        location_id = await self._location_id(location_slug)
+
+        # Doing anything in a place starts it (ADR 0006).
+        await self.session.execute(
+            insert(LocationProgress)
+            .values(learning_profile_id=learning_profile_id, location_id=location_id)
+            .on_conflict_do_nothing()
+        )
+
+        chapter_insert = insert(ChapterProgress).values(
+            learning_profile_id=learning_profile_id,
+            chapter_id=chapter.id,
+            lesson_completed_at=func.now(),
+        )
+        await self.session.execute(
+            chapter_insert.on_conflict_do_update(
+                index_elements=[ChapterProgress.learning_profile_id, ChapterProgress.chapter_id],
+                set_={
+                    "lesson_completed_at": func.coalesce(
+                        ChapterProgress.lesson_completed_at, func.now()
+                    )
+                },
+            )
+        )
 
     async def record_game(
         self,

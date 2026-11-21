@@ -153,17 +153,6 @@ def test_record_routes_require_a_trusted_origin(
         app.dependency_overrides.clear()
 
 
-def test_lesson_route_is_not_implemented_yet(app: FastAPI, client: TestClient) -> None:
-    app.dependency_overrides[get_learning_profile] = lambda: SimpleNamespace(id=uuid4())
-    try:
-        response = client.post("/api/v1/chapters/budva-beach/lesson", headers={"Origin": ORIGIN})
-
-        assert response.status_code == 501
-        assert response.json()["error"]["code"] == "not_implemented"
-    finally:
-        app.dependency_overrides.clear()
-
-
 class FakeGameProgressService:
     def __init__(self) -> None:
         self.received: tuple[UUID, str, str] | None = None

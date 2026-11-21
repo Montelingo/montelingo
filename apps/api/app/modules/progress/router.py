@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from typing import Never
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.responses import error_responses
-from app.core.errors import ApiError, ErrorCode
 from app.db.session import get_db_session
 from app.db.transaction import SessionTransactionManager
 from app.modules.auth import require_trusted_origin
@@ -16,7 +13,12 @@ from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
 from .schemas import ChapterState, Profile, ProfileUpdate, ProgressState
-from .service import ChildProfileService, DatabaseProgressService, GameProgressService
+from .service import (
+    ChildProfileService,
+    DatabaseProgressService,
+    GameProgressService,
+    LessonProgressService,
+)
 
 # The module owns three top-level resources, /progress, /chapters and /profile,
 # so its routes carry their paths and tags.
@@ -28,6 +30,15 @@ def get_progress_service(
 ) -> DatabaseProgressService:
     repository = SqlAlchemyProgressRepository(session)
     return DatabaseProgressService(repository)
+
+
+def get_lesson_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> LessonProgressService:
+    return LessonProgressService(
+        repository=SqlAlchemyProgressRepository(session),
+        transaction_manager=SessionTransactionManager(session),
+    )
 
 
 def get_game_progress_service(
@@ -70,15 +81,6 @@ _RECORD_DEPENDENCIES = [Depends(get_learning_profile), Depends(require_trusted_o
 _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
 
 
-def _not_implemented() -> Never:
-    # The contract is frozen in ADR 0006; #125 replaces this stub.
-    raise ApiError(
-        ErrorCode.NOT_IMPLEMENTED,
-        "Recording chapter progress is not implemented.",
-        status_code=501,
-    )
-
-
 @router.post(
     "/chapters/{chapter_id}/lesson",
     operation_id="progress_complete_lesson",
@@ -87,8 +89,12 @@ def _not_implemented() -> Never:
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
-async def complete_lesson(chapter_id: Slug) -> ChapterState:
-    _not_implemented()
+async def complete_lesson(
+    chapter_id: Slug,
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+    service: LessonProgressService = Depends(get_lesson_service),
+) -> ChapterState:
+    return await service.complete_lesson(learning_profile.id, chapter_id)
 
 
 @router.post(

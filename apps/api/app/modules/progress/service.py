@@ -53,6 +53,40 @@ class DatabaseProgressService:
         )
 
 
+class LessonProgressService:
+    """Record a seen lesson once, for the current account's learning profile."""
+
+    def __init__(
+        self,
+        repository: ProgressRepository,
+        transaction_manager: TransactionManager,
+    ) -> None:
+        self.repository = repository
+        self.transaction_manager = transaction_manager
+
+    async def complete_lesson(self, learning_profile_id: UUID, chapter_slug: str) -> ChapterState:
+        content, location_progress = await self.repository.read_map(learning_profile_id)
+        chapters = await self.repository.read_chapters(learning_profile_id)
+        chapter = _find_chapter(chapters, chapter_slug)
+
+        location_states = calculate_map_states(content, location_progress).locations
+        if location_states.get(chapter.location_slug, "locked") == "locked":
+            raise ApiError(
+                ErrorCode.CHAPTER_LOCKED,
+                "The chapter's place is locked.",
+                status_code=409,
+            )
+
+        async with self.transaction_manager.transaction():
+            await self.repository.record_lesson(
+                learning_profile_id, chapter_slug, chapter.location_slug
+            )
+            # Read back what was stored, so a concurrent call answers the same state.
+            recorded = await self.repository.read_chapters(learning_profile_id)
+
+        return _chapter_state(_calculate(_find_chapter(recorded, chapter_slug)))
+
+
 class GameProgressService:
     """Record a finished game once, for the current account's learning profile."""
 
