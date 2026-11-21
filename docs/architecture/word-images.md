@@ -4,13 +4,13 @@ This page describes how word images are made, stored, served and shown, so that 
 
 ## Where we are (November 2026)
 
-| Topic        | Today                                                                                                       | Problem                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Files        | 20 WebP files, 1024 × 1024, 15–64 KB (31 KB on average)                                                     | None. Sizes are good.                                                                                       |
-| Variants     | One size for every screen                                                                                   | The memory board decodes twelve 1024 px images for tiles of about 250 CSS px: about 4 MB of memory each.    |
-| Caching      | Next.js serves `public/` with `Cache-Control: public, max-age=0` and an ETag                                | Every image costs a request to the server on every view, even when it hasn't changed.                       |
-| Markup       | Plain `<img>` with `decoding="async"`. The lesson preloads the next card with `preload()`                    | Good. The memory game doesn't wait for its pictures before the first flip.                                  |
-| Checks       | `test_media.py`: the files and `WORD_IMAGES` agree                                                          | Nothing checks size, dimensions or transparency.                                                            |
+| Topic    | Today                                                                                     | Problem                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Files    | 20 WebP files, 1024 × 1024, 15–64 KB (31 KB on average)                                   | None. Sizes are good.                                                                                    |
+| Variants | One size for every screen                                                                 | The memory board decodes twelve 1024 px images for tiles of about 250 CSS px: about 4 MB of memory each. |
+| Caching  | Next.js serves `public/` with `Cache-Control: public, max-age=0` and an ETag              | Every image costs a request to the server on every view, even when it hasn't changed.                    |
+| Markup   | Plain `<img>` with `decoding="async"`. The lesson preloads the next card with `preload()` | Good. The memory game doesn't wait for its pictures before the first flip.                               |
+| Checks   | `test_media.py`: the files and `WORD_IMAGES` agree                                        | Nothing checks size, dimensions or transparency.                                                         |
 
 ## 1. The artwork (illustrator)
 
@@ -63,7 +63,7 @@ The files are static and change rarely, so the browser should keep them and not 
 
 ```tsx
 <img
-  src={word.imageUrl}                  // 1024
+  src={word.imageUrl} // 1024
   srcSet={`${word.imageUrl512} 512w, ${word.imageUrl} 1024w`}
   sizes="(min-width: 768px) 25vw, 33vw" // the tile's real width
   width={1024}
@@ -78,11 +78,11 @@ The API sends both URLs (`image_url` and `image_url_512`, or one base URL that t
 
 **Each screen:**
 
-| Screen                  | Variant | Loading                                                                                                                                                   |
-| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lesson card             | 1024    | First card: `fetchPriority="high"`, not lazy. Next card: `preload()` (already done). This is the one place where sharpness matters most.                  |
+| Screen                  | Variant | Loading                                                                                                                                                      |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Lesson card             | 1024    | First card: `fetchPriority="high"`, not lazy. Next card: `preload()` (already done). This is the one place where sharpness matters most.                     |
 | Memory and match boards | 512     | Before the board is playable, load **and decode** all of its pictures (`img.decode()`), so a card never flips to an empty face. Show the skeleton meanwhile. |
-| Place screen word card  | 512     | `loading="lazy"` (already done).                                                                                                                          |
+| Place screen word card  | 512     | `loading="lazy"` (already done).                                                                                                                             |
 
 **Avoid layout shift:** every image sits in a box with a fixed aspect ratio (the cards already do this), plus `width`/`height` on the `<img>`.
 
