@@ -23,7 +23,7 @@ import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
-import { useSettled } from "@/lib/use-settled";
+import { SETTLE_DELAY_MS, useSettled } from "@/lib/use-settled";
 
 import { useCardSwipe } from "../hooks/use-card-swipe";
 import { useLessonKeys } from "../hooks/use-lesson-keys";
@@ -68,7 +68,7 @@ const MODE_LABELS: Record<LessonMode, string> = {
  * child tapping quickly through the cards would otherwise press one with the
  * tap after the last card.
  */
-export const SETTLE_DELAY_MS = 600;
+export { SETTLE_DELAY_MS };
 
 // A chapter's lesson (ADR 0006): one large card, the picture alone or the word
 // alone, then a "Bravo!" screen after the last card. The copy is Montenegrin,

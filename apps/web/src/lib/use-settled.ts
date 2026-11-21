@@ -3,6 +3,12 @@
 import { useEffect, useRef } from "react";
 
 /**
+ * How long a screen that appears under a child's finger ignores presses: the
+ * lesson's and the memory game's "Bravo!" buttons.
+ */
+export const SETTLE_DELAY_MS = 600;
+
+/**
  * Returns a check that is true once `delayMs` have passed since the component
  * mounted. A screen that appears under a child's finger uses it to ignore the
  * tap that brought it up. Read it in event handlers, not while rendering.
