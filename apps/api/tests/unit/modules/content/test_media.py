@@ -27,11 +27,13 @@ VARIANTS: dict[str, tuple[int, int]] = {
     [
         (1, "/media/words/0001.webp"),
         (10, "/media/words/0010.webp"),
-        (11, None),
+        (11, "/media/words/0011.webp"),
+        (20, "/media/words/0020.webp"),
+        (21, None),
         (60, None),
         (61, "/media/words/0061.webp"),
-        (70, "/media/words/0070.webp"),
-        (71, None),
+        (80, "/media/words/0080.webp"),
+        (81, None),
         (300, None),
     ],
 )
