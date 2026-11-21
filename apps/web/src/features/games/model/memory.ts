@@ -46,6 +46,15 @@ export type CardFace = "down" | "up" | "matched";
 type PictureWord = MemoryWord & { imageUrl: string };
 
 /**
+ * Whether `words` deal a game: at least `MIN_PAIRS` of them have a picture of
+ * their own. The route asks first, so a chapter without enough pictures yet
+ * says so instead of showing an empty board.
+ */
+export function canDealMemoryGame(words: readonly MemoryWord[]): boolean {
+  return distinctPictureWords(words).length >= MIN_PAIRS;
+}
+
+/**
  * Deal a new game: up to `PAIRS` words that have a picture, chosen at random,
  * two cards each, shuffled. `null` when fewer than `MIN_PAIRS` words have a
  * picture, so there is no game to play.

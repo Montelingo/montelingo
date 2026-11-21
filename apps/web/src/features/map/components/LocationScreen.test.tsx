@@ -254,7 +254,8 @@ describe("LocationScreen", () => {
       expect(cards.map((item) => item.textContent)).toEqual([
         "Lesson, Done",
         "Memory, Completed",
-        "Match, Ready to play",
+        // No screen yet (#137), so it never looks open.
+        "Match, Coming soon",
       ]);
     });
   });
@@ -271,7 +272,7 @@ describe("LocationScreen", () => {
     ).toHaveAttribute("href", "/play/central");
   });
 
-  it("has only the region link to focus: the words and the games area are not controls", async () => {
+  it("has the region link, then each chapter's lesson, to focus: the words and locked games are not controls", async () => {
     const user = userEvent.setup();
     renderScreen(podgorica);
 
@@ -280,9 +281,18 @@ describe("LocationScreen", () => {
       screen.getByRole("link", { name: "Centralna Crna Gora" }),
     ).toHaveFocus();
 
+    // Every game is locked, so only the lessons open.
+    for (const chapter of podgorica.location.chapters) {
+      await user.tab();
+      expect(document.activeElement).toHaveAttribute(
+        "href",
+        `/play/central/podgorica/${chapter.id}/lesson`,
+      );
+    }
+
     await user.tab();
     expect(document.body).toHaveFocus();
-    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getAllByRole("link")).toHaveLength(5);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 

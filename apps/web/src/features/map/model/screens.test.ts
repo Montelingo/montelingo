@@ -11,6 +11,7 @@ import { MAP_ELEMENT_STATES, type MapElementState } from "./map-state";
 import type { ProgressResult } from "./progress";
 import {
   closedLocationRedirect,
+  gameStateOf,
   lockedRegionRedirect,
   needsProgressRetry,
   toLocationScreen,
@@ -295,5 +296,43 @@ describe("needsProgressRetry", () => {
 
   it("is false for no items", () => {
     expect(needsProgressRetry([])).toBe(false);
+  });
+});
+
+describe("gameStateOf", () => {
+  const [travel] = seedLocationDetail("tivat").chapters;
+  if (travel === undefined) {
+    throw new Error("Tivat has no chapters");
+  }
+
+  it("gives the game's state as the server sent it", () => {
+    const chapter = {
+      ...travel,
+      chapterState: makeChapterState(travel.id, {
+        lesson: "done",
+        memory: "available",
+      }),
+    };
+
+    expect(gameStateOf(chapter, "memory")).toEqual({ state: "available" });
+  });
+
+  it("gives no state, rather than a lock, when progress has none for the chapter", () => {
+    expect(gameStateOf({ ...travel, chapterState: null }, "memory")).toEqual({
+      state: null,
+    });
+  });
+
+  it("has no game the chapter's state does not list", () => {
+    const chapter = {
+      ...travel,
+      chapterState: {
+        id: travel.id,
+        lesson: "done" as const,
+        games: [{ id: "match" as const, state: "available" as const }],
+      },
+    };
+
+    expect(gameStateOf(chapter, "memory")).toBeNull();
   });
 });

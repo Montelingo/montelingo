@@ -1,5 +1,6 @@
 import {
   CheckCircleIcon,
+  ClockIcon,
   LockClosedIcon,
   PlayIcon,
   StarIcon,
@@ -53,8 +54,15 @@ function cardsOf(title: string) {
   ).getAllByRole("listitem");
 }
 
+// The pill is the item's one child, a link or plain text: its icon, then its
+// title.
 function titleOf(item: HTMLElement): string {
-  return item.querySelector("span span")?.textContent ?? "";
+  return item.querySelector(":scope > * > span")?.textContent ?? "";
+}
+
+// The item's link, or `null` when its pill is plain text.
+function linkOf(item: HTMLElement): HTMLElement | null {
+  return within(item).queryByRole("link");
 }
 
 function card(chapterTitle: string, cardTitle: string): HTMLElement {
@@ -105,47 +113,48 @@ describe("GamesArea", () => {
     it("locked: the lock icon and 'first watch the lesson'", () => {
       renderHomeWithGames("locked");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, First watch the lesson`);
-        expect(hasIcon(item, LockClosedIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, First watch the lesson");
+      expect(hasIcon(item, LockClosedIcon)).toBe(true);
     });
 
     it("available: ready to play, with no lock", () => {
       renderHomeWithGames("available");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, Ready to play`);
-        expect(hasIcon(item, PlayIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, Ready to play");
+      expect(hasIcon(item, PlayIcon)).toBe(true);
     });
 
     it("completed: a star", () => {
       renderHomeWithGames("completed");
 
-      for (const game of ["Memory", "Match"]) {
-        const item = card("Kod kuće", game);
-        expect(item).toHaveTextContent(`${game}, Completed`);
-        expect(hasIcon(item, StarIcon)).toBe(true);
-      }
+      const item = card("Kod kuće", "Memory");
+      expect(item).toHaveTextContent("Memory, Completed");
+      expect(hasIcon(item, StarIcon)).toBe(true);
     });
 
     it("draws each game in its own state, never derived from the lesson", () => {
       // A combination the server would not send today: the area still draws
       // exactly what it was given, rather than deciding a lock itself.
       renderArea([
-        makeChapterState(HOME, {
-          lesson: "todo",
-          memory: "completed",
-          match: "available",
-        }),
+        makeChapterState(HOME, { lesson: "todo", memory: "completed" }),
       ]);
 
       expect(hasIcon(card("Kod kuće", "Memory"), StarIcon)).toBe(true);
-      expect(hasIcon(card("Kod kuće", "Match"), PlayIcon)).toBe(true);
     });
+
+    it.each<GameState>(["locked", "available", "completed"])(
+      "says a game with no screen yet is coming, never open, when it is %s",
+      (state) => {
+        renderHomeWithGames(state);
+
+        const item = card("Kod kuće", "Match");
+        expect(item).toHaveTextContent("Match, Coming soon");
+        expect(hasIcon(item, ClockIcon)).toBe(true);
+        expect(linkOf(item)).toBeNull();
+      },
+    );
 
     it("lists the games in the server's order", () => {
       renderArea([
@@ -185,27 +194,60 @@ describe("GamesArea", () => {
     });
   });
 
-  it("says a chapter progress has no state for did not load, with no card that looks locked or open", () => {
+  it("still opens the lesson of a chapter progress has no state for, and says its games did not load, with nothing that looks locked or open", () => {
     renderArea([makeChapterState(HOME)]);
 
     // Only "Kod kuće" has a state.
-    expect(
-      screen.queryByRole("list", { name: "Povrće i ručak lesson and games" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText("This chapter's lesson and games did not load."),
-    ).toHaveLength(3);
+    const items = cardsOf("Povrće i ručak");
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent("Lesson, Watch");
+    expect(linkOf(items[0] as HTMLElement)).toHaveAttribute(
+      "href",
+      "/play/central/podgorica/podgorica-vegetables/lesson",
+    );
+    expect(screen.getAllByText("Its games did not load.")).toHaveLength(3);
     expect(cardsOf("Kod kuće")).toHaveLength(3);
   });
 
+  describe("links", () => {
+    it("links the lesson, whatever its state, and no locked game", () => {
+      renderHomeWithGames("locked");
+
+      expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAttribute(
+        "href",
+        "/play/central/podgorica/podgorica-home/lesson",
+      );
+      // Name computations differ on the space around the comma.
+      expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAccessibleName(
+        /^Lesson\s*,\s*Start here$/,
+      );
+      expect(linkOf(card("Kod kuće", "Memory"))).toBeNull();
+      expect(linkOf(card("Kod kuće", "Match"))).toBeNull();
+    });
+
+    it.each<GameState>(["available", "completed"])(
+      "links a game the server has opened (%s) to its screen",
+      (state) => {
+        renderHomeWithGames(state);
+
+        expect(linkOf(card("Kod kuće", "Memory"))).toHaveAttribute(
+          "href",
+          "/play/central/podgorica/podgorica-home/memory",
+        );
+        expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAttribute(
+          "href",
+          "/play/central/podgorica/podgorica-home/lesson",
+        );
+      },
+    );
+  });
+
   it.each<GameState>(["locked", "available", "completed"])(
-    "has nothing to press or follow yet, and no accessibility violations, when the games are %s",
+    "has links only, nothing else to press, and no accessibility violations, when the games are %s",
     async (state) => {
       const { container } = renderHomeWithGames(state);
 
       const games = screen.getByRole("region", { name: "Games" });
-      // The cards link to the lesson and games with their routes (#135).
-      expect(within(games).queryByRole("link")).not.toBeInTheDocument();
       expect(within(games).queryByRole("button")).not.toBeInTheDocument();
       expect(games.querySelector("[tabindex]")).toBeNull();
       expect(await axe(container)).toHaveNoViolations();

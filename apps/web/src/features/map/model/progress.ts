@@ -11,6 +11,12 @@ export type GameId = Schemas["GameState"]["id"];
 export type GameState = Schemas["GameState"]["state"];
 
 /**
+ * What a locked game says, on its card on the place's screen and on its own
+ * screen when it is opened by URL: one string, so the two never disagree.
+ */
+export const LOCKED_GAME_MESSAGE = "First watch the lesson";
+
+/**
  * A chapter's lesson and games, as the server decided them (ADR 0006). The
  * frontend never computes a lock: it draws these.
  */

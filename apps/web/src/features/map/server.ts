@@ -7,6 +7,8 @@ export { getLocation, getRegion, listRegions } from "./api/content-api";
 export { getProgress } from "./api/progress-api";
 export {
   assertLocationOpen,
+  loadGameScreen,
+  loadLessonScreen,
   loadMap,
   loadPrizes,
   loadRegionMap,

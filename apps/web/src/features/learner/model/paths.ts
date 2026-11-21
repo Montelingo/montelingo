@@ -1,7 +1,9 @@
 // "Back" in the learner area goes up the URL, not back through the browser's
 // history: from a place to its region, from a region to the map. A deep link
 // or a reload still has a sensible way back, and Back never leaves the area by
-// surprise. Only the map itself leads out, to the exit.
+// surprise. Only the map itself leads out, to the exit. A level of the URL
+// that has no screen, such as a chapter's between a lesson and its place, is
+// skipped, so Back never lands on a 404.
 
 /** `pathname` without repeated or trailing slashes ("/play//kotor/" → "/play/kotor"). */
 function normalizePath(pathname: string): string {
@@ -37,17 +39,39 @@ export function parentPath(pathname: string, root: string): string | null {
   return path.slice(0, path.lastIndexOf("/"));
 }
 
-type BackTargets = {
+/** How many segments `path`, inside `root`, is below it (`root` itself is 0). */
+function depthBelow(path: string, root: string): number {
+  return normalizePath(path).slice(root.length).split("/").filter(Boolean)
+    .length;
+}
+
+export type BackTargets = {
   /** The top of the area (the map). */
   homeHref: string;
   /** Where Back leads from the top of the area, out of it. */
   exitHref: string;
+  /**
+   * Depths below `homeHref` whose URLs have no screen (1 is a region's), which
+   * Back skips. Plain data, so a Server Component can pass it to the control.
+   */
+  screenlessDepths?: readonly number[];
 };
 
-/** Where the Back control on `pathname` goes: its parent, or out of the area from the top. */
+/**
+ * Where the Back control on `pathname` goes: its nearest parent that has a
+ * screen, or out of the area from the top.
+ */
 export function backHref(
   pathname: string,
-  { homeHref, exitHref }: BackTargets,
+  { homeHref, exitHref, screenlessDepths = [] }: BackTargets,
 ): string {
-  return parentPath(pathname, homeHref) ?? exitHref;
+  let target = parentPath(pathname, homeHref);
+  // The top (depth 0) always has a screen, so this stops there at the latest.
+  while (
+    target !== null &&
+    screenlessDepths.includes(depthBelow(target, homeHref))
+  ) {
+    target = parentPath(target, homeHref);
+  }
+  return target ?? exitHref;
 }

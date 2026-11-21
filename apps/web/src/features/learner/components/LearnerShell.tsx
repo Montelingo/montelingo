@@ -8,6 +8,8 @@ type LearnerShellProps = {
   homeHref: string;
   /** Where Back leads from the top of the area, out of it. */
   exitHref: string;
+  /** Depths below `homeHref` whose URLs have no screen, which Back skips. */
+  screenlessDepths?: readonly number[];
   children: ReactNode;
 };
 
@@ -18,6 +20,7 @@ type LearnerShellProps = {
 export function LearnerShell({
   homeHref,
   exitHref,
+  screenlessDepths,
   children,
 }: LearnerShellProps) {
   return (
@@ -31,7 +34,11 @@ export function LearnerShell({
         aria-label="Learner"
         className="relative z-10 flex items-center justify-between"
       >
-        <BackControl homeHref={homeHref} exitHref={exitHref} />
+        <BackControl
+          homeHref={homeHref}
+          exitHref={exitHref}
+          screenlessDepths={screenlessDepths}
+        />
         <HomeControl homeHref={homeHref} />
       </nav>
       <main id="main-content" className="flex min-w-0 flex-1 flex-col">

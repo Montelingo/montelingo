@@ -7,15 +7,26 @@ import { type Profile, toExplorer } from "@/features/profile/edge";
 import { getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";
-import type { Region } from "../model/content";
+import type { LocationDetail, Region, RegionDetail } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
-import { locationPath, PRIZES_PATH, regionPath } from "../model/paths";
+import {
+  gamePath,
+  type GameWithAScreen,
+  lessonPath,
+  locationPath,
+  PRIZES_PATH,
+  regionPath,
+} from "../model/paths";
 import { type PrizesData, toPrizesData } from "../model/prizes";
 import {
+  type ChapterScreenData,
   closedLocationRedirect,
+  type GameScreenData,
+  gameStateOf,
   type LocationScreenData,
   lockedRegionRedirect,
   type RegionScreenData,
+  toChapterScreen,
   toLocationScreen,
   toRegionScreen,
 } from "../model/screens";
@@ -171,6 +182,75 @@ export async function assertLocationOpen(
     locationPath(regionId, locationId),
     [getRegion(regionId), getLocation(locationId), getProgress()],
   );
+  return openLocationScreen(region, location, progress);
+}
+
+/**
+ * A chapter's lesson screen: the place's gate, then `notFound()` for a
+ * chapter the place does not have. The lesson is never locked (ADR 0006):
+ * once its place is open, it is.
+ *
+ * Call it outside any try/catch: `notFound()` and `redirect()` throw.
+ */
+export async function loadLessonScreen(
+  regionId: string,
+  locationId: string,
+  chapterId: string,
+): Promise<ChapterScreenData> {
+  const returnTo = lessonPath(regionId, locationId, chapterId);
+  const [region, location, progress] = await signedIn(returnTo, [
+    getRegion(regionId),
+    getLocation(locationId),
+    getProgress(),
+  ]);
+  return chapterOf(openLocationScreen(region, location, progress), chapterId);
+}
+
+/**
+ * A chapter's game screen: the chapter's gate, the game's state as the server
+ * sent it, and the child's name for "Bravo, Mia!" (`null` until the profile
+ * is set up, or when it cannot be read). Calls `notFound()` for a game the
+ * chapter's state does not list. The page shows the game only when its state
+ * is `available` or `completed`: a locked game, opened by URL, shows the lock
+ * message instead, since only the server opens a game.
+ *
+ * Call it outside any try/catch: `notFound()` and `redirect()` throw.
+ */
+export async function loadGameScreen(
+  regionId: string,
+  locationId: string,
+  chapterId: string,
+  gameId: GameWithAScreen,
+): Promise<GameScreenData> {
+  const returnTo = gamePath(regionId, locationId, chapterId, gameId);
+  const [region, location, progress, profile] = await signedIn(returnTo, [
+    getRegion(regionId),
+    getLocation(locationId),
+    getProgress(),
+    getProfile(),
+  ]);
+  const screen = chapterOf(
+    openLocationScreen(region, location, progress),
+    chapterId,
+  );
+  const game = gameStateOf(screen.chapter, gameId);
+  if (game === null) {
+    notFound();
+  }
+  return {
+    ...screen,
+    gameState: game.state,
+    learnerName: profile?.name ?? null,
+  };
+}
+
+// A place's screen when the place and its region are open, after the checks
+// assertLocationOpen() describes: notFound() or a redirect otherwise.
+function openLocationScreen(
+  region: RegionDetail,
+  location: LocationDetail,
+  progress: ProgressResult,
+): LocationScreenData {
   // A real place under the wrong region, such as /play/coast/durmitor.
   if (location.regionId !== region.id) {
     notFound();
@@ -186,6 +266,18 @@ export async function assertLocationOpen(
     redirect(leaveTo);
   }
   return screen;
+}
+
+// One chapter of an open place, or notFound() for one it does not have.
+function chapterOf(
+  screen: LocationScreenData,
+  chapterId: string,
+): ChapterScreenData {
+  const chapter = toChapterScreen(screen, chapterId);
+  if (chapter === null) {
+    notFound();
+  }
+  return chapter;
 }
 
 // The values of a loader's calls, in the order they were listed.

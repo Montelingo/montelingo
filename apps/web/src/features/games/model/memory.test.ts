@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   type MemoryState,
   type MemoryWord,
+  MIN_PAIRS,
   PAIRS,
+  canDealMemoryGame,
   cardFace,
   createMemoryGame,
   isComplete,
@@ -239,5 +241,29 @@ describe("isComplete", () => {
 
   it("is false for a game with no cards", () => {
     expect(isComplete({ cards: [], faceUp: [], matched: [] })).toBe(false);
+  });
+});
+
+describe("canDealMemoryGame", () => {
+  it(`deals with ${MIN_PAIRS} words that have pictures`, () => {
+    const words = [
+      ...TEN_WORDS.slice(0, MIN_PAIRS),
+      word(20, null),
+      word(21, null),
+    ];
+
+    expect(canDealMemoryGame(words)).toBe(true);
+  });
+
+  it("does not deal with fewer distinct pictures, as createMemoryGame does not", () => {
+    // Two words share a picture, so only MIN_PAIRS - 1 pictures are distinct.
+    const words = [
+      ...TEN_WORDS.slice(0, MIN_PAIRS - 1),
+      word(30, TEN_WORDS[0]?.imageUrl ?? null),
+      word(31, null),
+    ];
+
+    expect(canDealMemoryGame(words)).toBe(false);
+    expect(createMemoryGame(words, Math.random)).toBeNull();
   });
 });
