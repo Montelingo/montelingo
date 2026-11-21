@@ -23,6 +23,7 @@ const COAST_STARTED: ProgressResult = {
       { id: "kotor", state: "in-progress" },
       { id: "tivat", state: "completed" },
     ],
+    chapters: [],
   },
 };
 
@@ -122,6 +123,7 @@ describe("toPrizesData", () => {
           id,
           state: "available" as const,
         })),
+        chapters: [],
       },
     });
 
@@ -138,6 +140,7 @@ describe("toPrizesData", () => {
           { id: "north", state: "locked" },
         ],
         locations: [],
+        chapters: [],
       },
     });
 
