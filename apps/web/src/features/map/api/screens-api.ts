@@ -11,7 +11,6 @@ import type { LocationDetail, Region, RegionDetail } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
 import {
   gamePath,
-  type GameWithAScreen,
   lessonPath,
   locationPath,
   PRIZES_PATH,
@@ -30,7 +29,7 @@ import {
   toLocationScreen,
   toRegionScreen,
 } from "../model/screens";
-import type { ProgressResult } from "../model/progress";
+import type { GameId, ProgressResult } from "../model/progress";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
 
@@ -220,7 +219,7 @@ export async function loadGameScreen(
   regionId: string,
   locationId: string,
   chapterId: string,
-  gameId: GameWithAScreen,
+  gameId: GameId,
 ): Promise<GameScreenData> {
   const returnTo = gamePath(regionId, locationId, chapterId, gameId);
   const [region, location, progress, profile] = await signedIn(returnTo, [

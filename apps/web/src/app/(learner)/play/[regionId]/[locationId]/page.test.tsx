@@ -95,17 +95,17 @@ describe("LocationPage", () => {
     expect(pills("Kod kuće")).toEqual([
       "Lesson, Done",
       "Memory, Completed",
-      "Match, Coming soon",
+      "Match, Ready to play",
     ]);
     expect(pills("Povrće i ručak")).toEqual([
       "Lesson, Done",
       "Memory, Ready to play",
-      "Match, Coming soon",
+      "Match, Ready to play",
     ]);
     expect(pills("U kuhinji")).toEqual([
       "Lesson, Start here",
       "Memory, First watch the lesson",
-      "Match, Coming soon",
+      "Match, First watch the lesson",
     ]);
     expect(
       screen.queryByText("This chapter's lesson and games did not load."),

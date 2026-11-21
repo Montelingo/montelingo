@@ -4,13 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { GameId } from "./progress";
-import {
-  gamePath,
-  hasScreen,
-  lessonPath,
-  locationPath,
-  regionPath,
-} from "./paths";
+import { gamePath, lessonPath, locationPath, regionPath } from "./paths";
 
 describe("regionPath", () => {
   it("puts the region under the map", () => {
@@ -62,13 +56,11 @@ const GAME_ROUTES = join(
   "../../../app/(learner)/play/[regionId]/[locationId]/[chapterId]",
 );
 
-describe("hasScreen", () => {
+describe("every game's screen", () => {
   it.each(Object.keys(EVERY_GAME) as GameId[])(
-    "says %s has a screen exactly when its route has a page",
+    "has a page for %s at gamePath's route",
     (gameId) => {
-      expect(hasScreen(gameId)).toBe(
-        existsSync(join(GAME_ROUTES, gameId, "page.tsx")),
-      );
+      expect(existsSync(join(GAME_ROUTES, gameId, "page.tsx"))).toBe(true);
     },
   );
 });

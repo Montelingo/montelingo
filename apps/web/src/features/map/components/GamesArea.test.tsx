@@ -1,6 +1,5 @@
 import {
   CheckCircleIcon,
-  ClockIcon,
   LockClosedIcon,
   PlayIcon,
   StarIcon,
@@ -144,17 +143,15 @@ describe("GamesArea", () => {
       expect(hasIcon(card("Kod kuće", "Memory"), StarIcon)).toBe(true);
     });
 
-    it.each<GameState>(["locked", "available", "completed"])(
-      "says a game with no screen yet is coming, never open, when it is %s",
-      (state) => {
-        renderHomeWithGames(state);
+    it.each<[GameState, string]>([
+      ["locked", "First watch the lesson"],
+      ["available", "Ready to play"],
+      ["completed", "Completed"],
+    ])("draws Match in its own state too (%s)", (state, label) => {
+      renderHomeWithGames(state);
 
-        const item = card("Kod kuće", "Match");
-        expect(item).toHaveTextContent("Match, Coming soon");
-        expect(hasIcon(item, ClockIcon)).toBe(true);
-        expect(linkOf(item)).toBeNull();
-      },
-    );
+      expect(card("Kod kuće", "Match")).toHaveTextContent(`Match, ${label}`);
+    });
 
     it("lists the games in the server's order", () => {
       renderArea([
@@ -233,6 +230,10 @@ describe("GamesArea", () => {
         expect(linkOf(card("Kod kuće", "Memory"))).toHaveAttribute(
           "href",
           "/play/central/podgorica/podgorica-home/memory",
+        );
+        expect(linkOf(card("Kod kuće", "Match"))).toHaveAttribute(
+          "href",
+          "/play/central/podgorica/podgorica-home/match",
         );
         expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAttribute(
           "href",

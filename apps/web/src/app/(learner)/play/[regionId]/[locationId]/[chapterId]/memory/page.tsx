@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import {
   canDealMemoryGame,
   GameUnavailable,
-  type GameUnavailableProps,
+  gameUnavailableReason,
   MemoryGame,
 } from "@/features/games";
 import { CONTENT_LANG } from "@/features/map/edge";
@@ -49,14 +49,10 @@ export default async function MemoryPage(props: MemoryPageProps) {
     text,
     imageUrl,
   }));
-  const unavailable: GameUnavailableProps["reason"] | null =
-    gameState === null
-      ? "not-loaded"
-      : gameState === "locked"
-        ? "locked"
-        : canDealMemoryGame(words)
-          ? null
-          : "no-pictures";
+  const unavailable = gameUnavailableReason(
+    gameState,
+    canDealMemoryGame(words),
+  );
 
   if (unavailable !== null) {
     return (
