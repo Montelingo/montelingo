@@ -53,8 +53,15 @@ function cardsOf(title: string) {
   ).getAllByRole("listitem");
 }
 
+// The pill is the item's one child, a link or plain text: its icon, then its
+// title.
 function titleOf(item: HTMLElement): string {
-  return item.querySelector("span span")?.textContent ?? "";
+  return item.querySelector(":scope > * > span")?.textContent ?? "";
+}
+
+// The item's link, or `null` when its pill is plain text.
+function linkOf(item: HTMLElement): HTMLElement | null {
+  return within(item).queryByRole("link");
 }
 
 function card(chapterTitle: string, cardTitle: string): HTMLElement {
@@ -198,14 +205,52 @@ describe("GamesArea", () => {
     expect(cardsOf("Kod kuće")).toHaveLength(3);
   });
 
+  describe("links", () => {
+    it("links the lesson, whatever its state, and no locked game", () => {
+      renderHomeWithGames("locked");
+
+      expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAttribute(
+        "href",
+        "/play/central/podgorica/podgorica-home/lesson",
+      );
+      // Name computations differ on the space around the comma.
+      expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAccessibleName(
+        /^Lesson\s*,\s*Start here$/,
+      );
+      expect(linkOf(card("Kod kuće", "Memory"))).toBeNull();
+      expect(linkOf(card("Kod kuće", "Match"))).toBeNull();
+    });
+
+    it.each<GameState>(["available", "completed"])(
+      "links a game the server has opened (%s) to its screen",
+      (state) => {
+        renderHomeWithGames(state);
+
+        expect(linkOf(card("Kod kuće", "Memory"))).toHaveAttribute(
+          "href",
+          "/play/central/podgorica/podgorica-home/memory",
+        );
+        expect(linkOf(card("Kod kuće", "Lesson"))).toHaveAttribute(
+          "href",
+          "/play/central/podgorica/podgorica-home/lesson",
+        );
+      },
+    );
+
+    it("does not link a game that has no screen yet, even when open", () => {
+      renderHomeWithGames("available");
+
+      // Match gets its screen with #137.
+      expect(linkOf(card("Kod kuće", "Match"))).toBeNull();
+    });
+  });
+
   it.each<GameState>(["locked", "available", "completed"])(
-    "has nothing to press or follow yet, and no accessibility violations, when the games are %s",
+    "has links only, nothing else to press, and no accessibility violations, when the games are %s",
     async (state) => {
       const { container } = renderHomeWithGames(state);
 
       const games = screen.getByRole("region", { name: "Games" });
-      // The cards link to the lesson and games with their routes (#135).
-      expect(within(games).queryByRole("link")).not.toBeInTheDocument();
       expect(within(games).queryByRole("button")).not.toBeInTheDocument();
       expect(games.querySelector("[tabindex]")).toBeNull();
       expect(await axe(container)).toHaveNoViolations();

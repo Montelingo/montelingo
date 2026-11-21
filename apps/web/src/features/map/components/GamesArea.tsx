@@ -12,6 +12,7 @@ import type {
   GameState,
   WithChapterState,
 } from "../model/progress";
+import { gamePath, lessonPath } from "../model/paths";
 import { ChapterPill } from "./ChapterPill";
 
 /**
@@ -52,11 +53,13 @@ const LESSON_PILLS: Record<ChapterState["lesson"], PillLook> = {
 // a labelled region, above the word groups. Each chapter, in recording order,
 // is one row: its title, then its lesson and a pill per game, each in the
 // state the server sent. Pills are one line high, so a place's chapters still
-// leave its first words on screen. The frontend never decides a lock
-// (ADR 0006): a chapter the server sent no state for says so, with nothing
-// that looks locked or open. Chapter titles are Montenegrin, so they carry
-// the content's `lang`.
-export function GamesArea({ chapters }: GamesAreaProps) {
+// leave its first words on screen. The lesson's pill links to the lesson, and
+// a game's to the game once the server has opened it (`available` or
+// `completed`); a locked game's pill is plain text. The frontend never decides
+// a lock (ADR 0006): a chapter the server sent no state for says so, with
+// nothing that looks locked or open. Chapter titles are Montenegrin, so they
+// carry the content's `lang`.
+export function GamesArea({ location, chapters }: GamesAreaProps) {
   const titleId = useId();
   return (
     <section
@@ -67,7 +70,7 @@ export function GamesArea({ chapters }: GamesAreaProps) {
         Games
       </h2>
       {chapters.map((chapter) => (
-        <ChapterRow key={chapter.id} chapter={chapter} />
+        <ChapterRow key={chapter.id} location={location} chapter={chapter} />
       ))}
     </section>
   );
@@ -75,8 +78,15 @@ export function GamesArea({ chapters }: GamesAreaProps) {
 
 // One chapter's lesson and games. The chapter's word group below is named by
 // the same title, so the list's name adds "lesson and games".
-function ChapterRow({ chapter }: { chapter: WithChapterState<Chapter> }) {
+function ChapterRow({
+  location,
+  chapter,
+}: {
+  location: GamesAreaProps["location"];
+  chapter: WithChapterState<Chapter>;
+}) {
   const { chapterState } = chapter;
+  const ids = [location.regionId, location.id, chapter.id] as const;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <h3 lang={CONTENT_LANG} className="text-lg font-semibold text-ink">
@@ -97,11 +107,16 @@ function ChapterRow({ chapter }: { chapter: WithChapterState<Chapter> }) {
             <ChapterPill
               title="Lesson"
               {...LESSON_PILLS[chapterState.lesson]}
+              href={lessonPath(...ids)}
             />
           </li>
           {chapterState.games.map(({ id, state }) => (
             <li key={id}>
-              <ChapterPill title={GAME_NAMES[id]} {...GAME_PILLS[state]} />
+              <ChapterPill
+                title={GAME_NAMES[id]}
+                {...GAME_PILLS[state]}
+                href={state === "locked" ? null : gamePath(...ids, id)}
+              />
             </li>
           ))}
         </ul>

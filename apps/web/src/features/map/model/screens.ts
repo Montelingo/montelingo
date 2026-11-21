@@ -7,8 +7,10 @@ import {
   type MapElementState,
 } from "./map-state";
 import { withMapNotice } from "./notices";
-import { locationPath, regionPath } from "./paths";
+import { lessonPath, locationPath, regionPath } from "./paths";
 import {
+  type GameId,
+  type GameState,
   joinChapterStates,
   joinProgress,
   pickNextPlace,
@@ -38,6 +40,67 @@ export type LocationScreenData = {
   region: RegionWithState;
   location: WithState<LocationWithChapterStates>;
 };
+
+/**
+ * A chapter's lesson or game screen: the chapter, with its words and its
+ * lesson and games' state, and its place.
+ */
+export type ChapterScreenData = {
+  /** The chapter's place. */
+  location: Pick<LocationDetail, "id" | "name" | "regionId">;
+  chapter: WithChapterState<Chapter>;
+  /** The place's screen, where the lesson and games lead back to. */
+  placeHref: string;
+  /** The chapter's lesson, where a locked game sends the learner. */
+  lessonHref: string;
+};
+
+/**
+ * A chapter's game screen: the chapter, the game's state as the server sent
+ * it (`null` when it sent none), and the child's name, for "Bravo, Mia!".
+ */
+export type GameScreenData = ChapterScreenData & {
+  gameState: GameState | null;
+  learnerName: string | null;
+};
+
+/**
+ * One chapter of an open place's screen, or `null` when the place has no
+ * chapter `chapterId`.
+ */
+export function toChapterScreen(
+  { location }: LocationScreenData,
+  chapterId: string,
+): ChapterScreenData | null {
+  const chapter = location.chapters.find(({ id }) => id === chapterId);
+  if (chapter === undefined) {
+    return null;
+  }
+  return {
+    location: {
+      id: location.id,
+      name: location.name,
+      regionId: location.regionId,
+    },
+    chapter,
+    placeHref: locationPath(location.regionId, location.id),
+    lessonHref: lessonPath(location.regionId, location.id, chapter.id),
+  };
+}
+
+/**
+ * A game's state in a chapter, as the server sent it, or `null` when progress
+ * has no state for the chapter or the game. Only the server decides a lock
+ * (ADR 0006), so `null` is never read as open or locked.
+ */
+export function gameStateOf(
+  chapter: WithChapterState<Chapter>,
+  gameId: GameId,
+): GameState | null {
+  return (
+    chapter.chapterState?.games.find(({ id }) => id === gameId)?.state ?? null
+  );
+}
 
 /** A region and its locations, each with its state, the next place marked. */
 export function toRegionScreen(
