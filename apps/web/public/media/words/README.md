@@ -21,10 +21,12 @@ scripts/word-images.sh ~/masters/kotor
 
 It reads every `NNNN.png` in the folder, writes both variants here, prints their sizes and fails if one is over budget. If an image is over budget, simplify the drawing. Don't lower the quality. A folder of 1024 px `NNNN.webp` files also works when the PNG master is lost: the 1024 file is copied unchanged, and only the 512 file is made.
 
-| Numbers | Chapter                | Added in |
-| ------- | ---------------------- | -------- |
-| 1–10    | Na plaži (Budva)       | #127     |
-| 11–20   | U luci (Kotor)         | #188     |
-| 41–50   | Putujemo (Tivat)       | #191     |
-| 61–70   | Ljeto i odjeća (Budva) | #120     |
-| 71–80   | Boje oko nas (Kotor)   | #188     |
+| Numbers | Chapter                           | Added in |
+| ------- | --------------------------------- | -------- |
+| 1–10    | Na plaži (Budva)                  | #127     |
+| 11–20   | U luci (Kotor)                    | #188     |
+| 31–40   | Šetnja uz more (Herceg Novi)      | #190     |
+| 41–50   | Putujemo (Tivat)                  | #191     |
+| 61–70   | Ljeto i odjeća (Budva)            | #120     |
+| 71–80   | Boje oko nas (Kotor)              | #188     |
+| 91–100  | Šta radimo na obali (Herceg Novi) | #190     |
