@@ -8,6 +8,8 @@ export { MapArt } from "./components/MapArt";
 export { LocationScreenSkeleton } from "./components/LocationScreenSkeleton";
 export { MapHome } from "./components/MapHome";
 export { MapHomeSkeleton } from "./components/MapHomeSkeleton";
+export { PrizesScreen } from "./components/PrizesScreen";
+export { PrizesScreenSkeleton } from "./components/PrizesScreenSkeleton";
 export { RegionScreen } from "./components/RegionScreen";
 export { RegionScreenSkeleton } from "./components/RegionScreenSkeleton";
 export type {

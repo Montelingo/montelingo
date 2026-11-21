@@ -22,6 +22,8 @@ class ErrorCode(str, Enum):
     INVALID_RESET_TOKEN = "invalid_reset_token"
     NOT_IMPLEMENTED = "not_implemented"
     CONTENT_NOT_FOUND = "content_not_found"
+    CHAPTER_LOCKED = "chapter_locked"
+    GAME_LOCKED = "game_locked"
 
 
 @dataclass
