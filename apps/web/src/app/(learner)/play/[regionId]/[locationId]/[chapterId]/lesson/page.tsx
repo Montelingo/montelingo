@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LessonCards } from "@/features/lessons";
+import { ChapterLesson } from "@/features/lessons";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { loadLessonScreen } from "@/features/map/server";
 
@@ -26,7 +26,7 @@ export async function generateMetadata(
 // does; the lesson itself is never locked. Back skips the chapter's URL,
 // which has no screen, and returns to the place. The page's h1 is for screen
 // readers only, so the lesson keeps the whole screen; the lesson's "Bravo!"
-// is its h2.
+// is its h2. Reaching the last card records the lesson as seen (#136).
 export default async function LessonPage(props: LessonPageProps) {
   const { chapter, placeHref } = await loadLesson(props);
   return (
@@ -34,8 +34,9 @@ export default async function LessonPage(props: LessonPageProps) {
       <h1 className="sr-only">
         Lesson: <span lang={CONTENT_LANG}>{chapter.title}</span>
       </h1>
-      <LessonCards
+      <ChapterLesson
         key={chapter.id}
+        chapterId={chapter.id}
         words={chapter.words.map(({ id, number, text, imageUrl }) => ({
           id,
           number,

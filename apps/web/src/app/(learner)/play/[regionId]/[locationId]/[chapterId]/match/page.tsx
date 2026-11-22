@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import {
   canDealMatchGame,
+  ChapterGame,
   GameUnavailable,
   gameUnavailableReason,
-  MatchGame,
 } from "@/features/games";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { loadGameScreen } from "@/features/map/server";
@@ -35,6 +35,7 @@ export async function generateMetadata(
 // the game. An open game whose chapter has too few pictures to deal says they
 // are coming, rather than show an empty board. The h1 is for screen readers
 // only while the game is on screen, so the game keeps the whole screen.
+// Completing the game records it (#136).
 export default async function MatchPage(props: MatchPageProps) {
   const { chapter, gameState, learnerName, placeHref, lessonHref } =
     await loadMatch(props);
@@ -65,8 +66,10 @@ export default async function MatchPage(props: MatchPageProps) {
   return (
     <>
       <h1 className="sr-only">{heading}</h1>
-      <MatchGame
+      <ChapterGame
         key={chapter.id}
+        gameId="match"
+        chapterId={chapter.id}
         words={words}
         placeHref={placeHref}
         learnerName={learnerName ?? undefined}

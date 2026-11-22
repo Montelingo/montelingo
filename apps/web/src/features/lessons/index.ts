@@ -2,3 +2,7 @@
 // takes the chapter's words and does no fetching; its route loads them.
 export { LessonCards, type LessonCardsProps } from "./components/LessonCards";
 export type { LessonMode, LessonWord } from "./model/lesson";
+export {
+  ChapterLesson,
+  type ChapterLessonProps,
+} from "./components/ChapterLesson";

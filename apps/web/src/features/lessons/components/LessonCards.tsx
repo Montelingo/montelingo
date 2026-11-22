@@ -56,6 +56,11 @@ export type LessonCardsProps = {
    * a second time.
    */
   onFinished?: () => void;
+  /**
+   * Shown on the "Bravo!" screen when the lesson did not save, with its
+   * retry: the route's, since the lesson does no fetching.
+   */
+  saveNotice?: ReactNode;
 };
 
 const MODE_LABELS: Record<LessonMode, string> = {
@@ -77,6 +82,7 @@ export function LessonCards({
   words,
   placeHref,
   onFinished,
+  saveNotice,
 }: LessonCardsProps) {
   const count = words.length;
   // The reducer reads the current number of words, so it is never stale.
@@ -112,6 +118,7 @@ export function LessonCards({
       {finished ? (
         <FinishScreen
           placeHref={placeHref}
+          saveNotice={saveNotice}
           onRestart={() => {
             setRestarted(true);
             dispatch({ type: "restart" });
@@ -321,13 +328,14 @@ function CardDots({ count, current }: CardDotsProps) {
 
 type FinishScreenProps = {
   placeHref: string;
+  saveNotice: ReactNode;
   onRestart: () => void;
 };
 
 // After the last card: praise, then the lesson again or back to the place.
 // The heading takes the focus, so a screen reader hears "Bravo!" at once. The
 // buttons wait a moment, so the tap after the last card does not press one.
-function FinishScreen({ placeHref, onRestart }: FinishScreenProps) {
+function FinishScreen({ placeHref, saveNotice, onRestart }: FinishScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
@@ -344,6 +352,9 @@ function FinishScreen({ placeHref, onRestart }: FinishScreenProps) {
       >
         Bravo!
       </h2>
+      {saveNotice != null ? (
+        <div className="flex w-full max-w-md">{saveNotice}</div>
+      ) : null}
       <div className="flex w-full max-w-md flex-col gap-4">
         <button
           type="button"

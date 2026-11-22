@@ -11,3 +11,4 @@ export { MemoryGame, type MemoryGameProps } from "./components/MemoryGame";
 export { type GameReward } from "./components/BravoScreen";
 export { canDealMatchGame, type MatchWord } from "./model/match";
 export { canDealMemoryGame, type MemoryWord } from "./model/memory";
+export { ChapterGame, type ChapterGameProps } from "./components/ChapterGame";
