@@ -10,10 +10,11 @@ import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
 import {
+  PRIZES_PATH,
+  chapterPath,
   gamePath,
   lessonPath,
   locationPath,
-  PRIZES_PATH,
   regionPath,
 } from "../model/paths";
 import { type PrizesData, toPrizesData } from "../model/prizes";
@@ -197,12 +198,22 @@ export async function loadLessonScreen(
   chapterId: string,
 ): Promise<ChapterScreenData> {
   const returnTo = lessonPath(regionId, locationId, chapterId);
-  const [region, location, progress] = await signedIn(returnTo, [
-    getRegion(regionId),
-    getLocation(locationId),
-    getProgress(),
-  ]);
-  return chapterOf(openLocationScreen(region, location, progress), chapterId);
+  return loadOpenChapter(regionId, locationId, chapterId, returnTo);
+}
+
+/**
+ * A chapter's screen, with its lesson, games and words: the place's gate, then
+ * `notFound()` for a chapter the place does not have.
+ *
+ * Call it outside any try/catch: `notFound()` and `redirect()` throw.
+ */
+export async function loadChapterScreen(
+  regionId: string,
+  locationId: string,
+  chapterId: string,
+): Promise<ChapterScreenData> {
+  const returnTo = chapterPath(regionId, locationId, chapterId);
+  return loadOpenChapter(regionId, locationId, chapterId, returnTo);
 }
 
 /**
@@ -265,6 +276,21 @@ function openLocationScreen(
     redirect(leaveTo);
   }
   return screen;
+}
+
+// A chapter behind its place's gate. An ended session comes back to `returnTo`.
+async function loadOpenChapter(
+  regionId: string,
+  locationId: string,
+  chapterId: string,
+  returnTo: string,
+): Promise<ChapterScreenData> {
+  const [region, location, progress] = await signedIn(returnTo, [
+    getRegion(regionId),
+    getLocation(locationId),
+    getProgress(),
+  ]);
+  return chapterOf(openLocationScreen(region, location, progress), chapterId);
 }
 
 // One chapter of an open place, or notFound() for one it does not have.

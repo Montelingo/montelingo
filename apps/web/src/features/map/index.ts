@@ -5,6 +5,7 @@
 // client, are server-only and exported from ./server. Saving a finished
 // lesson or game runs in the browser: useSaveResult, with SaveNotice for its
 // retry.
+export { ChapterScreen } from "./components/ChapterScreen";
 export { LocationScreen } from "./components/LocationScreen";
 export { MapArt } from "./components/MapArt";
 export { LocationScreenSkeleton } from "./components/LocationScreenSkeleton";
@@ -39,7 +40,13 @@ export {
   type MapRegionLink,
 } from "./model/map-state";
 export { parseMapNotice } from "./model/notices";
-export { gamePath, lessonPath, locationPath, regionPath } from "./model/paths";
+export {
+  chapterPath,
+  gamePath,
+  lessonPath,
+  locationPath,
+  regionPath,
+} from "./model/paths";
 export {
   joinProgress,
   pickNextPlace,

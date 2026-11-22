@@ -23,8 +23,8 @@ export async function generateMetadata(
 
 // A chapter's lesson (ADR 0006). The gate renders the not-found page for an
 // unknown place or chapter, and sends a closed place back as the place's page
-// does; the lesson itself is never locked. Back skips the chapter's URL,
-// which has no screen, and returns to the place. The page's h1 is for screen
+// does; the lesson itself is never locked. Back returns to the
+// chapter. The page's h1 is for screen
 // readers only, so the lesson keeps the whole screen; the lesson's "Bravo!"
 // is its h2. Reaching the last card records the lesson as seen (#136).
 export default async function LessonPage(props: LessonPageProps) {

@@ -42,7 +42,7 @@ export type LocationScreenData = {
 };
 
 /**
- * A chapter's lesson or game screen: the chapter, with its words and its
+ * A chapter's own, lesson or game screen: the chapter, with its words and its
  * lesson and games' state, and its place.
  */
 export type ChapterScreenData = {

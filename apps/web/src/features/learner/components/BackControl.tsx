@@ -9,9 +9,9 @@ import { controlClassName } from "./control-class-name";
 
 type BackControlProps = BackTargets;
 
-// Goes one level up the URL (a lesson → its place → its region → the map),
-// skipping levels that have no screen, and from the map out of the area, so
-// adults can reach the rest of the site.
+// Goes one level up the URL (a lesson → its chapter → its place → its region
+// → the map), skipping levels that have no screen, and from the map out of
+// the area, so adults can reach the rest of the site.
 export function BackControl({
   homeHref,
   exitHref,

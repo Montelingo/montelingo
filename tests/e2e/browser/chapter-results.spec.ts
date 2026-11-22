@@ -5,19 +5,33 @@ import { expect, type Page, test } from "@playwright/test";
 import { setUpProfileAndOpenMap } from "./profile";
 
 const BUDVA = "/play/coast/budva";
+const NA_PLAZI = `${BUDVA}/budva-beach`;
 // Budva's first chapter, "budva-beach": 10 words.
 const NA_PLAZI_WORD_COUNT = 10;
 
-/** Na plaži's lesson and games, on Budva's screen. */
+/** Na plaži's lesson and games, on its chapter's screen. */
 function naPlazi(page: Page) {
   return page.getByRole("list", { name: "Na plaži lesson and games" });
 }
 
+/** Na plaži's card, on Budva's screen. */
+function naPlaziCard(page: Page) {
+  return page
+    .getByRole("list", { name: "Chapters" })
+    .getByRole("link", { name: /^Na plaži/ });
+}
+
+/** From Budva's screen, opens Na plaži by its card. */
+async function openNaPlazi(page: Page) {
+  await naPlaziCard(page).click();
+  await expect(page).toHaveURL(NA_PLAZI);
+}
+
 /**
- * A lesson or game pill's name, "<title>, <state>": name computations differ
+ * A lesson or game card's name, "<title>, <state>": name computations differ
  * on the space around the comma, so any is matched.
  */
-function pill(title: string, state: string): RegExp {
+function card(title: string, state: string): RegExp {
   return new RegExp(`^${title}\\s*,\\s*${state}$`);
 }
 
@@ -54,8 +68,8 @@ function saved(page: Page, kind: string) {
   );
 }
 
-/** A new account with its child's profile, on Budva's screen. */
-async function newLearnerOnBudva(page: Page) {
+/** A new account with its child's profile, on Na plaži's screen. */
+async function newLearnerOnNaPlazi(page: Page) {
   const email = `e2e-results-${randomUUID()}@example.com`;
   const password = `e2e-${randomUUID()}`;
   await page.goto("/sign-up");
@@ -68,15 +82,16 @@ async function newLearnerOnBudva(page: Page) {
   await setUpProfileAndOpenMap(page);
 
   await page.goto(BUDVA);
+  await openNaPlazi(page);
   await expect(
-    naPlazi(page).getByRole("link", { name: pill("Lesson", "Start here") }),
+    naPlazi(page).getByRole("link", { name: card("Lesson", "Start here") }),
   ).toBeVisible();
   await expect(naPlazi(page).getByRole("link", { name: /^Match/ })).toHaveCount(
     0,
   );
 }
 
-/** From Budva's screen, every card of Na plaži's lesson, to "Bravo!". */
+/** From Na plaži's screen, every card of its lesson, to "Bravo!". */
 async function watchLesson(page: Page) {
   await naPlazi(page)
     .getByRole("link", { name: /^Lesson/ })
@@ -93,7 +108,7 @@ async function watchLesson(page: Page) {
   await expect(page.getByText("Ovo još nije sačuvano.")).toHaveCount(0);
 }
 
-/** From Budva's screen, every round of Na plaži's match game, to "Bravo!". */
+/** From Na plaži's screen, every round of its match game, to "Bravo!". */
 async function playMatch(page: Page) {
   await naPlazi(page)
     .getByRole("link", { name: /^Match/ })
@@ -129,17 +144,20 @@ test("the lesson and a game are saved, and the place shows it (#136)", async ({
 }) => {
   test.setTimeout(90_000);
 
-  await test.step("a new learner opens Budva", () => newLearnerOnBudva(page));
+  await test.step("a new learner opens Na plaži", () =>
+    newLearnerOnNaPlazi(page));
 
   // The place's first visit back: the link's navigation fetches it.
   await test.step("watch the lesson and go back by its link", async () => {
     await watchLesson(page);
     await backToPlaceFromBravo(page);
+    await expect(naPlaziCard(page)).toContainText("1 of 3 done");
+    await openNaPlazi(page);
     await expect(
-      naPlazi(page).getByRole("link", { name: pill("Lesson", "Done") }),
+      naPlazi(page).getByRole("link", { name: card("Lesson", "Done") }),
     ).toBeVisible();
     await expect(
-      naPlazi(page).getByRole("link", { name: pill("Match", "Ready to play") }),
+      naPlazi(page).getByRole("link", { name: card("Match", "Ready to play") }),
     ).toBeVisible();
   });
 
@@ -155,25 +173,24 @@ test.fixme(
   async ({ page }) => {
     test.setTimeout(120_000);
 
-    await newLearnerOnBudva(page);
+    await newLearnerOnNaPlazi(page);
     await watchLesson(page);
     await backToPlaceFromBravo(page);
+    await openNaPlazi(page);
     await playMatch(page);
 
     await test.step("by Back", async () => {
       await page.goBack();
-      await expect(page).toHaveURL(BUDVA);
+      await expect(page).toHaveURL(NA_PLAZI);
       await expect(
-        naPlazi(page).getByRole("link", { name: pill("Match", "Completed") }),
+        naPlazi(page).getByRole("link", { name: card("Match", "Completed") }),
       ).toBeVisible();
     });
 
     await test.step("by the link, on a later visit", async () => {
       await page.goForward();
       await backToPlaceFromBravo(page);
-      await expect(
-        naPlazi(page).getByRole("link", { name: pill("Match", "Completed") }),
-      ).toBeVisible();
+      await expect(naPlaziCard(page)).toContainText("2 of 3 done");
     });
   },
 );

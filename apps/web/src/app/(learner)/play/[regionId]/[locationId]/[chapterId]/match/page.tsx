@@ -28,8 +28,8 @@ export async function generateMetadata(
 
 // A chapter's match game (ADR 0006). The gate renders the not-found page for
 // an unknown place or chapter, or a game the chapter's state does not list,
-// and sends a closed place back as the place's page does. Back skips the
-// chapter's URL, which has no screen, and returns to the place. Only the
+// and sends a closed place back as the place's page does. Back returns to
+// the chapter. Only the
 // server opens a game: one it sent as `locked`, opened by URL, shows the lock
 // message, and one it sent no state for says it did not load; neither shows
 // the game. An open game whose chapter has too few pictures to deal says they

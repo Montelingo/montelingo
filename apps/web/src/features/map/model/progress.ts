@@ -64,6 +64,21 @@ export function toProgress(data: Schemas["ProgressState"]): Progress {
   };
 }
 
+/**
+ * How much of a chapter is finished: its lesson and each of its games is one
+ * step. Only counts what the server sent; it never decides a lock.
+ */
+export function chapterSteps({ lesson, games }: ChapterState): {
+  done: number;
+  total: number;
+} {
+  const playedGames = games.filter(({ state }) => state === "completed").length;
+  return {
+    done: (lesson === "done" ? 1 : 0) + playedGames,
+    total: 1 + games.length,
+  };
+}
+
 /** A chapter with its lesson and games' state, `null` when progress has none. */
 export type WithChapterState<Chapter> = Chapter & {
   chapterState: ChapterState | null;

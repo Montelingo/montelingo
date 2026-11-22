@@ -2,7 +2,7 @@
 // history: from a place to its region, from a region to the map. A deep link
 // or a reload still has a sensible way back, and Back never leaves the area by
 // surprise. Only the map itself leads out, to the exit. A level of the URL
-// that has no screen, such as a chapter's between a lesson and its place, is
+// that has no screen, when the area names one (`screenlessDepths`), is
 // skipped, so Back never lands on a 404.
 
 /** `pathname` without repeated or trailing slashes ("/play//kotor/" → "/play/kotor"). */
