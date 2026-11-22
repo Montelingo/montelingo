@@ -35,6 +35,19 @@ describe("next.config", () => {
     });
   });
 
+  describe("/media/words headers", () => {
+    it("caches word images for a year, since their URL carries the file's hash", async () => {
+      expect(await headersFor("/media/words/:path*")).toEqual([
+        { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+      ]);
+    });
+
+    it("leaves the pages alone, which must not be cached", async () => {
+      expect(await headersFor("/")).toEqual([]);
+      expect(await headersFor("/:path*")).toEqual([]);
+    });
+  });
+
   describe("dev request logging", () => {
     it.each([
       "/reset-password",
