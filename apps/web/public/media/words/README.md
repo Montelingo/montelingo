@@ -12,6 +12,7 @@ One picture per word, served as static files at `/media/words/<file>` (ADR 0006)
 
 - **Source files:** the illustrator's 2048 px PNG masters, named `NNNN.png`, stay outside the repository. Commit only the WebP files.
 - **Data:** a word gets its image only when its number is in `WORD_IMAGES` (`apps/api/app/modules/content/media.py`). Add the number there in the same pull request as the files. `apps/api/tests/unit/modules/content/test_media.py` fails if the list and the files disagree, or if a file has the wrong size, is over budget or has no alpha channel.
+- **Hashes:** the browser keeps these files for a year (`Cache-Control: immutable`), so the API adds the file's hash to each URL (`0011.webp?v=<hash>`) and a redrawn image gets a new URL. The script writes the hashes to `apps/api/app/modules/content/media_hashes.json`. Commit that file with the images. `test_media.py` fails if a hash doesn't match its file. After changing or removing a file by hand, run `scripts/word-images.sh --hashes`.
 
 Make both files with the script, never by hand (Fedora: `sudo dnf install libwebp-tools`):
 
@@ -19,7 +20,7 @@ Make both files with the script, never by hand (Fedora: `sudo dnf install libweb
 scripts/word-images.sh ~/masters/kotor
 ```
 
-It reads every `NNNN.png` in the folder, writes both variants here, prints their sizes and fails if one is over budget. If an image is over budget, simplify the drawing. Don't lower the quality. A folder of 1024 px `NNNN.webp` files also works when the PNG master is lost: the 1024 file is copied unchanged, and only the 512 file is made.
+It reads every `NNNN.png` in the folder, writes both variants here, updates `media_hashes.json`, prints their sizes and fails if one is over budget. If an image is over budget, simplify the drawing. Don't lower the quality. A folder of 1024 px `NNNN.webp` files also works when the PNG master is lost: the 1024 file is copied unchanged, and only the 512 file is made.
 
 | Numbers | Chapter                           | Added in |
 | ------- | --------------------------------- | -------- |

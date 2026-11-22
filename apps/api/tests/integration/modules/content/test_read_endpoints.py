@@ -9,6 +9,7 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import Argon2PasswordHasher
+from app.modules.content.media import MEDIA_HASHES
 from app.modules.content.models import Chapter, Location, Region, VocabularyItem
 from app.modules.users.models import User
 
@@ -186,9 +187,11 @@ async def test_location_detail_recording_order(
             assert word["audio_url"] is None
             assert word["id"]
 
-    # Words 1–10 have an image (Na plaži, #127); words without one keep null.
-    assert chapters[0]["words"][0]["image_url"] == "/media/words/0001.webp"
-    assert chapters[0]["words"][9]["image_url"] == "/media/words/0010.webp"
+    # Words 1–10 have an image (Na plaži, #127), versioned by the file's hash
+    # (#205); words without one keep null.
+    first, tenth = MEDIA_HASHES["0001"]["1024"], MEDIA_HASHES["0010"]["1024"]
+    assert chapters[0]["words"][0]["image_url"] == f"/media/words/0001.webp?v={first}"
+    assert chapters[0]["words"][9]["image_url"] == f"/media/words/0010.webp?v={tenth}"
     assert all(word["image_url"] is None for word in chapters[1]["words"])
 
 

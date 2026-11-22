@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import struct
 from dataclasses import dataclass
@@ -7,47 +8,58 @@ from pathlib import Path
 
 import pytest
 
+from app.modules.content import media
 from app.modules.content.loader import load_content
-from app.modules.content.media import WORD_IMAGES, word_image_url
+from app.modules.content.media import MEDIA_HASHES, WORD_IMAGES, word_image_url
 
 # apps/api/tests/unit/modules/content/test_media.py -> repository root.
 REPO_ROOT = Path(__file__).resolve().parents[6]
 WORD_IMAGES_DIR = REPO_ROOT / "apps" / "web" / "public" / "media" / "words"
 IMAGE_FILE_RE = re.compile(r"(\d{4})(-512)?\.webp")
+HASH_RE = re.compile(r"[0-9a-f]{8}")
 
 # Each word has two variants (scripts/word-images.sh): file suffix -> (pixels, byte budget).
 VARIANTS: dict[str, tuple[int, int]] = {
     "": (1024, 80 * 1024),
     "-512": (512, 30 * 1024),
 }
+# The key of each variant's hash in media_hashes.json.
+HASH_KEYS: dict[str, str] = {"": "1024", "-512": "512"}
 
 
-@pytest.mark.parametrize(
-    ("number", "expected"),
-    [
-        (1, "/media/words/0001.webp"),
-        (10, "/media/words/0010.webp"),
-        (11, "/media/words/0011.webp"),
-        (20, "/media/words/0020.webp"),
-        (21, "/media/words/0021.webp"),
-        (30, "/media/words/0030.webp"),
-        (31, "/media/words/0031.webp"),
-        (41, "/media/words/0041.webp"),
-        (50, "/media/words/0050.webp"),
-        (51, "/media/words/0051.webp"),
-        (60, "/media/words/0060.webp"),
-        (61, "/media/words/0061.webp"),
-        (80, "/media/words/0080.webp"),
-        (81, "/media/words/0081.webp"),
-        (90, "/media/words/0090.webp"),
-        (91, "/media/words/0091.webp"),
-        (100, "/media/words/0100.webp"),
-        (101, None),
-        (300, None),
-    ],
-)
-def test_word_image_url(number: int, expected: str | None) -> None:
-    assert word_image_url(number) == expected
+def test_word_image_url_carries_the_file_hash(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(media, "MEDIA_HASHES", {"0011": {"1024": "0a1b2c3d", "512": "4e5f6a7b"}})
+
+    assert word_image_url(11) == "/media/words/0011.webp?v=0a1b2c3d"
+
+
+@pytest.mark.parametrize("number", [1, 10, 11, 20, 21, 41, 61, 80, 91, 100])
+def test_word_image_url(number: int) -> None:
+    name = f"{number:04}"
+
+    assert word_image_url(number) == f"/media/words/{name}.webp?v={MEDIA_HASHES[name]['1024']}"
+
+
+@pytest.mark.parametrize("number", [101, 300])
+def test_word_image_url_is_none_without_an_image(number: int) -> None:
+    assert word_image_url(number) is None
+
+
+def test_every_word_image_has_both_hashes() -> None:
+    # Runs without the web app's files too (the API's Docker image), so a
+    # number in WORD_IMAGES can never make word_image_url() fail at runtime.
+    problems = [
+        f"{number:04}: {key} hash is {value!r}"
+        for number in sorted(WORD_IMAGES)
+        for key in HASH_KEYS.values()
+        if not HASH_RE.fullmatch(value := MEDIA_HASHES.get(f"{number:04}", {}).get(key, ""))
+    ]
+
+    assert not problems, (
+        "media_hashes.json is missing or has bad hashes:\n  "
+        + "\n  ".join(problems)
+        + "\nRun scripts/word-images.sh --hashes."
+    )
 
 
 def image_file_numbers(folder: Path) -> set[int]:
@@ -201,6 +213,31 @@ def test_every_word_image_variant_is_valid(web_image_numbers: set[int]) -> None:
         "Word images are wrong:\n  "
         + "\n  ".join(problems)
         + "\nMake them with scripts/word-images.sh (see apps/web/public/media/words/README.md)."
+    )
+
+
+def test_media_hashes_match_the_files(web_image_numbers: set[int]) -> None:
+    problems: list[str] = []
+    hashed = {int(name) for name in MEDIA_HASHES}
+    for number in sorted(web_image_numbers - hashed):
+        problems.append(f"{number:04}: has a file but no hash")
+    for number in sorted(hashed - web_image_numbers):
+        problems.append(f"{number:04}: has a hash but no file")
+    for name, hashes in sorted(MEDIA_HASHES.items()):
+        for suffix, key in HASH_KEYS.items():
+            path = WORD_IMAGES_DIR / f"{name}{suffix}.webp"
+            if not path.is_file():
+                continue
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()[:8]
+            if hashes.get(key) != actual:
+                problems.append(
+                    f"{path.name}: hash is {hashes.get(key)!r}, the file's is {actual!r}"
+                )
+
+    assert not problems, (
+        "media_hashes.json does not match the word images:\n  "
+        + "\n  ".join(problems)
+        + "\nRun scripts/word-images.sh --hashes, and commit media_hashes.json with the images."
     )
 
 
