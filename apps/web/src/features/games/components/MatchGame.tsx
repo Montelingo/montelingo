@@ -2,7 +2,14 @@
 
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { preload } from "react-dom";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
@@ -45,6 +52,11 @@ export type MatchGameProps = {
    * "Bravo!" screen shows it.
    */
   reward?: GameReward | null;
+  /**
+   * Shown on every "Bravo!" screen when the result did not save, with its
+   * retry: the route's, since the game does no fetching.
+   */
+  saveNotice?: ReactNode;
   /** Shuffles the deal. Tests pass their own, so a deal repeats. */
   random?: Random;
 };
@@ -76,6 +88,7 @@ export function MatchGame({
   onCompleted,
   learnerName,
   reward,
+  saveNotice,
   random = Math.random,
 }: MatchGameProps) {
   // The number of rounds played, once the last one is solved.
@@ -98,6 +111,7 @@ export function MatchGame({
         placeHref={placeHref}
         learnerName={learnerName}
         reward={isReplay ? null : (reward ?? null)}
+        saveNotice={saveNotice}
         onPlayAgain={() => {
           playAgain();
           setRounds(null);

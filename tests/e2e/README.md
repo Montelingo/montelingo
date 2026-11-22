@@ -50,10 +50,24 @@ page loads with its heading and button.
 
 [`budva-journey.spec.ts`](browser/budva-journey.spec.ts) is the phase 1 happy
 path. It signs up a new account through the form, signs out, signs in, lands on
-`/play`, opens Obala, opens Budva, and checks that the "Na plaži" chapter lists
-its 10 words in recording order. Each run signs up a fresh account. Sign-up is
-limited to 10 an hour per IP. If repeated local runs hit that, run
-`docker compose restart api` to reset the in-memory limiter.
+`/play`, opens Obala, opens Budva, opens the "Na plaži" chapter from its card, and
+checks that it lists its 10 words in recording order, and that Back from the
+lesson returns to the chapter. Each run signs up a fresh account.
+
+Sign-up is limited to 10 an hour per IP, and one CI run shares that: `auth.sh`
+uses 1 and the browser tests 8, which leaves 1 for a retry.
+
+| Test                        | Sign-ups                                   |
+| --------------------------- | ------------------------------------------ |
+| `auth.sh`                   | 1                                          |
+| `budva-journey`             | 2 (one per project)                        |
+| `chapter-results`           | 2 (one per project)                        |
+| `locked-places`             | 2 (one per project)                        |
+| `second-account-signed-out` | 2 (`tablet-portrait` only, it is API only) |
+
+A new test that signs up must fit in that budget, or reuse an account another
+test made. If repeated local runs hit the limit, run `docker compose restart api`
+to reset the in-memory limiter.
 
 ```bash
 docker compose up --build -d --wait

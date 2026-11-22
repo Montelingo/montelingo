@@ -19,9 +19,12 @@ const NA_PLAZI_WORDS = [
 
 // The happy path of phase 1: a new learner signs up, signs in, and reaches
 // the first words. Each run makes its own account, so runs never share
-// progress. Sign-up is rate limited per IP (10 an hour), which leaves room
-// for both tablet projects and a retry after auth.sh.
+// progress. Sign-up is rate limited per IP (10 an hour): README.md has how
+// the suite shares them.
 test("a new learner reaches Budva's first words", async ({ page }) => {
+  // Two password hashes and a dozen screens: near the default 30 s when the
+  // stack is cold or every worker is busy.
+  test.setTimeout(60_000);
   const email = `e2e-budva-${randomUUID()}@example.com`;
   const password = `e2e-${randomUUID()}`;
 
@@ -121,15 +124,34 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
     ).toBeVisible();
   });
 
-  await test.step("see Na plaži with its 10 words", async () => {
-    await expect(
-      page.getByRole("heading", { level: 2, name: "Na plaži" }),
-    ).toBeVisible();
+  await test.step("open Na plaži from its card", async () => {
+    const chapters = page.getByRole("list", { name: "Chapters" });
+    await expect(chapters.getByRole("link")).toHaveCount(2);
+    await chapters.getByRole("link", { name: /^Na plaži/ }).click();
 
-    // The chapter's word list is named by its heading. `exact` keeps out the
-    // games area's "Na plaži lesson and games" list (#134).
-    const words = page.getByRole("list", { name: "Na plaži", exact: true });
+    await expect(page).toHaveURL("/play/coast/budva/budva-beach");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Na plaži" }),
+    ).toBeVisible();
+  });
+
+  await test.step("see Na plaži's 10 words", async () => {
+    const words = page.getByRole("list", { name: "Words" });
     await expect(words.getByRole("listitem")).toHaveCount(10);
     await expect(words.locator("figcaption")).toHaveText(NA_PLAZI_WORDS);
+  });
+
+  await test.step("go Back from the lesson to the chapter", async () => {
+    await page
+      .getByRole("list", { name: "Na plaži lesson and games" })
+      .getByRole("link", { name: /^Lesson/ })
+      .click();
+    await expect(page).toHaveURL("/play/coast/budva/budva-beach/lesson");
+
+    await page
+      .getByRole("navigation", { name: "Learner" })
+      .getByRole("link", { name: "Back" })
+      .click();
+    await expect(page).toHaveURL("/play/coast/budva/budva-beach");
   });
 });

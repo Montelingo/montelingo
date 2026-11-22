@@ -21,17 +21,16 @@ import { GamesArea } from "./GamesArea";
 const podgorica = seedLocationDetail("podgorica");
 const HOME = "podgorica-home";
 
-// The area for Podgorica, with the chapter states progress sent.
-function renderArea(states: readonly ChapterState[]) {
-  return render(
-    <GamesArea
-      location={podgorica}
-      chapters={joinChapterStates(podgorica.chapters, {
-        status: "ready",
-        progress: { regions: [], locations: [], chapters: states },
-      })}
-    />,
-  );
+// The area for one of Podgorica's chapters, with the states progress sent.
+function renderArea(states: readonly ChapterState[], chapterId = HOME) {
+  const chapter = joinChapterStates(podgorica.chapters, {
+    status: "ready",
+    progress: { regions: [], locations: [], chapters: states },
+  }).find(({ id }) => id === chapterId);
+  if (chapter === undefined) {
+    throw new Error(`No chapter ${chapterId}`);
+  }
+  return render(<GamesArea location={podgorica} chapter={chapter} />);
 }
 
 // "Kod kuće" with both games in `state`, and the lesson as the server would
@@ -46,20 +45,19 @@ function renderHomeWithGames(state: GameState) {
   ]);
 }
 
-// The pills of the chapter titled `title`: its lesson, then its games.
+// The cards of the chapter titled `title`: its lesson, then its games.
 function cardsOf(title: string) {
   return within(
     screen.getByRole("list", { name: `${title} lesson and games` }),
   ).getAllByRole("listitem");
 }
 
-// The pill is the item's one child, a link or plain text: its icon, then its
-// title.
+// The card's text is "<title>, <state>".
 function titleOf(item: HTMLElement): string {
-  return item.querySelector(":scope > * > span")?.textContent ?? "";
+  return item.textContent?.split(",")[0] ?? "";
 }
 
-// The item's link, or `null` when its pill is plain text.
+// The item's link, or `null` when its card is plain text.
 function linkOf(item: HTMLElement): HTMLElement | null {
   return within(item).queryByRole("link");
 }
@@ -74,38 +72,32 @@ function card(chapterTitle: string, cardTitle: string): HTMLElement {
   return found;
 }
 
-// Whether the card's badge draws `Icon`, by the icon's path.
+// Whether the card draws `Icon`, by the icon's path.
 function hasIcon(item: HTMLElement, Icon: typeof StarIcon): boolean {
   const expected = /\sd="([^"]+)"/.exec(renderToStaticMarkup(<Icon />))?.[1];
-  return item.querySelector("svg path")?.getAttribute("d") === expected;
+  return Array.from(item.querySelectorAll("svg path")).some(
+    (path) => path.getAttribute("d") === expected,
+  );
 }
 
 describe("GamesArea", () => {
-  it("gives each chapter, in recording order, a Lesson card then a card per game", () => {
+  it("gives the chapter, and only it, a Lesson card then a card per game", () => {
     renderArea(podgorica.chapters.map(({ id }) => makeChapterState(id)));
 
-    const games = screen.getByRole("region", { name: "Games" });
-    expect(
-      within(games)
-        .getAllByRole("heading", { level: 3 })
-        .map((heading) => heading.textContent),
-    ).toEqual(["Kod kuće", "Povrće i ručak", "U kuhinji", "U vrtiću"]);
-    for (const { title } of podgorica.chapters) {
-      expect(cardsOf(title).map(titleOf)).toEqual([
-        "Lesson",
-        "Memory",
-        "Match",
-      ]);
-    }
+    expect(screen.getAllByRole("list")).toHaveLength(1);
+    expect(cardsOf("Kod kuće").map(titleOf)).toEqual([
+      "Lesson",
+      "Memory",
+      "Match",
+    ]);
   });
 
-  it("marks a chapter's title as Montenegrin, and the English around it as not", () => {
+  it("is a region named Games, in the page's English", () => {
     renderArea([makeChapterState(HOME)]);
 
-    expect(
-      screen.getByRole("heading", { level: 3, name: "Kod kuće" }),
-    ).toHaveAttribute("lang", "sr-Latn-ME");
-    expect(card("Kod kuće", "Lesson").closest("[lang]")).toBeNull();
+    const games = screen.getByRole("region", { name: "Games" });
+    expect(games.closest("[lang]")).toBeNull();
+    expect(games.querySelector("[lang]")).toBeNull();
   });
 
   describe("a game's card follows the server's state", () => {
@@ -192,9 +184,9 @@ describe("GamesArea", () => {
   });
 
   it("still opens the lesson of a chapter progress has no state for, and says its games did not load, with nothing that looks locked or open", () => {
-    renderArea([makeChapterState(HOME)]);
-
     // Only "Kod kuće" has a state.
+    renderArea([makeChapterState(HOME)], "podgorica-vegetables");
+
     const items = cardsOf("Povrće i ručak");
     expect(items).toHaveLength(1);
     expect(items[0]).toHaveTextContent("Lesson, Watch");
@@ -202,8 +194,7 @@ describe("GamesArea", () => {
       "href",
       "/play/central/podgorica/podgorica-vegetables/lesson",
     );
-    expect(screen.getAllByText("Its games did not load.")).toHaveLength(3);
-    expect(cardsOf("Kod kuće")).toHaveLength(3);
+    expect(screen.getByText("Its games did not load.")).toBeInTheDocument();
   });
 
   describe("links", () => {

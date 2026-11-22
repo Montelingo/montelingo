@@ -35,6 +35,8 @@ const navigation = vi.hoisted(() => ({
   notFound: vi.fn((): never => {
     throw new Error("NEXT_NOT_FOUND");
   }),
+  // The page's client side saves the result and refreshes the router (#136).
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),

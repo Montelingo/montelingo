@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type CSSProperties } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 
 import { BIG_BUTTON } from "@/components/ui/kid-styles";
 import { CONTENT_LANG, PlaceStickerArt } from "@/features/map/edge";
@@ -26,6 +26,8 @@ export type BravoScreenProps = {
   placeHref: string;
   learnerName: string | undefined;
   reward: GameReward | null;
+  /** Shown under the praise when the result did not save, with its retry. */
+  saveNotice?: ReactNode;
   onPlayAgain: () => void;
 };
 
@@ -40,6 +42,7 @@ export function BravoScreen({
   placeHref,
   learnerName,
   reward,
+  saveNotice,
   onPlayAgain,
 }: BravoScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -74,6 +77,7 @@ export function BravoScreen({
           <p className="text-xl font-medium">{message}</p>
           {reward !== null ? <RewardCard reward={reward} /> : null}
         </div>
+        {saveNotice}
         <div className="flex w-full flex-col gap-3">
           <Link
             href={placeHref}

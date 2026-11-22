@@ -47,6 +47,12 @@ async function createAndSignIn(
 
 test.describe("Issue #105: account isolation and signed-out access", () => {
   test("a second account has an independent starting state", async () => {
+    // API only, so the screen's size cannot change it. Once is enough, and
+    // each run of it spends two of the 10 sign-ups an hour an IP gets.
+    test.skip(
+      test.info().project.name !== "tablet-portrait",
+      "API only: runs in tablet-portrait",
+    );
     const first = await request.newContext({ baseURL: WEB_URL });
     const second = await request.newContext({ baseURL: WEB_URL });
 

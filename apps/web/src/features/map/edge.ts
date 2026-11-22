@@ -3,5 +3,4 @@
 // art needs only the map's geometry, so it is light enough to live here.
 export { PlaceStickerArt } from "./components/PlaceCloseUp";
 export { CONTENT_LANG } from "./model/content";
-export { SCREENLESS_PLAY_DEPTHS } from "./model/paths";
 export { LOCKED_GAME_MESSAGE } from "./model/progress";

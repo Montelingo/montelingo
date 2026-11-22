@@ -60,7 +60,7 @@ afterEach(() => {
 });
 
 describe("LocationPage", () => {
-  it("shows an open town: its name, its region, the games area, and its four word groups", async () => {
+  it("shows an open town: its name, its region, and a card per chapter", async () => {
     await renderPage("central", "podgorica");
 
     expect(
@@ -69,48 +69,27 @@ describe("LocationPage", () => {
     expect(
       screen.getByRole("link", { name: "Centralna Crna Gora" }),
     ).toHaveAttribute("href", "/play/central");
-    expect(screen.getByRole("region", { name: "Games" })).toBeInTheDocument();
     expect(
       screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent),
-    ).toEqual(["Games", "Kod kuće", "Povrće i ručak", "U kuhinji", "U vrtiću"]);
-    expect(
-      within(screen.getByRole("list", { name: "Kod kuće" })).getAllByRole(
-        "figure",
-      ),
-    ).toHaveLength(10);
-    expect(screen.getAllByRole("figure")).toHaveLength(40);
+    ).toEqual(["Kod kuće", "Povrće i ručak", "U kuhinji", "U vrtiću"]);
+    expect(screen.queryByRole("figure")).not.toBeInTheDocument();
     expect(navigation.redirect).not.toHaveBeenCalled();
     expect(navigation.notFound).not.toHaveBeenCalled();
   });
 
-  it("shows each chapter's lesson and games in the states GET /progress sent", async () => {
+  it("shows how far each chapter got, from what GET /progress sent", async () => {
     await renderPage("central", "podgorica");
 
-    const pills = (title: string) =>
-      within(screen.getByRole("list", { name: `${title} lesson and games` }))
-        .getAllByRole("listitem")
-        .map((item) => item.textContent);
-    expect(pills("Kod kuće")).toEqual([
-      "Lesson, Done",
-      "Memory, Completed",
-      "Match, Ready to play",
+    const cards = within(screen.getByRole("list", { name: "Chapters" }))
+      .getAllByRole("listitem")
+      .map((item) => item.textContent);
+    expect(cards.slice(0, 3)).toEqual([
+      "Kod kuće, 10 words, 2 of 3 done",
+      "Povrće i ručak, 10 words, 1 of 3 done",
+      "U kuhinji, 10 words, Start here",
     ]);
-    expect(pills("Povrće i ručak")).toEqual([
-      "Lesson, Done",
-      "Memory, Ready to play",
-      "Match, Ready to play",
-    ]);
-    expect(pills("U kuhinji")).toEqual([
-      "Lesson, Start here",
-      "Memory, First watch the lesson",
-      "Match, First watch the lesson",
-    ]);
-    expect(
-      screen.queryByText("This chapter's lesson and games did not load."),
-    ).not.toBeInTheDocument();
-    expect(navigation.notFound).not.toHaveBeenCalled();
   });
 
   it.each([

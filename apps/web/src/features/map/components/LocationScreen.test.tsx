@@ -32,58 +32,21 @@ function openPlace(
   });
 }
 
-// One group: Tivat's "Putujemo".
+// One chapter: Tivat's "Putujemo".
 const tivat = openPlace("coast", seedLocationDetail("tivat"));
-// Four groups, 40 words.
+// Four chapters, 40 words.
 const podgorica = openPlace("central", seedLocationDetail("podgorica"));
-// Two groups, with the seed's one note: word 86, "zmaj".
+// Two chapters.
 const ulcinj = openPlace("coast", seedLocationDetail("ulcinj"));
-
-// Tivat, its first word (41, "avion") with a picture, as phase 2 will send.
-const AIRPLANE_URL = "https://media.example/words/0041.webp";
-const tivatPlace = seedLocationDetail("tivat");
-const tivatWithPicture = openPlace("coast", {
-  ...tivatPlace,
-  chapters: tivatPlace.chapters.map((chapter) => ({
-    ...chapter,
-    words: chapter.words.map((word) =>
-      word.number === 41 ? { ...word, imageUrl: AIRPLANE_URL } : word,
-    ),
-  })),
-});
 
 function renderScreen(data: LocationScreenData) {
   return render(<LocationScreen {...data} />);
 }
 
-// The word groups' headings: every level-2 heading but the games area's.
-function groupTitles() {
-  return screen
-    .getAllByRole("heading", { level: 2 })
-    .map((heading) => heading.textContent ?? "")
-    .filter((title) => title !== "Games");
-}
-
-function wordsIn(groupTitle: string) {
-  return within(screen.getByRole("list", { name: groupTitle })).getAllByRole(
-    "figure",
+function chapterCards() {
+  return within(screen.getByRole("list", { name: "Chapters" })).getAllByRole(
+    "link",
   );
-}
-
-// A word card's name, the word then its note: "zmaj, igračka koja leti".
-// Name computations differ in the space they put before the note, which
-// sits in a part of the caption only screen readers get (Testing Library
-// adds one), so any space around the comma is allowed.
-function wordAndNote(word: string, note: string): RegExp {
-  return new RegExp(`^${word}\\s*,\\s*${note}$`);
-}
-
-function caption(figure: HTMLElement): HTMLElement {
-  const element = figure.querySelector("figcaption");
-  if (element === null) {
-    throw new Error("The word card has no caption");
-  }
-  return element;
 }
 
 describe("LocationScreen", () => {
@@ -98,56 +61,118 @@ describe("LocationScreen", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a town with one group: its title and its 10 words", () => {
-    renderScreen(tivat);
+  it.each<[string, LocationScreenData, string[]]>([
+    ["one", tivat, ["Putujemo"]],
+    [
+      "four",
+      podgorica,
+      ["Kod kuće", "Povrće i ručak", "U kuhinji", "U vrtiću"],
+    ],
+  ])(
+    "shows a card per chapter, in recording order (%s)",
+    (_count, data, titles) => {
+      renderScreen(data);
 
-    expect(groupTitles()).toEqual(["Putujemo"]);
-    expect(
-      wordsIn("Putujemo").map((word) => caption(word).textContent),
-    ).toEqual([
-      "avion",
-      "aerodrom",
-      "autobus",
-      "automobil",
-      "bicikl",
-      "voz",
-      "karta",
-      "kofer",
-      "točak",
-      "put",
-    ]);
-  });
+      expect(
+        chapterCards().map(
+          (card) => within(card).getByRole("heading", { level: 2 }).textContent,
+        ),
+      ).toEqual(titles);
+    },
+  );
 
-  it("shows a town with four groups in recording order, 10 words each", () => {
+  it("links each card to its chapter's screen", () => {
     renderScreen(podgorica);
 
-    expect(groupTitles()).toEqual([
-      "Kod kuće",
-      "Povrće i ručak",
-      "U kuhinji",
-      "U vrtiću",
-    ]);
-    for (const title of groupTitles()) {
-      expect(wordsIn(title)).toHaveLength(10);
-    }
-    expect(screen.getAllByRole("figure")).toHaveLength(40);
-    expect(wordsIn("U vrtiću").slice(0, 3)).toEqual([
-      screen.getByRole("figure", { name: "vrtić" }),
-      screen.getByRole("figure", { name: "dijete" }),
-      screen.getByRole("figure", { name: "drug" }),
-    ]);
+    expect(chapterCards().map((card) => card.getAttribute("href"))).toEqual(
+      podgorica.location.chapters.map(
+        ({ id }) => `/play/central/podgorica/${id}`,
+      ),
+    );
   });
 
-  it("names each word card by its word, marked as Montenegrin", () => {
+  it("leaves the words and the games to the chapter's screen", () => {
+    renderScreen(podgorica);
+
+    expect(screen.queryByRole("figure")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Games" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names a card by its title, its words and its progress", () => {
     renderScreen(tivat);
 
-    expect(screen.getByRole("figure", { name: "avion" })).toHaveAttribute(
-      "lang",
-      "sr-Latn-ME",
+    expect(chapterCards()[0]).toHaveAccessibleName(
+      /^Putujemo\s*,\s*10 words\s*,\s*Start here$/,
     );
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Putujemo" }),
-    ).toHaveAttribute("lang", "sr-Latn-ME");
+  });
+
+  describe("a card's progress, from what the server sent", () => {
+    it.each([
+      ["todo", "locked", "locked", "Start here"],
+      ["done", "available", "available", "1 of 3 done"],
+      ["done", "completed", "available", "2 of 3 done"],
+      ["done", "completed", "completed", "All done"],
+    ] as const)(
+      "lesson %s, memory %s, match %s: %s",
+      (lesson, memory, match, label) => {
+        renderScreen(
+          openPlace("coast", seedLocationDetail("tivat"), [
+            makeChapterState("tivat-travel", { lesson, memory, match }),
+          ]),
+        );
+
+        expect(chapterCards()[0]).toHaveTextContent(label);
+      },
+    );
+
+    it("claims none when progress has no state, and still opens", () => {
+      renderScreen(openPlace("coast", seedLocationDetail("tivat"), []));
+
+      const card = chapterCards()[0];
+      expect(card).toHaveAccessibleName(/^Putujemo\s*,\s*10 words$/);
+      expect(card).toHaveAttribute("href", "/play/coast/tivat/tivat-travel");
+    });
+  });
+
+  describe("a card's pictures", () => {
+    it("are the chapter's first three, decorative", () => {
+      const place = seedLocationDetail("tivat");
+      renderScreen(
+        openPlace("coast", {
+          ...place,
+          chapters: place.chapters.map((chapter) => ({
+            ...chapter,
+            words: chapter.words.map((word) => ({
+              ...word,
+              imageUrl: `/media/words/${word.number}.webp`,
+            })),
+          })),
+        }),
+      );
+
+      const images = Array.from(
+        chapterCards()[0]?.querySelectorAll("img") ?? [],
+      );
+      expect(images.map((image) => image.getAttribute("src"))).toEqual([
+        "/media/words/41.webp",
+        "/media/words/42.webp",
+        "/media/words/43.webp",
+      ]);
+      for (const image of images) {
+        expect(image).toHaveAttribute("alt", "");
+        expect(image.closest('[aria-hidden="true"]')).not.toBeNull();
+      }
+    });
+
+    it("are placeholder art without a letter while there are no images", () => {
+      renderScreen(tivat);
+
+      const card = chapterCards()[0];
+      expect(card?.querySelector("img")).toBeNull();
+      expect(card?.querySelector("svg text")).toBeNull();
+    });
   });
 
   it("marks the place's and the region's names as Montenegrin, and the English around them as not", () => {
@@ -166,97 +191,9 @@ describe("LocationScreen", () => {
     );
     expect(regionLink.parentElement?.closest("[lang]")).toBeNull();
 
-    expect(
-      screen.getByRole("region", { name: "Games" }).closest("[lang]"),
-    ).toBeNull();
-  });
-
-  it("says a word's note after the word, without showing it", () => {
-    const word = "zmaj";
-    const note = "igračka koja leti";
-    renderScreen(ulcinj);
-
-    const card = screen.getByRole("figure", { name: wordAndNote(word, note) });
-    // The visible caption is the word alone; the note is for screen readers.
-    const [shown, hidden, ...rest] = Array.from(caption(card).childNodes);
-    expect(shown?.nodeType).toBe(Node.TEXT_NODE);
-    expect(shown?.textContent).toBe(word);
-    expect(hidden).toHaveClass("sr-only");
-    expect(hidden).toHaveTextContent(`, ${note}`);
-    expect(rest).toEqual([]);
-  });
-
-  it("names a word without a note by the word alone", () => {
-    renderScreen(ulcinj);
-
-    const card = screen.getByRole("figure", { name: "riba" });
-    expect(caption(card)).toHaveTextContent(/^riba$/);
-  });
-
-  describe("a word's picture", () => {
-    it("is the placeholder art when the word has no image", () => {
-      renderScreen(tivat);
-
-      const card = screen.getByRole("figure", { name: "avion" });
-      expect(card.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-      expect(card.querySelector("img")).toBeNull();
-    });
-
-    it("is the word's image when it has one, and decorative", () => {
-      renderScreen(tivatWithPicture);
-
-      const card = screen.getByRole("figure", { name: "avion" });
-      const image = card.querySelector("img");
-      expect(image).toHaveAttribute("src", AIRPLANE_URL);
-      expect(image).toHaveAttribute("alt", "");
-      expect(card.querySelector("svg")).toBeNull();
-      // The next word still has no image, so it keeps the placeholder.
-      expect(
-        screen.getByRole("figure", { name: "aerodrom" }).querySelector("svg"),
-      ).not.toBeNull();
-    });
-  });
-
-  describe("the games area", () => {
-    it("is one clearly marked region, before the words", () => {
-      renderScreen(podgorica);
-
-      const games = screen.getByRole("region", { name: "Games" });
-      // The word groups are not landmarks: only the screen and the games are.
-      expect(screen.getAllByRole("region")).toEqual([
-        screen.getByRole("region", { name: "Podgorica" }),
-        games,
-      ]);
-      expect(
-        games.compareDocumentPosition(
-          screen.getByRole("heading", { level: 2, name: "Kod kuće" }),
-        ) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-    });
-
-    it("shows each chapter's lesson and games in the states from progress", () => {
-      renderScreen(
-        openPlace("coast", seedLocationDetail("tivat"), [
-          makeChapterState("tivat-travel", {
-            lesson: "done",
-            memory: "completed",
-            match: "available",
-          }),
-        ]),
-      );
-
-      const cards = within(
-        within(screen.getByRole("region", { name: "Games" })).getByRole(
-          "list",
-          { name: "Putujemo lesson and games" },
-        ),
-      ).getAllByRole("listitem");
-      expect(cards.map((item) => item.textContent)).toEqual([
-        "Lesson, Done",
-        "Memory, Completed",
-        "Match, Ready to play",
-      ]);
-    });
+    const title = screen.getByRole("heading", { level: 2, name: "Kod kuće" });
+    expect(title).toHaveAttribute("lang", "sr-Latn-ME");
+    expect(title.closest("a")?.closest("[lang]")).toBeNull();
   });
 
   it("leads back to the region named by the location's own region id", () => {
@@ -271,7 +208,7 @@ describe("LocationScreen", () => {
     ).toHaveAttribute("href", "/play/central");
   });
 
-  it("has the region link, then each chapter's lesson, to focus: the words and locked games are not controls", async () => {
+  it("has the region link, then each chapter's card, to focus", async () => {
     const user = userEvent.setup();
     renderScreen(podgorica);
 
@@ -280,27 +217,22 @@ describe("LocationScreen", () => {
       screen.getByRole("link", { name: "Centralna Crna Gora" }),
     ).toHaveFocus();
 
-    // Every game is locked, so only the lessons open.
-    for (const chapter of podgorica.location.chapters) {
+    for (const card of chapterCards()) {
       await user.tab();
-      expect(document.activeElement).toHaveAttribute(
-        "href",
-        `/play/central/podgorica/${chapter.id}/lesson`,
-      );
+      expect(card).toHaveFocus();
     }
 
     await user.tab();
     expect(document.body).toHaveFocus();
-    expect(screen.getAllByRole("link")).toHaveLength(5);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it.each<[string, LocationScreenData]>([
-    ["a town with one group", tivat],
-    ["a town with four groups", podgorica],
-    ["a word with a note", ulcinj],
-    ["a word with an image", tivatWithPicture],
-  ])("has no accessibility violations for %s", async (_case, data) => {
+    ["one chapter", tivat],
+    ["four chapters", podgorica],
+    ["two chapters", ulcinj],
+    ["no progress", openPlace("coast", seedLocationDetail("tivat"), [])],
+  ])("has no accessibility violations with %s", async (_case, data) => {
     const { container } = renderScreen(data);
 
     expect(await axe(container)).toHaveNoViolations();

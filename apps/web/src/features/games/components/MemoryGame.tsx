@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
@@ -44,6 +51,11 @@ export type MemoryGameProps = {
    * leaves the card and the new words out.
    */
   reward?: GameReward | null;
+  /**
+   * Shown on every "Bravo!" screen when the result did not save, with its
+   * retry: the route's, since the game does no fetching.
+   */
+  saveNotice?: ReactNode;
   /** Shuffles the deal. Tests pass their own, so a deal repeats. */
   random?: Random;
 };
@@ -74,6 +86,7 @@ export function MemoryGame({
   onCompleted,
   learnerName,
   reward,
+  saveNotice,
   random = Math.random,
 }: MemoryGameProps) {
   const [phase, setPhase] = useState<Phase>("playing");
@@ -107,6 +120,7 @@ export function MemoryGame({
         placeHref={placeHref}
         learnerName={learnerName}
         reward={isReplay ? null : (reward ?? null)}
+        saveNotice={saveNotice}
         onPlayAgain={() => {
           playAgain();
           setPhase("playing");
