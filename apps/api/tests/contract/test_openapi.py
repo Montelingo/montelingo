@@ -36,6 +36,8 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/chapters/{chapter_id}/lesson",
         "/api/v1/chapters/{chapter_id}/games/{game_id}/result",
         "/api/v1/profile",
+        "/api/v1/players",
+        "/api/v1/players/{player_id}/select",
     }
 
 

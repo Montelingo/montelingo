@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import timedelta
+from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 
@@ -30,6 +31,9 @@ class SignInResult:
 @dataclass(frozen=True, slots=True)
 class ResolvedSession:
     user: UserAccount
+    session_id: UUID
+    # The player the session plays as (ADR 0007). None until it is resolved.
+    active_learning_profile_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,11 +141,18 @@ class AuthService:
             if current_cookie is not None:
                 await self.repository.delete_session(self.token.hash(current_cookie))
 
+            # A new session starts with the player chosen last (ADR 0007).
+            player = (
+                await self.learning_profile_repository.last_chosen(user.id)
+                if self.learning_profile_repository is not None
+                else None
+            )
             await self.repository.create_session(
                 user_id=user.id,
                 token_hash=self.token.hash(raw_token),
                 expires_at=now + timedelta(seconds=self.session_ttl),
                 last_seen_at=now,
+                active_learning_profile_id=player.id if player is not None else None,
             )
             return SignInResult(user=user, token=raw_token)
 
@@ -168,7 +179,11 @@ class AuthService:
         user = await self.repository.get_user_by_id(session.user_id)
         if user is None:
             return None
-        return ResolvedSession(user=user)
+        return ResolvedSession(
+            user=user,
+            session_id=session.id,
+            active_learning_profile_id=session.active_learning_profile_id,
+        )
 
     async def request_password_reset(self, email: str) -> PasswordResetIssued | None:
         """Issues a reset token for an existing user, replacing earlier unused ones.

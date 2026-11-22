@@ -24,6 +24,8 @@ class ErrorCode(str, Enum):
     CONTENT_NOT_FOUND = "content_not_found"
     CHAPTER_LOCKED = "chapter_locked"
     GAME_LOCKED = "game_locked"
+    PLAYERS_LIMIT = "players_limit"
+    PLAYER_NOT_FOUND = "player_not_found"
 
 
 @dataclass

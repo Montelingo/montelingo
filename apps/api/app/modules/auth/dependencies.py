@@ -18,7 +18,7 @@ from app.modules.users.service import DefaultUsersService
 
 from .repository import SqlAlchemyAuthRepository
 from .schemas import CurrentUser
-from .service import AuthService
+from .service import AuthService, ResolvedSession
 
 
 @lru_cache
@@ -69,6 +69,14 @@ async def get_optional_user(
     return _current_user(resolved.user) if resolved is not None else None
 
 
+def _authentication_required() -> ApiError:
+    return ApiError(
+        ErrorCode.AUTHENTICATION_ERROR,
+        "Authentication required.",
+        status_code=401,
+    )
+
+
 async def get_current_user(
     request: Request,
     service: AuthService = Depends(get_auth_service),
@@ -76,9 +84,17 @@ async def get_current_user(
 ) -> CurrentUser:
     user = await get_optional_user(request, service, settings)
     if user is None:
-        raise ApiError(
-            ErrorCode.AUTHENTICATION_ERROR,
-            "Authentication required.",
-            status_code=401,
-        )
+        raise _authentication_required()
     return user
+
+
+async def get_current_session(
+    request: Request,
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> ResolvedSession:
+    """The signed-in session, with the player it plays as (ADR 0007). 401 without one."""
+    resolved = await service.resolve_session(request.cookies.get(settings.session_cookie_name))
+    if resolved is None:
+        raise _authentication_required()
+    return resolved
