@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 // Its URL carries a password-reset token (`?token=`).
 const RESET_PASSWORD_PATH = "/reset-password";
 
+// Word images (public/media/words). The API versions each URL with the file's
+// hash (`?v=<hash>`, #205), so a redrawn image gets a new URL and the browser
+// may keep a file for a year without asking again.
+const WORD_IMAGES_PATH = "/media/words/:path*";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // @app/api-client ships TypeScript source, so Next.js must compile it.
@@ -23,6 +28,15 @@ const nextConfig: NextConfig = {
           // No Cache-Control: Next.js already sends no-store for this dynamic
           // page (every site page is, since the site header in
           // (site)/layout.tsx reads cookies).
+        ],
+      },
+      {
+        source: WORD_IMAGES_PATH,
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
     ]);

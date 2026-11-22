@@ -5,9 +5,17 @@ named by the word's recording number (word 1 is `0001.webp`), so the URL is
 same-origin and stable across environments. Only the words listed here have
 an image; every other word keeps `image_url: null` and the web's placeholder.
 Add a word's number here when its image file is added.
+
+The URL carries a version, `?v=<hash>`: the first 8 hex characters of the
+file's SHA-256, from `media_hashes.json`, which `scripts/word-images.sh`
+writes. The web app caches the files for a year, so a redrawn image must get
+a new URL (docs/architecture/word-images.md, section 3).
 """
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 WORD_IMAGES: frozenset[int] = frozenset(
     [
@@ -25,10 +33,18 @@ WORD_IMAGES: frozenset[int] = frozenset(
 )
 """Recording numbers of the words that have an image."""
 
+MEDIA_HASHES_PATH = Path(__file__).parent / "media_hashes.json"
+
+ImageHashes = dict[str, dict[str, str]]
+"""Four-digit word number -> {"1024": hash of NNNN.webp, "512": hash of NNNN-512.webp}."""
+
+MEDIA_HASHES: ImageHashes = json.loads(MEDIA_HASHES_PATH.read_text(encoding="utf-8"))
+
 
 def word_image_url(number: int) -> str | None:
     """The image URL for a word's recording number, or None if it has none."""
 
     if number not in WORD_IMAGES:
         return None
-    return f"/media/words/{number:04}.webp"
+    name = f"{number:04}"
+    return f"/media/words/{name}.webp?v={MEDIA_HASHES[name]['1024']}"

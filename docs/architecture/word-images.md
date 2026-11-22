@@ -50,7 +50,7 @@ Use one script for all images, so every PR makes the files the same way. It goes
 
 The files are static and change rarely, so the browser should keep them and not ask again.
 
-- **Version in the URL:** the API builds `image_url` as `/media/words/0011.webp?v=<hash>`, where `<hash>` is the first 8 characters of the file's SHA-256. The hashes live in a generated file next to `WORD_IMAGES` (for example `media_hashes.json`), written by the conversion script. A test fails if a hash doesn't match its file. When an image is redrawn, its hash changes, so the URL changes too.
+- **Version in the URL:** the API builds `image_url` as `/media/words/0011.webp?v=<hash>`, where `<hash>` is the first 8 characters of the file's SHA-256. The hashes live in a generated file next to `WORD_IMAGES`, `apps/api/app/modules/content/media_hashes.json`, written by the conversion script (`scripts/word-images.sh --hashes` rewrites it alone). A test fails if a hash doesn't match its file, or a file has no hash (#205). When an image is redrawn, its hash changes, so the URL changes too.
 - **Cache forever:** in `next.config.ts` `headers()`, `/media/words/:path*` gets `Cache-Control: public, max-age=31536000, immutable`. That's safe because a changed file always gets a new URL.
 - **Caddy:** nothing to add. WebP is already compressed, so `encode` doesn't help, but it does no harm.
 - **Later:** moving to object storage or a CDN only changes the URL prefix in `word_image_url()`. The contract stays the same (ADR 0006). An offline service worker, if one comes, caches `/media/words/*` cache-first.
