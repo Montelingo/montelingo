@@ -193,3 +193,42 @@ async def test_chapters_follow_the_places_map_states() -> None:
         ("memory", "available"),
         ("match", "completed"),
     ]
+
+
+async def test_new_account_has_nothing_counted() -> None:
+    chapters = [
+        ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva", word_count=10)
+    ]
+    repository = FakeProgressRepository(example_content(), [], chapters)
+
+    result = await DatabaseProgressService(repository).get_state(uuid4())
+
+    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0}
+
+
+async def test_counts_learned_words_and_completed_places() -> None:
+    chapters = [
+        ChapterProgressRecord(
+            chapter_slug="budva-beach",
+            location_slug="budva",
+            lesson_completed_at=NOW,
+            completed_games=("memory", "match"),
+            word_count=10,
+        ),
+        ChapterProgressRecord(
+            chapter_slug="kotor-walls",
+            location_slug="kotor",
+            lesson_completed_at=NOW,
+            word_count=7,
+        ),
+        ChapterProgressRecord(chapter_slug="kotor-bay", location_slug="kotor", word_count=9),
+    ]
+    progress = [
+        LocationProgressRecord(location_slug="budva", started_at=NOW, completed_at=NOW),
+        LocationProgressRecord(location_slug="kotor", started_at=NOW),
+    ]
+    repository = FakeProgressRepository(example_content(), progress, chapters)
+
+    result = await DatabaseProgressService(repository).get_state(uuid4())
+
+    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1}

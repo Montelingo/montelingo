@@ -40,6 +40,8 @@ vi.mock("react", async (importOriginal) => ({
 
 vi.mock("@/lib/api", () => ({ getApiClient: getApiClientMock }));
 
+const NO_COUNTS = { words_learned: 0, stickers: 0 };
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -70,7 +72,12 @@ describe("fetchProgress", () => {
 
   it("asks the API for progress with the incoming cookies", async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse(200, { regions: [], locations: [], chapters: [] }),
+      jsonResponse(200, {
+        regions: [],
+        locations: [],
+        chapters: [],
+        counts: NO_COUNTS,
+      }),
     );
 
     await fetchProgress();
@@ -99,6 +106,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
+        counts: { words_learned: 10, stickers: 0 },
       }),
     );
 
@@ -200,6 +208,7 @@ describe("fetchProgress", () => {
         regions: [],
         locations: [{ id: "budva", state: "unlocked" }],
         chapters: [],
+        counts: NO_COUNTS,
       }),
     );
 
@@ -212,6 +221,7 @@ describe("fetchProgress", () => {
         regions: [],
         locations: [{ id: "budva", state: "active" }],
         chapters: [],
+        counts: NO_COUNTS,
       }),
     );
 
@@ -230,6 +240,7 @@ describe("fetchProgress", () => {
             games: [{ id: "memory", state: "in-progress" }],
           },
         ],
+        counts: NO_COUNTS,
       }),
     );
 
@@ -238,7 +249,28 @@ describe("fetchProgress", () => {
 
   it("returns an error result when chapters are missing", async () => {
     fetchMock.mockResolvedValue(
-      jsonResponse(200, { regions: [], locations: [] }),
+      jsonResponse(200, { regions: [], locations: [], counts: NO_COUNTS }),
+    );
+
+    await expect(fetchProgress()).resolves.toEqual({ status: "error" });
+  });
+
+  it("returns an error result when the counts are missing", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { regions: [], locations: [], chapters: [] }),
+    );
+
+    await expect(fetchProgress()).resolves.toEqual({ status: "error" });
+  });
+
+  it("returns an error result for a count outside the contract", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        regions: [],
+        locations: [],
+        chapters: [],
+        counts: { words_learned: -1, stickers: 0 },
+      }),
     );
 
     await expect(fetchProgress()).resolves.toEqual({ status: "error" });

@@ -14,6 +14,7 @@ from .domain import (
     calculate_chapter_state,
     calculate_chapter_states,
     calculate_map_states,
+    calculate_progress_counts,
     is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
@@ -27,6 +28,7 @@ from .schemas import (
     GameState,
     LocationState,
     Profile,
+    ProgressCounts,
     ProgressState,
     RegionState,
 )
@@ -43,6 +45,7 @@ class DatabaseProgressService:
         chapters = await self.repository.read_chapters(learning_profile_id)
         states = calculate_map_states(content, progress)
         chapter_states = calculate_chapter_states(chapters, states.locations)
+        counts = calculate_progress_counts(chapters, states.locations)
 
         return ProgressState(
             regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
@@ -50,6 +53,10 @@ class DatabaseProgressService:
                 LocationState(id=slug, state=state) for slug, state in states.locations.items()
             ],
             chapters=[_chapter_state(chapter) for chapter in chapter_states],
+            counts=ProgressCounts(
+                words_learned=counts.words_learned,
+                stickers=counts.stickers,
+            ),
         )
 
 

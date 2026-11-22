@@ -81,8 +81,16 @@ const chapterStateSchema = z.object({
   games: z.array(gameStateSchema),
 }) satisfies z.ZodType<Schemas["ChapterState"]>;
 
+// What the child has collected (#175). The server counts them; the frontend
+// never does (ADR 0005).
+const progressCountsSchema = z.object({
+  words_learned: countSchema,
+  stickers: countSchema,
+}) satisfies z.ZodType<Schemas["ProgressCounts"]>;
+
 export const progressSchema = z.object({
   regions: z.array(stateEntrySchema),
   locations: z.array(stateEntrySchema),
   chapters: z.array(chapterStateSchema),
+  counts: progressCountsSchema,
 }) satisfies z.ZodType<Schemas["ProgressState"]>;

@@ -496,6 +496,25 @@
         "title": "ProfileUpdate",
         "type": "object"
       },
+      "ProgressCounts": {
+        "description": "What the child has collected, for the Ja screen and the grown-ups area (#175).\n\nThe server counts them, so the frontend never does (ADR 0005).",
+        "properties": {
+          "stickers": {
+            "title": "Stickers",
+            "type": "integer"
+          },
+          "words_learned": {
+            "title": "Words Learned",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "words_learned",
+          "stickers"
+        ],
+        "title": "ProgressCounts",
+        "type": "object"
+      },
       "ProgressState": {
         "properties": {
           "chapters": {
@@ -504,6 +523,9 @@
             },
             "title": "Chapters",
             "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ProgressCounts"
           },
           "locations": {
             "items": {
@@ -523,7 +545,8 @@
         "required": [
           "regions",
           "locations",
-          "chapters"
+          "chapters",
+          "counts"
         ],
         "title": "ProgressState",
         "type": "object"

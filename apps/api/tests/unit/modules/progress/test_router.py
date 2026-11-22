@@ -14,6 +14,7 @@ from app.modules.progress.schemas import (
     ChapterState,
     GameState,
     LocationState,
+    ProgressCounts,
     ProgressState,
     RegionState,
 )
@@ -45,6 +46,7 @@ class FakeDatabaseProgressService:
                     ],
                 )
             ],
+            counts=ProgressCounts(words_learned=10, stickers=1),
         )
 
 
@@ -91,6 +93,7 @@ def test_get_progress_uses_current_learning_profile(
                 ],
             }
         ]
+        assert body["counts"] == {"words_learned": 10, "stickers": 1}
     finally:
         app.dependency_overrides.clear()
 

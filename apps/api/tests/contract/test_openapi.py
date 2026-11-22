@@ -224,12 +224,24 @@ def test_progress_state_lists_chapters(app: FastAPI) -> None:
     components = app.openapi()["components"]["schemas"]
     progress = components["ProgressState"]
 
-    assert set(progress["required"]) == {"regions", "locations", "chapters"}
+    assert set(progress["required"]) == {"regions", "locations", "chapters", "counts"}
     assert progress["properties"]["chapters"]["items"] == {
         "$ref": "#/components/schemas/ChapterState"
     }
     assert set(components["ChapterState"]["required"]) == {"id", "lesson", "games"}
     assert set(components["GameState"]["required"]) == {"id", "state"}
+
+
+def test_progress_state_sends_the_counts(app: FastAPI) -> None:
+    components = app.openapi()["components"]["schemas"]
+
+    assert components["ProgressState"]["properties"]["counts"] == {
+        "$ref": "#/components/schemas/ProgressCounts"
+    }
+    counts = components["ProgressCounts"]
+    assert set(counts["required"]) == {"words_learned", "stickers"}
+    assert counts["properties"]["words_learned"]["type"] == "integer"
+    assert counts["properties"]["stickers"]["type"] == "integer"
 
 
 def test_chapter_states_are_the_adr_literals(app: FastAPI) -> None:
