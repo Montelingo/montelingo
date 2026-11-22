@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-18
 - Amended: 2026-11-21 (#139: completing a place points to ADR 0006)
+- Amended: 2026-11-22 (#181: more than one player per account, see ADR 0007)
 
 ## Context
 
@@ -20,7 +21,7 @@ The specification describes about five words per chapter and 45–60 words in to
 - **The server decides unlocking.** One pure domain function in the progress module computes every state (#66). The frontend never computes a lock. The states are exactly `locked`, `available`, `in-progress` and `completed`. In phase 1 the starting location (Budva, the only `is_start` row, enforced by a partial unique index) is `available` and everything else is `locked`. Until #66, `GET /progress` returns that starting state from the data file.
 - **Progress is stored per location.** `location_progress` has one row per started location (`started_at`, nullable `completed_at`). No row means the location was never started. Nothing writes it in phase 1; lessons and games start a place and its last game completes it (ADR 0006).
 - **Media are placeholders.** Every word has `image_url` and `audio_url` in the contract, and both are `null` in phase 1. Media tables, storage and delivery arrive with the media ticket in phase 2 without a contract change.
-- **One learning profile per account.** Progress belongs to a learning profile, not to the login record, enforced by a unique constraint on `user_id`. Deleting an account deletes its profile and progress. The specification creates the profile on email verification. Verification is not built, so the profile is created at sign-up (#64), and the migration creates one for every existing account. This moves to verification when verification is built.
+- **One learning profile per account.** Amended by #181: an account may have up to 4 learning profiles (players), and progress routes mean the session's active player ([ADR 0007](0007-more-than-one-player.md)). Progress belongs to a learning profile, not to the login record, enforced by a unique constraint on `user_id`. Deleting an account deletes its profile and progress. The specification creates the profile on email verification. Verification is not built, so the profile is created at sign-up (#64), and the migration creates one for every existing account. This moves to verification when verification is built.
 - **Every route needs a session.** Content and progress routes answer `401` without one. Unknown slugs answer `404 content_not_found`.
 - **One migration for the whole phase.** `20261018_0003` creates every phase 1 table, so parallel tickets never create competing Alembic heads.
 
