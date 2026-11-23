@@ -1,5 +1,8 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -32,6 +35,44 @@ function makeWords(): MemoryWord[] {
 const NO_SHUFFLE = () => 0.999;
 
 const PLACE_HREF = "/play/coast/kotor";
+
+/**
+ * A random source that keeps drawing, as `Math.random` does: the server's
+ * render and the browser's hydration each take the next numbers from it, so
+ * they deal differently, as they do in production.
+ */
+function drawingRandom(): () => number {
+  let seed = 42;
+  return () => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return seed / 2_147_483_648;
+  };
+}
+
+/**
+ * The game as a full page load gets it: its server HTML, then hydrated in the
+ * browser. Returns the page and the hydration's recoverable errors.
+ */
+function hydrate(element: ReactElement) {
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(element);
+  document.body.append(container);
+  const onRecoverableError = vi.fn();
+  let root: Root | undefined;
+  act(() => {
+    root = hydrateRoot(container, element, { onRecoverableError });
+  });
+  return {
+    container,
+    onRecoverableError,
+    cleanUp() {
+      act(() => {
+        root?.unmount();
+      });
+      container.remove();
+    },
+  };
+}
 
 function renderGame(props: Partial<MemoryGameProps> = {}) {
   return render(
@@ -291,6 +332,49 @@ describe("MemoryGame", () => {
 });
 
 // Real timers: user-event and axe wait on them.
+// A full page load renders the game on the server and hydrates it in the
+// browser. React keeps the server's pictures where the deals differ, so the
+// game must be dealt in the browser only.
+describe("MemoryGame after a full page load", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("shows each turned card's own picture, and hydrates without errors", () => {
+    const random = drawingRandom();
+    const page = hydrate(
+      <MemoryGame words={makeWords()} placeHref={PLACE_HREF} random={random} />,
+    );
+    const pictureOf = new Map(
+      makeWords().map(({ text, imageUrl }) => [text, imageUrl]),
+    );
+
+    const cards = within(page.container).getAllByRole("button");
+    expect(cards).toHaveLength(TEXTS.length * 2);
+    for (let index = 0; index < cards.length; index += 2) {
+      const turn = cards.slice(index, index + 2);
+      for (const turned of turn) {
+        fireEvent.click(turned);
+      }
+      for (const turned of turn) {
+        const word = turned.getAttribute("aria-label")?.split(",")[0];
+        expect(turned.querySelector("img")).toHaveAttribute(
+          "src",
+          pictureOf.get(word ?? ""),
+        );
+      }
+      wait(MISS_DELAY_MS);
+    }
+    expect(page.onRecoverableError).not.toHaveBeenCalled();
+    page.cleanUp();
+  });
+});
+
 describe("MemoryGame with the keyboard and axe", () => {
   it("plays with the keyboard: Tab to a card, Enter or Space turns it", async () => {
     const user = userEvent.setup();

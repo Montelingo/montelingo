@@ -13,6 +13,7 @@ import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { SETTLE_DELAY_MS } from "@/lib/use-settled";
 
 import {
@@ -80,6 +81,11 @@ type Phase = "playing" | "complete" | "bravo";
 //
 // "Igraj ponovo" deals a new game: the board mounts again under a new key, so
 // it shuffles again and keeps no state from the last round.
+//
+// The deal is random, so it is made in the browser only: the server's HTML
+// and the hydrating render would deal differently, and React keeps the
+// server's pictures where they differ. Until the page hydrates there is no
+// board; after a client-side navigation it is there at once.
 export function MemoryGame({
   words,
   placeHref,
@@ -89,6 +95,7 @@ export function MemoryGame({
   saveNotice,
   random = Math.random,
 }: MemoryGameProps) {
+  const isHydrated = useIsHydrated();
   const [phase, setPhase] = useState<Phase>("playing");
   const [pairs, setPairs] = useState(0);
 
@@ -127,6 +134,10 @@ export function MemoryGame({
         }}
       />
     );
+  }
+
+  if (!isHydrated) {
+    return null;
   }
 
   return (
