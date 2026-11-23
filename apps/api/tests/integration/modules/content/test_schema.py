@@ -89,15 +89,6 @@ async def test_location_positions_are_unique_within_a_region(db_session: AsyncSe
     await expect_violation(db_session, "uq_locations_region_id_position")
 
 
-async def test_an_account_has_at_most_one_learning_profile(db_session: AsyncSession) -> None:
-    user = await add_user(db_session, "profile@example.com")
-    db_session.add(LearningProfile(user_id=user.id))
-    await db_session.flush()
-
-    db_session.add(LearningProfile(user_id=user.id))
-    await expect_violation(db_session, "uq_learning_profiles_user_id")
-
-
 async def test_deleting_an_account_removes_its_profile_and_progress(
     db_session: AsyncSession,
 ) -> None:

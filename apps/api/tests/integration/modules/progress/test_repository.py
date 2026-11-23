@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content.models import Chapter, Location, Region
+from app.modules.content.models import Chapter, Location, Region, VocabularyItem
 from app.modules.progress.domain import ChapterProgressRecord
 from app.modules.progress.models import (
     ChapterProgress,
@@ -178,6 +178,28 @@ async def test_read_chapters_lists_every_chapter_without_progress(
     assert chapters == [
         ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva"),
         ChapterProgressRecord(chapter_slug="kotor-walls", location_slug="kotor"),
+    ]
+
+
+async def test_read_chapters_carries_each_chapters_word_count(
+    db_session: AsyncSession,
+) -> None:
+    budva, kotor = await seed_map(db_session)
+    beach = await seed_chapters(db_session, budva, kotor)
+    db_session.add_all(
+        [
+            VocabularyItem(chapter_id=beach.id, number=1, text="more", position=1),
+            VocabularyItem(chapter_id=beach.id, number=2, text="sunce", position=2),
+        ]
+    )
+    await db_session.flush()
+    profile = await create_profile(db_session, "chapters-words@example.com")
+
+    chapters = await SqlAlchemyProgressRepository(db_session).read_chapters(profile.id)
+
+    assert [(chapter.chapter_slug, chapter.word_count) for chapter in chapters] == [
+        ("budva-beach", 2),
+        ("kotor-walls", 0),
     ]
 
 

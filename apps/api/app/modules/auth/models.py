@@ -22,6 +22,15 @@ class AuthSession(Base):
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # The player this session plays as (ADR 0007). Null until it is resolved.
+    active_learning_profile_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "learning_profiles.id",
+            name="fk_auth_sessions_active_learning_profile_id_learning_profiles",
+            ondelete="SET NULL",
+        ),
+    )
 
 
 class PasswordResetToken(Base):

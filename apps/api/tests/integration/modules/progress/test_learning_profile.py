@@ -4,7 +4,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content.models import Location, Region
@@ -15,16 +14,22 @@ from app.modules.users.models import User
 pytestmark = pytest.mark.integration
 
 
-async def test_user_id_is_unique_for_learning_profiles(db_session: AsyncSession) -> None:
+async def test_an_account_can_have_more_than_one_learning_profile(
+    db_session: AsyncSession,
+) -> None:
     user = User(email="profile-owner@example.com", password_hash="hash")
     db_session.add(user)
     await db_session.flush()
-    db_session.add(LearningProfile(user_id=user.id))
-    await db_session.flush()
+    repository = SqlAlchemyLearningProfileRepository(db_session)
 
-    db_session.add(LearningProfile(user_id=user.id))
-    with pytest.raises(IntegrityError):
-        await db_session.flush()
+    first = await repository.create_for_user(user.id)
+    second = await repository.create_for_user(user.id)
+
+    # Oldest first, even when both were added in one transaction.
+    assert [profile.id for profile in await repository.list_for_user(user.id)] == [
+        first.id,
+        second.id,
+    ]
 
 
 async def test_profile_lookup_is_scoped_to_the_current_user(
@@ -41,9 +46,28 @@ async def test_profile_lookup_is_scoped_to_the_current_user(
 
     repository = SqlAlchemyLearningProfileRepository(db_session)
 
-    assert (await repository.get_by_user_id(first_user.id)).id == first_profile.id
-    assert (await repository.get_by_user_id(second_user.id)).id == second_profile.id
-    assert (await repository.get_by_user_id(second_user.id)).id != first_profile.id
+    assert await repository.get_for_user(first_user.id, first_profile.id) is first_profile
+    assert await repository.get_for_user(second_user.id, first_profile.id) is None
+    assert [p.id for p in await repository.list_for_user(second_user.id)] == [second_profile.id]
+
+
+async def test_the_last_chosen_profile_is_the_latest_chosen_or_else_the_oldest(
+    db_session: AsyncSession,
+) -> None:
+    user = User(email="last-chosen@example.com", password_hash="hash")
+    db_session.add(user)
+    await db_session.flush()
+    repository = SqlAlchemyLearningProfileRepository(db_session)
+    oldest = await repository.create_for_user(user.id)
+    newer = await repository.create_for_user(user.id)
+
+    assert await repository.last_chosen(user.id) is oldest
+
+    await repository.mark_chosen(newer)
+    assert await repository.last_chosen(user.id) is newer
+
+    await repository.mark_chosen(oldest)
+    assert await repository.last_chosen(user.id) is oldest
 
 
 async def test_deleting_user_cascades_profile_and_location_progress(

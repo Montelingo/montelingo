@@ -22,12 +22,20 @@ from .schemas import AgeBand, Avatar, GameId
 
 
 class LearningProfileRepository(Protocol):
+    """An account's learning profiles, the players of ADR 0007.
+
+    Every lookup takes the account, so it never returns another account's player.
+    """
+
     async def create_for_user(self, user_id: UUID) -> LearningProfile: ...
 
-    async def get_by_user_id(
-        self,
-        user_id: UUID,
-    ) -> LearningProfile | None: ...
+    async def get_for_user(self, user_id: UUID, profile_id: UUID) -> LearningProfile | None: ...
+
+    async def list_for_user(self, user_id: UUID) -> list[LearningProfile]: ...
+
+    async def last_chosen(self, user_id: UUID) -> LearningProfile | None: ...
+
+    async def mark_chosen(self, profile: LearningProfile) -> None: ...
 
 
 class SqlAlchemyLearningProfileRepository:
@@ -35,19 +43,47 @@ class SqlAlchemyLearningProfileRepository:
         self.session = session
 
     async def create_for_user(self, user_id: UUID) -> LearningProfile:
-        profile = LearningProfile(user_id=user_id)
+        # `clock_timestamp()`, not the default `now()`, so players added in one
+        # transaction still list in the order they were added.
+        profile = LearningProfile(user_id=user_id, created_at=func.clock_timestamp())
         self.session.add(profile)
         await self.session.flush()
         await self.session.refresh(profile)
         return profile
 
-    async def get_by_user_id(
-        self,
-        user_id: UUID,
-    ) -> LearningProfile | None:
+    async def get_for_user(self, user_id: UUID, profile_id: UUID) -> LearningProfile | None:
         return await self.session.scalar(
-            select(LearningProfile).where(LearningProfile.user_id == user_id)
+            select(LearningProfile).where(
+                LearningProfile.id == profile_id, LearningProfile.user_id == user_id
+            )
         )
+
+    async def list_for_user(self, user_id: UUID) -> list[LearningProfile]:
+        """Oldest first, so the order does not change when someone switches."""
+        result = await self.session.scalars(
+            select(LearningProfile)
+            .where(LearningProfile.user_id == user_id)
+            .order_by(LearningProfile.created_at, LearningProfile.id)
+        )
+        return list(result.all())
+
+    async def last_chosen(self, user_id: UUID) -> LearningProfile | None:
+        """The player chosen or added last, or the oldest if none was ever chosen."""
+        return await self.session.scalar(
+            select(LearningProfile)
+            .where(LearningProfile.user_id == user_id)
+            .order_by(
+                LearningProfile.last_selected_at.desc().nulls_last(),
+                LearningProfile.created_at,
+                LearningProfile.id,
+            )
+            .limit(1)
+        )
+
+    async def mark_chosen(self, profile: LearningProfile) -> None:
+        profile.last_selected_at = func.clock_timestamp()  # type: ignore[assignment]
+        await self.session.flush()
+        await self.session.refresh(profile)
 
 
 class ChildProfileRepository(Protocol):
@@ -191,6 +227,7 @@ class SqlAlchemyProgressRepository:
                 location_slug=chapter.location_slug,
                 lesson_completed_at=lessons.get(chapter.id),
                 completed_games=tuple(games.get(chapter.id, ())),
+                word_count=chapter.word_count,
             )
             for chapter in chapters
         ]

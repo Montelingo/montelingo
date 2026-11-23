@@ -14,7 +14,12 @@ from app.modules.content.router import get_content_service
 from app.modules.progress import get_learning_profile
 from app.modules.progress.models import LearningProfile
 from app.modules.progress.router import get_progress_service
-from app.modules.progress.schemas import LocationState, ProgressState, RegionState
+from app.modules.progress.schemas import (
+    LocationState,
+    ProgressCounts,
+    ProgressState,
+    RegionState,
+)
 
 MAP_ROUTES = [
     "/api/v1/regions",
@@ -87,6 +92,7 @@ def test_progress_returns_the_starting_state(
                     LocationState(id="kotor", state="locked"),
                 ],
                 chapters=[],
+                counts=ProgressCounts(words_learned=0, stickers=0),
             )
 
     client.app.dependency_overrides[get_progress_service] = lambda: FakeProgressService()
@@ -99,5 +105,6 @@ def test_progress_returns_the_starting_state(
 
         assert {"id": "budva", "state": "available"} in body["locations"]
         assert {"id": "coast", "state": "available"} in body["regions"]
+        assert body["counts"] == {"words_learned": 0, "stickers": 0}
     finally:
         client.app.dependency_overrides.pop(get_progress_service, None)
