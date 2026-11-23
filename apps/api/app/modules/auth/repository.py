@@ -21,7 +21,16 @@ class AuthRepository(Protocol):
     ) -> None: ...
     async def get_session(self, token_hash: bytes) -> AuthSession | None: ...
     async def create_session(
-        self, *, user_id: UUID, token_hash: bytes, expires_at: datetime, last_seen_at: datetime
+        self,
+        *,
+        user_id: UUID,
+        token_hash: bytes,
+        expires_at: datetime,
+        last_seen_at: datetime,
+        active_learning_profile_id: UUID | None = None,
+    ) -> None: ...
+    async def set_active_learning_profile(
+        self, session_id: UUID, learning_profile_id: UUID
     ) -> None: ...
     async def delete_session(self, token_hash: bytes) -> None: ...
     async def delete_user_sessions(self, user_id: UUID) -> None: ...
@@ -55,7 +64,13 @@ class SqlAlchemyAuthRepository:
         )
 
     async def create_session(
-        self, *, user_id: UUID, token_hash: bytes, expires_at: datetime, last_seen_at: datetime
+        self,
+        *,
+        user_id: UUID,
+        token_hash: bytes,
+        expires_at: datetime,
+        last_seen_at: datetime,
+        active_learning_profile_id: UUID | None = None,
     ) -> None:
         self.session.add(
             AuthSession(
@@ -63,7 +78,17 @@ class SqlAlchemyAuthRepository:
                 token_hash=token_hash,
                 expires_at=expires_at,
                 last_seen_at=last_seen_at,
+                active_learning_profile_id=active_learning_profile_id,
             )
+        )
+
+    async def set_active_learning_profile(
+        self, session_id: UUID, learning_profile_id: UUID
+    ) -> None:
+        await self.session.execute(
+            update(AuthSession)
+            .where(AuthSession.id == session_id)
+            .values(active_learning_profile_id=learning_profile_id)
         )
 
     async def delete_session(self, token_hash: bytes) -> None:

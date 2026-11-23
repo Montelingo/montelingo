@@ -26,11 +26,11 @@ def _one_of(values: tuple[str, ...]) -> str:
 
 
 class LearningProfile(Base):
-    """The owner of progress. Exactly one per account (ADR 0005)."""
+    """The owner of progress: a player. An account has up to 4 (ADR 0007)."""
 
     __tablename__ = "learning_profiles"
     __table_args__ = (
-        UniqueConstraint("user_id", name="uq_learning_profiles_user_id"),
+        Index("ix_learning_profiles_user_id", "user_id"),
         CheckConstraint(
             f"char_length(name) BETWEEN 1 AND {NAME_MAX_LENGTH}",
             name="ck_learning_profiles_name_length",
@@ -54,6 +54,9 @@ class LearningProfile(Base):
     name: Mapped[str | None] = mapped_column(Text)
     age_band: Mapped[str | None] = mapped_column(Text)
     avatar: Mapped[str | None] = mapped_column(Text)
+    # When the player was last chosen or added. A new session starts with the
+    # latest one (ADR 0007).
+    last_selected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class LocationProgress(Base):

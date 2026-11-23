@@ -22,6 +22,8 @@ class UserRepository(Protocol):
         self, user_id: UUID, password_hash: str, *, password_changed_at: datetime | None = None
     ) -> None: ...
 
+    async def lock(self, user_id: UUID) -> None: ...
+
 
 def _account(user: User) -> UserAccount:
     return UserAccount(
@@ -65,3 +67,7 @@ class SqlAlchemyUserRepository:
         if password_changed_at is not None:
             values["password_changed_at"] = password_changed_at
         await self.session.execute(update(User).where(User.id == user_id).values(**values))
+
+    async def lock(self, user_id: UUID) -> None:
+        """Lock the account's row until the transaction ends."""
+        await self.session.execute(select(User.id).where(User.id == user_id).with_for_update())
