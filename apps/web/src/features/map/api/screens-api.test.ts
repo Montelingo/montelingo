@@ -10,6 +10,7 @@ import {
   makeChapterState,
   makeLocationDetail,
   newAccountProgress,
+  NO_COUNTS,
   seedRegionDetail,
   seedRegions,
 } from "../test-fixtures";
@@ -269,7 +270,12 @@ describe("loadRegionScreen", () => {
       "progress does not cover the region",
       {
         status: "ready",
-        progress: { regions: [], locations: [], chapters: [] },
+        progress: {
+          regions: [],
+          locations: [],
+          chapters: [],
+          counts: NO_COUNTS,
+        },
       },
     ],
   ] as const)("still opens the region when %s", async (_case, progress) => {
@@ -401,6 +407,7 @@ describe("assertLocationOpen", () => {
           regions: [{ id: "coast", state: regionState }],
           locations: [{ id: "budva", state: locationState }],
           chapters: [],
+          counts: NO_COUNTS,
         },
       });
 
@@ -420,7 +427,12 @@ describe("assertLocationOpen", () => {
       "progress covers neither",
       {
         status: "ready",
-        progress: { regions: [], locations: [], chapters: [] },
+        progress: {
+          regions: [],
+          locations: [],
+          chapters: [],
+          counts: NO_COUNTS,
+        },
       },
     ],
     [
@@ -431,6 +443,7 @@ describe("assertLocationOpen", () => {
           regions: [{ id: "coast", state: "available" }],
           locations: [],
           chapters: [],
+          counts: NO_COUNTS,
         },
       },
     ],
@@ -442,6 +455,7 @@ describe("assertLocationOpen", () => {
           regions: [],
           locations: [{ id: "budva", state: "available" }],
           chapters: [],
+          counts: NO_COUNTS,
         },
       },
     ],

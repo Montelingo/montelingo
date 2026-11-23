@@ -11,6 +11,7 @@ import {
 } from "../model/screens";
 import {
   makeChapterState,
+  NO_COUNTS,
   seedLocationDetail,
   seedRegionDetail,
 } from "../test-fixtures";
@@ -29,6 +30,7 @@ function openChapter(
       regions: [{ id: regionId, state: "in-progress" }],
       locations: [{ id: location.id, state: "available" }],
       chapters: location.chapters.map(({ id }) => makeChapterState(id)),
+      counts: NO_COUNTS,
     },
   });
   const chapter = toChapterScreen(place, chapterId);

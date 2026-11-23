@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { NO_COUNTS } from "../test-fixtures";
 import type { MapElementState, ServerMapState } from "./map-state";
 import {
   joinProgress,
@@ -22,7 +23,13 @@ const locations = [
 function ready(progress: Partial<Progress>): ProgressResult {
   return {
     status: "ready",
-    progress: { regions: [], locations: [], chapters: [], ...progress },
+    progress: {
+      regions: [],
+      locations: [],
+      chapters: [],
+      counts: NO_COUNTS,
+      ...progress,
+    },
   };
 }
 
@@ -207,7 +214,19 @@ describe("toProgress", () => {
       regions: [{ id: "coast", state: "available" }],
       locations: [{ id: "budva", state: "in-progress" }],
       chapters: [],
+      counts: { wordsLearned: 0, stickers: 0 },
     });
+  });
+
+  it("keeps the server's counts", () => {
+    expect(
+      toProgress({
+        regions: [],
+        locations: [],
+        chapters: [],
+        counts: { words_learned: 40, stickers: 1 },
+      }).counts,
+    ).toEqual({ wordsLearned: 40, stickers: 1 });
   });
 
   it("keeps each chapter's lesson and games, in the server's order", () => {

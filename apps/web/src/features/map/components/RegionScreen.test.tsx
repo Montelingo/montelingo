@@ -10,6 +10,7 @@ import { toRegionScreen } from "../model/screens";
 import {
   currentPath,
   newAccountProgress,
+  NO_COUNTS,
   seedRegionDetail,
   seedRegionDetails,
 } from "../test-fixtures";
@@ -36,6 +37,7 @@ const UNCOVERED: ProgressResult = {
     regions: [{ id: "coast", state: "available" }],
     locations: [],
     chapters: [],
+    counts: NO_COUNTS,
   },
 };
 

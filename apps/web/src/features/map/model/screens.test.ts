@@ -4,6 +4,7 @@ import {
   makeChapterState,
   makeLocation,
   newAccountProgress,
+  NO_COUNTS,
   seedLocationDetail,
   seedRegionDetail,
 } from "../test-fixtures";
@@ -104,6 +105,7 @@ describe("toRegionScreen", () => {
           { id: "tivat", state: "available" },
         ],
         chapters: [],
+        counts: NO_COUNTS,
       },
     };
 
@@ -131,7 +133,7 @@ describe("toRegionScreen", () => {
   it("gives the region the loading state when progress does not cover it", () => {
     const screen = toRegionScreen(seedRegionDetail("coast"), {
       status: "ready",
-      progress: { regions: [], locations: [], chapters: [] },
+      progress: { regions: [], locations: [], chapters: [], counts: NO_COUNTS },
     });
 
     expect(screen.region.state).toBe("loading");
@@ -170,6 +172,7 @@ describe("toLocationScreen", () => {
         locations: [],
         // Out of order, with another place's chapter, and one chapter missing.
         chapters: [kitchen, makeChapterState("budva-beach"), home],
+        counts: NO_COUNTS,
       },
     });
 
@@ -202,7 +205,7 @@ describe("toLocationScreen", () => {
   it("gives both the loading state when progress does not cover them", () => {
     const screen = toLocationScreen(coast, budva, {
       status: "ready",
-      progress: { regions: [], locations: [], chapters: [] },
+      progress: { regions: [], locations: [], chapters: [], counts: NO_COUNTS },
     });
 
     expect(screen.region.state).toBe("loading");

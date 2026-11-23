@@ -15,7 +15,13 @@ const STILL_NOT_LOADED = "Still not loaded. Try again in a moment.";
 // or "učitava se", and nothing can be opened until progress loads. Like
 // (learner)/error.tsx, it puts the problem on our side, never on the learner
 // or their device. Retrying refreshes the route, which reads progress again.
-export function ProgressErrorNotice() {
+// A screen that shows something other than places (the Ja tab) says what
+// did not load in `message`.
+export function ProgressErrorNotice({
+  message = "Your places didn’t load. Something went wrong on our side. Let’s try again.",
+}: {
+  message?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [wasPending, setWasPending] = useState(false);
@@ -43,10 +49,7 @@ export function ProgressErrorNotice() {
 
   return (
     // It stays, so the learner has time to reach the retry.
-    <ScreenNotice
-      message="Your places didn’t load. Something went wrong on our side. Let’s try again."
-      staysUntilTappedAway
-    >
+    <ScreenNotice message={message} staysUntilTappedAway>
       {/* Like SubmitButton while pending: focusable, marked, and ignoring taps. */}
       <button
         type="button"

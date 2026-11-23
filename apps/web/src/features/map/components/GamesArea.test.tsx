@@ -14,7 +14,11 @@ import {
   type GameState,
   joinChapterStates,
 } from "../model/progress";
-import { makeChapterState, seedLocationDetail } from "../test-fixtures";
+import {
+  makeChapterState,
+  NO_COUNTS,
+  seedLocationDetail,
+} from "../test-fixtures";
 import { GamesArea } from "./GamesArea";
 
 // Podgorica: four chapters, the first "Kod kuće" (podgorica-home).
@@ -25,7 +29,12 @@ const HOME = "podgorica-home";
 function renderArea(states: readonly ChapterState[], chapterId = HOME) {
   const chapter = joinChapterStates(podgorica.chapters, {
     status: "ready",
-    progress: { regions: [], locations: [], chapters: states },
+    progress: {
+      regions: [],
+      locations: [],
+      chapters: states,
+      counts: NO_COUNTS,
+    },
   }).find(({ id }) => id === chapterId);
   if (chapter === undefined) {
     throw new Error(`No chapter ${chapterId}`);

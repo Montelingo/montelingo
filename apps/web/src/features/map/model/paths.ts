@@ -4,9 +4,9 @@ import type { GameId } from "./progress";
 
 // The map's URLs: /play, then /play/<region>, then /play/<region>/<location>,
 // then a chapter, /play/<region>/<location>/<chapter>, its lesson and games
-// under it (/lesson or /<game>), and the Prizes tab, /play/prizes (no region is
-// called "prizes"). Ids are content slugs, encoded anyway so an id can never add a
-// path segment.
+// under it (/lesson or /<game>), and the Prizes and Ja tabs, /play/prizes and
+// /play/me (no region is called "prizes" or "me"). Ids are content slugs,
+// encoded anyway so an id can never add a path segment.
 
 /** The screen listing a region's locations. */
 export function regionPath(regionId: string): string {
@@ -20,6 +20,12 @@ export function locationPath(regionId: string, locationId: string): string {
 
 /** The Prizes tab's screen: a sticker per place, by region. */
 export const PRIZES_PATH = `${PLAY_PATH}/prizes`;
+
+/** The Ja tab's screen: the child's buddy, name and counts. */
+export const ME_PATH = `${PLAY_PATH}/me`;
+
+/** The grown-ups area, behind the gate (#177, #178). */
+export const GROWN_UPS_PATH = `${ME_PATH}/grown-ups`;
 
 /** A chapter's screen, under its place: its lesson, games and words. */
 export function chapterPath(

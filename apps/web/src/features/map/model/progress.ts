@@ -28,14 +28,23 @@ export type ChapterState = {
   readonly games: readonly { readonly id: GameId; readonly state: GameState }[];
 };
 
+/** What the child has collected, as the server counted it (#175, ADR 0005). */
+export type ProgressCounts = {
+  /** The words of every chapter whose lesson is `done`. */
+  readonly wordsLearned: number;
+  /** The places that are `completed`, one sticker each. */
+  readonly stickers: number;
+};
+
 /**
  * The account's state for every region and location, and for the chapters of
- * every place that is not locked, as the server decided it.
+ * every place that is not locked, as the server decided it, with its counts.
  */
 export type Progress = {
   readonly regions: readonly ProgressEntry[];
   readonly locations: readonly ProgressEntry[];
   readonly chapters: readonly ChapterState[];
+  readonly counts: ProgressCounts;
 };
 
 /**
@@ -61,6 +70,10 @@ export function toProgress(data: Schemas["ProgressState"]): Progress {
       lesson,
       games: games.map((game) => ({ id: game.id, state: game.state })),
     })),
+    counts: {
+      wordsLearned: data.counts.words_learned,
+      stickers: data.counts.stickers,
+    },
   };
 }
 

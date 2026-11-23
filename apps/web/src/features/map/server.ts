@@ -11,6 +11,7 @@ export {
   loadGameScreen,
   loadLessonScreen,
   loadMap,
+  loadMe,
   loadPrizes,
   loadRegionMap,
   loadRegionName,

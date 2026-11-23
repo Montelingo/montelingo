@@ -9,7 +9,12 @@ import type {
   RegionDetail,
   Word,
 } from "./model/content";
-import type { ChapterState, GameState, ProgressResult } from "./model/progress";
+import type {
+  ChapterState,
+  GameState,
+  ProgressCounts,
+  ProgressResult,
+} from "./model/progress";
 
 // Test data for the map feature's tests, mirroring the content seed
 // (apps/api/app/modules/content/data/content.json): three regions in content
@@ -307,6 +312,9 @@ export function seedRegionDetails(): RegionDetail[] {
   return SEED_REGIONS.map(({ id }) => seedRegionDetail(id));
 }
 
+/** A child who has collected nothing yet. */
+export const NO_COUNTS: ProgressCounts = { wordsLearned: 0, stickers: 0 };
+
 /** Everything open: every region and place `available`, as a preview might. */
 export function allOpenProgress(): ProgressResult {
   return {
@@ -317,6 +325,7 @@ export function allOpenProgress(): ProgressResult {
         locations.map(([id]) => ({ id, state: "available" as const })),
       ),
       chapters: [],
+      counts: NO_COUNTS,
     },
   };
 }
@@ -369,6 +378,7 @@ export function newAccountProgress(): ProgressResult {
         makeChapterState("budva-beach"),
         makeChapterState("budva-summer-clothes"),
       ],
+      counts: NO_COUNTS,
     },
   };
 }
