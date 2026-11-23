@@ -54,6 +54,14 @@ path. It signs up a new account through the form, signs out, signs in, lands on
 checks that it lists its 10 words in recording order, and that Back from the
 lesson returns to the chapter. Each run signs up a fresh account.
 
+[`chapter-results.spec.ts`](browser/chapter-results.spec.ts) is the phase 2 happy
+path, on one fresh account. Na plaži's memory game is locked, also by URL, until
+the lesson's ten cards are done. The test then plays the match game, and the
+memory game by the cards' accessible names, so any shuffle works. It opens the
+memory game by its URL, so the server renders it, and checks that both cards of
+a pair show the same picture and that both games save. After a reload the lesson is done, the memory game has a star
+and Obala's map shows Budva in progress.
+
 Sign-up is limited to 10 an hour per IP, and one CI run shares that: `auth.sh`
 uses 1 and the browser tests 8, which leaves 1 for a retry.
 

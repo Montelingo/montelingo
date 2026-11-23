@@ -1,7 +1,12 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
+
+import { CONTENT_LANG } from "@/features/map/edge";
 
 import type { MatchWord } from "../model/match";
 import {
@@ -32,6 +37,44 @@ function makeWords(): MatchWord[] {
 const NO_SHUFFLE = () => 0.999;
 
 const PLACE_HREF = "/play/coast/budva";
+
+/**
+ * A random source that keeps drawing, as `Math.random` does: the server's
+ * render and the browser's hydration each take the next numbers from it, so
+ * they deal differently, as they do in production.
+ */
+function drawingRandom(): () => number {
+  let seed = 42;
+  return () => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return seed / 2_147_483_648;
+  };
+}
+
+/**
+ * The game as a full page load gets it: its server HTML, then hydrated in the
+ * browser. Returns the page and the hydration's recoverable errors.
+ */
+function hydrate(element: ReactElement) {
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(element);
+  document.body.append(container);
+  const onRecoverableError = vi.fn();
+  let root: Root | undefined;
+  act(() => {
+    root = hydrateRoot(container, element, { onRecoverableError });
+  });
+  return {
+    container,
+    onRecoverableError,
+    cleanUp() {
+      act(() => {
+        root?.unmount();
+      });
+      container.remove();
+    },
+  };
+}
 
 function renderGame(props: Partial<MatchGameProps> = {}) {
   return render(
@@ -275,6 +318,41 @@ describe("MatchGame", () => {
 });
 
 // Real timers: user-event and axe wait on them.
+// A full page load renders the game on the server and hydrates it in the
+// browser, so the game must be dealt in the browser only: two deals would not
+// hydrate, and React would throw the server's away.
+describe("MatchGame after a full page load", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("shows a picture with its own word on offer, and hydrates without errors", () => {
+    const page = hydrate(
+      <MatchGame
+        words={makeWords()}
+        placeHref={PLACE_HREF}
+        random={drawingRandom()}
+      />,
+    );
+
+    const round = within(page.container).getByRole("group", {
+      name: "Spoji riječ i sliku",
+    });
+    const word = makeWords().find(
+      ({ text }) => text === within(round).getByRole("img").ariaLabel,
+    );
+    expect(word).toBeDefined();
+    expect(round.querySelector("img")).toHaveAttribute("src", word?.imageUrl);
+    expect(
+      within(round).getByRole("button", {
+        name: word?.text.toLocaleLowerCase(CONTENT_LANG),
+      }),
+    ).toBeInTheDocument();
+    expect(page.onRecoverableError).not.toHaveBeenCalled();
+    page.cleanUp();
+  });
+});
+
 describe("MatchGame with the keyboard and axe", () => {
   it("plays with the keyboard, and keeps the focus on the words between rounds", async () => {
     const user = userEvent.setup();

@@ -15,6 +15,7 @@ import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { SETTLE_DELAY_MS } from "@/lib/use-settled";
 
 import {
@@ -82,6 +83,11 @@ export { SETTLE_DELAY_MS };
 //
 // "Igraj ponovo" deals a new game: the rounds mount again under a new key, so
 // they shuffle again and keep no state from the last game.
+//
+// The deal is random, so it is made in the browser only: the server's HTML
+// and the hydrating render would deal differently, and React keeps the
+// server's pictures where they differ. Until the page hydrates there is no
+// round; after a client-side navigation it is there at once.
 export function MatchGame({
   words,
   placeHref,
@@ -91,6 +97,7 @@ export function MatchGame({
   saveNotice,
   random = Math.random,
 }: MatchGameProps) {
+  const isHydrated = useIsHydrated();
   // The number of rounds played, once the last one is solved.
   const [rounds, setRounds] = useState<number | null>(null);
   const { game, isReplay, playAgain } = useGameVisit(
@@ -118,6 +125,10 @@ export function MatchGame({
         }}
       />
     );
+  }
+
+  if (!isHydrated) {
+    return null;
   }
 
   return (

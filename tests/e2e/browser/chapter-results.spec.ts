@@ -6,8 +6,21 @@ import { setUpProfileAndOpenMap } from "./profile";
 
 const BUDVA = "/play/coast/budva";
 const NA_PLAZI = `${BUDVA}/budva-beach`;
+const MEMORY_URL = `${NA_PLAZI}/memory`;
 // Budva's first chapter, "budva-beach": 10 words.
 const NA_PLAZI_WORD_COUNT = 10;
+// The memory game deals 6 of them, two cards each.
+const MEMORY_CARD_COUNT = 12;
+
+// A memory card's accessible name while it is face down, and the end of its
+// name once its pair is found. A turn ends with its cards in either state.
+const FACE_DOWN = /^karta \d+, licem dolje$/;
+const PAIR_FOUND = /, par pronađen$/;
+const TURN_ENDED = new RegExp(`${FACE_DOWN.source}|${PAIR_FOUND.source}`);
+
+// How the path of Heroicons' solid StarIcon starts. The star is hidden from
+// screen readers, so only its shape tells it from the other badges' icons.
+const STAR_PATH = "M10.788 3.21";
 
 /** Na plaži's lesson and games, on its chapter's screen. */
 function naPlazi(page: Page) {
@@ -35,6 +48,64 @@ function card(title: string, state: string): RegExp {
   return new RegExp(`^${title}\\s*,\\s*${state}$`);
 }
 
+/**
+ * Every pair of Na plaži's memory game, opened by its URL, to "Bravo!": a full
+ * page load, where the server renders the page and the browser hydrates it.
+ * The deal is random, so it finds the pairs by the cards' accessible names. It goes through
+ * the board in order, turning each card and then that card's pair if it has
+ * seen it, or else the card after it.
+ *
+ * It reads a word only from the first card of a turn, which waits face up. The
+ * other card can turn back after 1 s, too soon to read reliably. Both cards of
+ * a found pair must show the same picture.
+ */
+async function playMemory(page: Page) {
+  await page.goto(MEMORY_URL);
+
+  const cards = page
+    .getByRole("group", { name: "Memorija" })
+    .getByRole("button");
+  await expect(cards).toHaveCount(MEMORY_CARD_COUNT);
+
+  const gameSaved = saved(page, "games/memory/result");
+  const last = MEMORY_CARD_COUNT - 1;
+  const seenAt = new Map<string, number>();
+  for (let index = 0; index <= last; index += 1) {
+    const first = cards.nth(index);
+    const name = await first.getAttribute("aria-label");
+    if (name !== null && PAIR_FOUND.test(name)) {
+      continue;
+    }
+    await first.click();
+    await expect(first).not.toHaveAccessibleName(FACE_DOWN);
+    const word = await first.getAttribute("aria-label");
+    if (word === null) {
+      throw new Error("the card has no name");
+    }
+    const pairIndex = seenAt.get(word);
+    seenAt.set(word, index);
+    const otherIndex = pairIndex ?? index + 1;
+    await cards.nth(otherIndex).click();
+    // Every card before the last is paired by the time the last is turned, so
+    // that turn ends the game: the board gives way to "Bravo!".
+    if (index === last || otherIndex === last) {
+      break;
+    }
+    // A known pair is found. A guess is found too, or turns back.
+    await expect(first).toHaveAccessibleName(
+      pairIndex === undefined ? TURN_ENDED : PAIR_FOUND,
+    );
+    if (PAIR_FOUND.test((await first.getAttribute("aria-label")) ?? "")) {
+      await expect(cards.nth(otherIndex).locator("img")).toHaveAttribute(
+        "src",
+        (await first.locator("img").getAttribute("src")) ?? "",
+      );
+    }
+  }
+
+  await expectBravoAndSaved(page, gameSaved);
+}
+
 /** The match game's picture's name, its word, or `null` once it is gone. */
 function pictureName(page: Page): Promise<string | null> {
   return page.evaluate(
@@ -53,7 +124,8 @@ async function backToPlaceFromBravo(page: Page) {
   const link = page.getByRole("link", { name: "Nazad na mjesto" });
   await expect(async () => {
     if (await link.isVisible()) {
-      await link.click();
+      // Short, so a link that went with the navigation fails this attempt.
+      await link.click({ timeout: 1_000 });
     }
     await expect(page).toHaveURL(BUDVA, { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
@@ -66,6 +138,13 @@ function saved(page: Page, kind: string) {
       response.request().method() === "POST" &&
       response.url().endsWith(`/api/v1/chapters/budva-beach/${kind}`),
   );
+}
+
+/** The "Bravo!" screen, with the result saved. */
+async function expectBravoAndSaved(page: Page, save: ReturnType<typeof saved>) {
+  await expect(page.getByRole("heading", { name: /^Bravo/ })).toBeVisible();
+  expect((await save).status()).toBe(200);
+  await expect(page.getByText("Ovo još nije sačuvano.")).toHaveCount(0);
 }
 
 /** A new account with its child's profile, on Na plaži's screen. */
@@ -103,9 +182,7 @@ async function watchLesson(page: Page) {
   for (let card = 0; card < NA_PLAZI_WORD_COUNT; card += 1) {
     await next.click();
   }
-  await expect(page.getByRole("heading", { name: "Bravo!" })).toBeVisible();
-  expect((await lessonSaved).status()).toBe(200);
-  await expect(page.getByText("Ovo još nije sačuvano.")).toHaveCount(0);
+  await expectBravoAndSaved(page, lessonSaved);
 }
 
 /** From Na plaži's screen, every round of its match game, to "Bravo!". */
@@ -130,22 +207,42 @@ async function playMatch(page: Page) {
     // The next round, or "Bravo!", follows the right word.
     await expect.poll(() => pictureName(page)).not.toBe(word);
   }
-  await expect(bravo).toBeVisible();
-  expect((await gameSaved).status()).toBe(200);
-  await expect(page.getByText("Ovo još nije sačuvano.")).toHaveCount(0);
+  await expectBravoAndSaved(page, gameSaved);
 }
 
-// Finishing the lesson and a game saves them (#136). Each run makes its own
-// account, so it starts with nothing done. Sign-up, ten lesson cards and ten
-// match rounds take longer than the default 30 s when the stack is cold or
-// every worker is busy.
-test("the lesson and a game are saved, and the place shows it (#136)", async ({
+// The lesson opens the games (#138), and the lesson and games save their
+// results (#136). Both issues share this test for its account, since sign-ups
+// are limited (README.md). Each run signs up a new one, so nothing is done
+// yet. Sign-up, the lesson and two games take longer than the default 30 s.
+test("the lesson opens the games, and both games are saved (#136, #138)", async ({
   page,
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
 
   await test.step("a new learner opens Na plaži", () =>
     newLearnerOnNaPlazi(page));
+
+  await test.step("the memory game is locked", async () => {
+    const memory = naPlazi(page)
+      .getByRole("listitem")
+      .filter({ hasText: "Memory" });
+    await expect(memory).toContainText("First watch the lesson");
+    await expect(memory.getByRole("link")).toHaveCount(0);
+  });
+
+  await test.step("its URL shows the lock message", async () => {
+    await page.goto(MEMORY_URL);
+    await expect(
+      page.getByText("First watch the lesson. Then you can play."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Watch the lesson" }),
+    ).toHaveAttribute("href", `${NA_PLAZI}/lesson`);
+    await expect(page.getByRole("group", { name: "Memorija" })).toHaveCount(0);
+
+    await page.goto(BUDVA);
+    await openNaPlazi(page);
+  });
 
   // The place's first visit back: the link's navigation fetches it.
   await test.step("watch the lesson and go back by its link", async () => {
@@ -161,7 +258,45 @@ test("the lesson and a game are saved, and the place shows it (#136)", async ({
     ).toBeVisible();
   });
 
+  await test.step("the lesson opened the memory game", async () => {
+    await expect(
+      naPlazi(page).getByRole("link", {
+        name: card("Memory", "Ready to play"),
+      }),
+    ).toBeVisible();
+  });
+
   await test.step("play the match game: it saves", () => playMatch(page));
+
+  await test.step("play the memory game, opened by its URL: it saves", () =>
+    playMemory(page));
+
+  // A reload, since without one the place can show its state from before the
+  // game (#225).
+  await test.step("after a reload, the lesson is done and the game has a star", async () => {
+    await backToPlaceFromBravo(page);
+    await openNaPlazi(page);
+    await page.reload();
+
+    await expect(
+      naPlazi(page).getByRole("link", { name: card("Lesson", "Done") }),
+    ).toBeVisible();
+    const memory = naPlazi(page).getByRole("link", {
+      name: card("Memory", "Completed"),
+    });
+    await expect(memory).toBeVisible();
+    await expect(memory.locator(`path[d^="${STAR_PATH}"]`)).toBeVisible();
+  });
+
+  await test.step("the map shows Budva in progress", async () => {
+    // Obala's map: on the whole country's, a place is a dot with no name.
+    await page.goto("/play/coast");
+    await expect(
+      page
+        .getByRole("group", { name: "Mjesta", exact: true })
+        .getByRole("link", { name: /^Budva, u toku(,|$)/ }),
+    ).toBeVisible();
+  });
 });
 
 // Back, and the link to a place already visited, show the place from the
