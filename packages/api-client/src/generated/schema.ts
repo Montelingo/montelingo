@@ -457,10 +457,23 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * ProgressCounts
+         * @description What the child has collected, for the Ja screen and the grown-ups area (#175).
+         *
+         *     The server counts them, so the frontend never does (ADR 0005).
+         */
+        ProgressCounts: {
+            /** Stickers */
+            stickers: number;
+            /** Words Learned */
+            words_learned: number;
+        };
         /** ProgressState */
         ProgressState: {
             /** Chapters */
             chapters: components["schemas"]["ChapterState"][];
+            counts: components["schemas"]["ProgressCounts"];
             /** Locations */
             locations: components["schemas"]["LocationState"][];
             /** Regions */

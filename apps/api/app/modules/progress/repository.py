@@ -191,6 +191,7 @@ class SqlAlchemyProgressRepository:
                 location_slug=chapter.location_slug,
                 lesson_completed_at=lessons.get(chapter.id),
                 completed_games=tuple(games.get(chapter.id, ())),
+                word_count=chapter.word_count,
             )
             for chapter in chapters
         ]

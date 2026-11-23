@@ -1,4 +1,4 @@
-"""Pure domain rules for map availability, chapter state and the child profile."""
+"""Pure domain rules for map availability, chapter state, progress counts and the child profile."""
 
 from __future__ import annotations
 
@@ -146,6 +146,7 @@ class ChapterProgressRecord:
     location_slug: str
     lesson_completed_at: datetime | None = None
     completed_games: tuple[GameId, ...] = ()
+    word_count: int = 0
 
 
 def calculate_chapter_states(
@@ -166,6 +167,33 @@ def calculate_chapter_states(
         )
         for chapter in chapters
         if location_states.get(chapter.location_slug, "locked") != "locked"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ProgressCounts:
+    """How many words the child has learned and how many stickers they have."""
+
+    words_learned: int
+    stickers: int
+
+
+def calculate_progress_counts(
+    chapters: Iterable[ChapterProgressRecord],
+    location_states: Mapping[str, MapState],
+) -> ProgressCounts:
+    """Count learned words and stickers without database access or side effects (#175).
+
+    A word counts as learned once its chapter's lesson is seen; words are not
+    tracked one by one. A sticker is a `completed` place, the same rule as the
+    Prizes screen.
+    """
+
+    return ProgressCounts(
+        words_learned=sum(
+            chapter.word_count for chapter in chapters if chapter.lesson_completed_at is not None
+        ),
+        stickers=sum(1 for state in location_states.values() if state == "completed"),
     )
 
 

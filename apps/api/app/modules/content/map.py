@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .domain import Content
 from .domain import Location as ContentLocation
 from .domain import Region as ContentRegion
-from .models import Chapter, Location, Region
+from .models import Chapter, Location, Region, VocabularyItem
 
 
 async def read_map_content(
@@ -86,11 +86,12 @@ async def read_location_id(session: AsyncSession, location_slug: str) -> UUID | 
 
 @dataclass(frozen=True, slots=True)
 class MapChapter:
-    """A chapter's identity and the place it belongs to, without its words."""
+    """A chapter's identity, the place it belongs to and how many words it has."""
 
     id: UUID
     slug: str
     location_slug: str
+    word_count: int
 
 
 async def read_map_chapters(session: AsyncSession) -> tuple[MapChapter, ...]:
@@ -100,14 +101,20 @@ async def read_map_chapters(session: AsyncSession) -> tuple[MapChapter, ...]:
     or querying content models.
     """
 
+    word_count = (
+        select(func.count(VocabularyItem.id))
+        .where(VocabularyItem.chapter_id == Chapter.id)
+        .correlate(Chapter)
+        .scalar_subquery()
+    )
     result = await session.execute(
-        select(Chapter.id, Chapter.slug, Location.slug)
+        select(Chapter.id, Chapter.slug, Location.slug, word_count)
         .join(Location, Location.id == Chapter.location_id)
         .join(Region, Region.id == Location.region_id)
         .order_by(Region.position, Location.position, Chapter.position)
     )
 
     return tuple(
-        MapChapter(id=chapter_id, slug=slug, location_slug=location_slug)
-        for chapter_id, slug, location_slug in result.all()
+        MapChapter(id=chapter_id, slug=slug, location_slug=location_slug, word_count=words)
+        for chapter_id, slug, location_slug, words in result.all()
     )

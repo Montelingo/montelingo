@@ -45,11 +45,24 @@ class ChapterState(ApiSchema):
     games: list[GameState]
 
 
+class ProgressCounts(ApiSchema):
+    """What the child has collected, for the Ja screen and the grown-ups area (#175).
+
+    The server counts them, so the frontend never does (ADR 0005).
+    """
+
+    # Every word of each chapter whose lesson is `done`.
+    words_learned: int
+    # One per `completed` place, the same rule as the Prizes screen.
+    stickers: int
+
+
 class ProgressState(ApiSchema):
     regions: list[RegionState]
     locations: list[LocationState]
     # Only the chapters of places that are not `locked` (ADR 0006).
     chapters: list[ChapterState]
+    counts: ProgressCounts
 
 
 # The child's profile on the learning profile (#117). The bands and buddies are

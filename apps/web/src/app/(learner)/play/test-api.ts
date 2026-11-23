@@ -122,6 +122,7 @@ type ProgressBody = {
   regions: { id: string; state: string }[];
   locations: { id: string; state: string }[];
   chapters: Schemas["ChapterState"][];
+  counts: Schemas["ProgressCounts"];
 };
 
 // A chapter's state as the server sends it: both games, `memory` then `match`.
@@ -159,6 +160,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     apiChapterState("budva-beach", "todo", "locked", "locked"),
     apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
   ],
+  counts: { words_learned: 0, stickers: 0 },
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -182,6 +184,8 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     apiChapterState("podgorica-kitchen", "todo", "locked", "locked"),
     apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
   ],
+  // Four lessons seen and Budva's sticker.
+  counts: { words_learned: 40, stickers: 1 },
 };
 
 /**
@@ -208,7 +212,12 @@ function progressResponse(progress: ProgressAnswer): Response {
     case "failed":
       return errorResponse(500, "internal_server_error");
     case "empty":
-      return jsonResponse(200, { regions: [], locations: [], chapters: [] });
+      return jsonResponse(200, {
+        regions: [],
+        locations: [],
+        chapters: [],
+        counts: { words_learned: 0, stickers: 0 },
+      });
     case "signed-out":
       return errorResponse(401, "authentication_error");
   }

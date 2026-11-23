@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content import MapChapter, read_map_chapters, read_map_content
-from app.modules.content.models import Chapter, Location, Region
+from app.modules.content.models import Chapter, Location, Region, VocabularyItem
 
 pytestmark = pytest.mark.integration
 
@@ -64,8 +64,41 @@ async def test_map_chapters_follow_the_map_order(
     chapters = await read_map_chapters(db_session)
 
     assert chapters == (
-        MapChapter(id=beach.id, slug="budva-beach", location_slug="budva"),
-        MapChapter(id=old_town.id, slug="budva-old-town", location_slug="budva"),
-        MapChapter(id=walls.id, slug="kotor-walls", location_slug="kotor"),
-        MapChapter(id=forest.id, slug="kolasin-forest", location_slug="kolasin"),
+        MapChapter(id=beach.id, slug="budva-beach", location_slug="budva", word_count=0),
+        MapChapter(id=old_town.id, slug="budva-old-town", location_slug="budva", word_count=0),
+        MapChapter(id=walls.id, slug="kotor-walls", location_slug="kotor", word_count=0),
+        MapChapter(id=forest.id, slug="kolasin-forest", location_slug="kolasin", word_count=0),
     )
+
+
+async def test_map_chapters_count_their_words(
+    db_session: AsyncSession,
+) -> None:
+    coast = Region(slug="coast", name="Coast", position=1)
+    db_session.add(coast)
+    await db_session.flush()
+
+    budva = Location(region_id=coast.id, slug="budva", name="Budva", position=1, is_start=True)
+    db_session.add(budva)
+    await db_session.flush()
+
+    beach = Chapter(location_id=budva.id, slug="budva-beach", title="Na plaži", position=1)
+    old_town = Chapter(location_id=budva.id, slug="budva-old-town", title="Stari grad", position=2)
+    db_session.add_all([beach, old_town])
+    await db_session.flush()
+
+    db_session.add_all(
+        [
+            VocabularyItem(chapter_id=beach.id, number=1, text="more", position=1),
+            VocabularyItem(chapter_id=beach.id, number=2, text="pijesak", position=2),
+            VocabularyItem(chapter_id=beach.id, number=3, text="sunce", position=3),
+        ]
+    )
+    await db_session.flush()
+
+    chapters = await read_map_chapters(db_session)
+
+    assert [(chapter.slug, chapter.word_count) for chapter in chapters] == [
+        ("budva-beach", 3),
+        ("budva-old-town", 0),
+    ]
