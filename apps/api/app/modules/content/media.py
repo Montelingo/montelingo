@@ -29,6 +29,9 @@ WORD_IMAGES: frozenset[int] = frozenset(
         *range(71, 81),  # Boje oko nas (Kotor), #188
         *range(81, 91),  # Igramo se (Ulcinj), #189
         *range(91, 101),  # Šta radimo na obali (Herceg Novi), #190
+        *range(111, 121),  # Porodica (Cetinje), #194
+        *range(151, 161),  # Moje tijelo (Cetinje), #194
+        *range(181, 191),  # Muzika i slavlje (Cetinje), #194
     ]
 )
 """Recording numbers of the words that have an image."""
