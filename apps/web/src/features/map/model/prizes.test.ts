@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   newAccountProgress,
+  NO_COUNTS,
   seedRegionDetail,
   seedRegionDetails,
   seedRegions,
@@ -24,6 +25,7 @@ const COAST_STARTED: ProgressResult = {
       { id: "tivat", state: "completed" },
     ],
     chapters: [],
+    counts: NO_COUNTS,
   },
 };
 
@@ -124,6 +126,7 @@ describe("toPrizesData", () => {
           state: "available" as const,
         })),
         chapters: [],
+        counts: NO_COUNTS,
       },
     });
 
@@ -141,6 +144,7 @@ describe("toPrizesData", () => {
         ],
         locations: [],
         chapters: [],
+        counts: NO_COUNTS,
       },
     });
 

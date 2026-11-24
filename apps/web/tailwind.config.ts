@@ -92,7 +92,8 @@ const config: Config = {
         },
         // The map's chrome (top bar, side panel, bottom nav), from the
         // designers' Figma palette. ink on cream, white, yellow, yellow-soft,
-        // land, fog and sea, and muted on cream, white and fog, are AA.
+        // land, fog, sea, sea-soft, pink and pink-soft, and muted on cream,
+        // white, fog, yellow-soft, sea-soft and pink-soft, are AA.
         kid: {
           ink: "#2B2D42",
           muted: "#4A5068",
@@ -105,6 +106,10 @@ const config: Config = {
           line: "#D9DEE8",
           green: "#5DBB63",
           sea: "#5CC8E8",
+          // The Ja tab's count tiles: words (sea) and stickers (pink).
+          "sea-soft": "#DDF4FB",
+          pink: "#FF8FB8",
+          "pink-soft": "#FFE3EE",
         },
         // PlaceholderArt palettes: background, pattern, and initial.
         art: {

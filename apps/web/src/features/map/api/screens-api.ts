@@ -9,7 +9,9 @@ import { getProfile } from "@/features/profile/server";
 import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
+import { type MeData, toMeData } from "../model/me";
 import {
+  ME_PATH,
   PRIZES_PATH,
   chapterPath,
   gamePath,
@@ -95,6 +97,19 @@ export async function loadPrizes(): Promise<PrizesData> {
     regions.map(({ id }) => getRegion(id)),
   );
   return toPrizesData(regions, details, progress);
+}
+
+/**
+ * The Ja tab: the child and their counts. Redirects to sign in when the
+ * session has ended; a progress or profile failure still renders, with a
+ * retry.
+ */
+export async function loadMe(): Promise<MeData> {
+  const [progress, profile] = await signedIn(ME_PATH, [
+    getProgress(),
+    getProfile(),
+  ]);
+  return toMeData(progress, profile);
 }
 
 /**

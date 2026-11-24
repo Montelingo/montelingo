@@ -8,6 +8,7 @@ import { MAP_NOTICES, type MapNotice, withMapNotice } from "../model/notices";
 import {
   advanceTimers,
   newAccountProgress,
+  NO_COUNTS,
   seedRegionDetails,
   tap,
 } from "../test-fixtures";
@@ -40,6 +41,7 @@ const uncovered = toMapData(seedRegionDetails(), {
     ],
     locations: [{ id: "budva", state: "available" }],
     chapters: [],
+    counts: NO_COUNTS,
   },
 });
 

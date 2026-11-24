@@ -8,6 +8,7 @@ import type { ChapterState } from "../model/progress";
 import { type LocationScreenData, toLocationScreen } from "../model/screens";
 import {
   makeChapterState,
+  NO_COUNTS,
   seedLocationDetail,
   seedRegionDetail,
 } from "../test-fixtures";
@@ -28,6 +29,7 @@ function openPlace(
       regions: [{ id: regionId, state: "in-progress" }],
       locations: [{ id: location.id, state: "available" }],
       chapters,
+      counts: NO_COUNTS,
     },
   });
 }

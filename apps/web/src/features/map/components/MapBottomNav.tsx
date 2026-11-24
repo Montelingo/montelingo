@@ -7,14 +7,14 @@ import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { PLAY_PATH } from "@/features/auth/edge";
 import { cn } from "@/lib/cn";
 
-import { PRIZES_PATH } from "../model/paths";
+import { ME_PATH, PRIZES_PATH } from "../model/paths";
 import { ChromeIcon, type ChromeIconName } from "./ChromeIcon";
 
 /** The tabs that have a page. */
-export type NavTab = "map" | "prizes";
+export type NavTab = "map" | "prizes" | "me";
 
 type Tab = {
-  id: NavTab | "words" | "me";
+  id: NavTab | "words";
   label: string;
   icon: ChromeIconName;
   /** The tab's page; a tab without one says it is coming when tapped. */
@@ -25,7 +25,7 @@ const TABS: readonly Tab[] = [
   { id: "map", label: "Mapa", icon: "map", href: PLAY_PATH },
   { id: "words", label: "Riječi", icon: "words", href: null },
   { id: "prizes", label: "Nagrade", icon: "prizes", href: PRIZES_PATH },
-  { id: "me", label: "Ja", icon: "me", href: null },
+  { id: "me", label: "Ja", icon: "me", href: ME_PATH },
 ];
 
 type MapBottomNavProps = {

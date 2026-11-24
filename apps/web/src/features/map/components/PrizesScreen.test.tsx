@@ -5,7 +5,7 @@ import { axe } from "vitest-axe";
 
 import type { ProgressResult } from "../model/progress";
 import { toPrizesData } from "../model/prizes";
-import { seedRegionDetails, seedRegions } from "../test-fixtures";
+import { NO_COUNTS, seedRegionDetails, seedRegions } from "../test-fixtures";
 import { PrizesScreen } from "./PrizesScreen";
 
 vi.mock("next/navigation", () => ({
@@ -30,6 +30,7 @@ const BUDVA_DONE: ProgressResult = {
       { id: "bar", state: "locked" },
     ],
     chapters: [],
+    counts: NO_COUNTS,
   },
 };
 
