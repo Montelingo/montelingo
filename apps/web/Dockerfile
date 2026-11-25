@@ -32,7 +32,9 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
 # Apply the latest Alpine security patches so the runtime image does not
-# carry known OS-package CVEs.
+# carry known OS-package CVEs. CI passes the date, so the layer is rebuilt
+# once a day instead of staying cached with yesterday's packages.
+ARG SYSTEM_UPGRADE_DATE
 RUN apk update && apk upgrade --no-cache
 
 # The standalone server only needs node. Drop the package managers bundled in

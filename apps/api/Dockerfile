@@ -6,6 +6,9 @@ ENV PYTHONUNBUFFERED=1 \
     UV_NO_SYNC=1
 
 
+# Apply the latest Debian security patches. CI passes the date, so the layer
+# is rebuilt once a day instead of staying cached with yesterday's packages.
+ARG SYSTEM_UPGRADE_DATE
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 
