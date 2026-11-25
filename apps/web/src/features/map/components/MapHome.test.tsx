@@ -356,8 +356,7 @@ describe("MapHome", () => {
     }
   });
 
-  it("has the map tab current and says the others are coming", async () => {
-    const user = userEvent.setup();
+  it("has the map tab current, with Riječi a link to the words", () => {
     renderHome();
     const nav = screen.getByRole("navigation", { name: "Glavni meni" });
 
@@ -365,9 +364,10 @@ describe("MapHome", () => {
       "aria-current",
       "page",
     );
-    await user.click(within(nav).getByRole("button", { name: "Riječi" }));
-
-    expect(screen.getByText("Riječi: uskoro!")).toBeVisible();
+    expect(within(nav).getByRole("link", { name: "Riječi" })).toHaveAttribute(
+      "href",
+      "/play/words",
+    );
   });
 
   it("shows no notice and no retry when there is nothing to say", () => {

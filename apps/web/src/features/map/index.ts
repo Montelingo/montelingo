@@ -18,6 +18,8 @@ export { PrizesScreenSkeleton } from "./components/PrizesScreenSkeleton";
 export { RegionScreen } from "./components/RegionScreen";
 export { RegionScreenSkeleton } from "./components/RegionScreenSkeleton";
 export { SaveNotice, type SaveNoticeProps } from "./components/SaveNotice";
+export { WordsScreen } from "./components/WordsScreen";
+export { WordsScreenSkeleton } from "./components/WordsScreenSkeleton";
 export {
   type ChapterResult,
   type SaveResult,

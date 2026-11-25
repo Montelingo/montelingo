@@ -16,5 +16,6 @@ export {
   loadRegionMap,
   loadRegionName,
   loadRegionScreen,
+  loadWords,
 } from "./api/screens-api";
 export { mapErrorMessages, toMapErrorMessage } from "./errors";

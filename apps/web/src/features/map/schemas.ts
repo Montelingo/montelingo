@@ -94,3 +94,23 @@ export const progressSchema = z.object({
   chapters: z.array(chapterStateSchema),
   counts: progressCountsSchema,
 }) satisfies z.ZodType<Schemas["ProgressState"]>;
+
+// The child's learned words by place, and the next place to learn more (#232).
+const learnedPlaceSchema = z.object({
+  id: slugSchema,
+  region_id: slugSchema,
+  name: z.string(),
+  words: z.array(wordSchema),
+}) satisfies z.ZodType<Schemas["LearnedPlace"]>;
+
+export const learnedWordsSchema = z.object({
+  places: z.array(learnedPlaceSchema),
+  next_place: z
+    .object({
+      id: slugSchema,
+      region_id: slugSchema,
+      name: z.string(),
+      word_count: z.number().int().min(1),
+    })
+    .nullable(),
+}) satisfies z.ZodType<Schemas["LearnedWords"]>;
