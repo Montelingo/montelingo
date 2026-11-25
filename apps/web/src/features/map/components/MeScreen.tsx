@@ -1,8 +1,8 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
-import Link from "next/link";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { GrownUpsGateButton } from "@/features/grown-ups";
 import { avatarSrc } from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -53,10 +53,11 @@ const STICKERS: Tile = {
 
 // The Ja tab, /play/me (Figma 27:61076, screen 1 of #174): the child's buddy
 // in the big gold ring, their name and title, three count tiles, and the way
-// to the grown-ups area. A centred column from tablet width, the full width
-// less a 16px gutter on a phone, scrolling on its own above the bottom nav,
-// which is docked or floating as on the map. `data-map-screen` tells
-// LearnerShell to drop its own Back and Home bar, as on the Prizes screen.
+// to the grown-ups area, through its gate (#177), which opens over this
+// screen. A centred column from tablet width, the full width less a 16px
+// gutter on a phone, scrolling on its own above the bottom nav, which is
+// docked or floating as on the map. `data-map-screen` tells LearnerShell to
+// drop its own Back and Home bar, as on the Prizes screen.
 export function MeScreen({
   explorer,
   counts,
@@ -105,10 +106,10 @@ export function MeScreen({
             <CountTile tile={WORDS} value={counts?.wordsLearned ?? null} />
             <CountTile tile={STICKERS} value={counts?.stickers ?? null} />
           </ul>
-          <Link
+          <GrownUpsGateButton
             href={GROWN_UPS_PATH}
             className={cn(
-              "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-kid-ink shadow-raised-4",
+              "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-left text-kid-ink shadow-raised-4",
               FOCUS_RING,
             )}
           >
@@ -124,7 +125,7 @@ export function MeScreen({
               strokeWidth={2.5}
               className="size-7 shrink-0"
             />
-          </Link>
+          </GrownUpsGateButton>
         </div>
       </div>
       <div className="flex flex-col lg:items-center lg:pb-5">

@@ -3,7 +3,7 @@
 // (#132) drives `memoryReducer` with `useReducer` and renders `cardFace`.
 // No timer, no score, no fail state: a miss simply turns back.
 
-import { type Random, shuffle } from "./random";
+import { type Random, shuffle } from "@/lib/random";
 
 /** How many pairs a game deals, at most. Tune after testing with children. */
 export const PAIRS = 6;

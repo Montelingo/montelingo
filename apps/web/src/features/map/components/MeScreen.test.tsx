@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -85,13 +86,18 @@ describe("MeScreen", () => {
     }
   });
 
-  it("links the grown-ups row to the grown-ups area", () => {
+  it("opens the grown-ups gate over the screen from the grown-ups row", async () => {
+    const user = userEvent.setup();
     renderMe();
 
-    expect(screen.getByRole("link", { name: "Za roditelje" })).toHaveAttribute(
-      "href",
-      "/play/me/grown-ups",
-    );
+    await user.click(screen.getByRole("button", { name: "Za roditelje" }));
+
+    expect(
+      screen.getByRole("dialog", { name: /^Pritisni i drži broj / }),
+    ).toHaveAttribute("open");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Mia" }),
+    ).toBeInTheDocument();
   });
 
   it("does not offer to switch player", () => {

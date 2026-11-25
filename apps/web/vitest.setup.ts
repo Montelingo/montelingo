@@ -29,3 +29,33 @@ vi.mock("next/font/local", () => ({
 if (typeof HTMLCanvasElement !== "undefined") {
   HTMLCanvasElement.prototype.getContext = () => null;
 }
+
+// jsdom has no modal dialogs. As in a browser: showModal() opens the dialog
+// and moves the focus to its first button, Escape closes it, and close()
+// fires `close` if it was open. A test file may still replace these.
+if (
+  typeof HTMLDialogElement !== "undefined" &&
+  typeof HTMLDialogElement.prototype.showModal !== "function"
+) {
+  const closeOnEscape = (event: KeyboardEvent) => {
+    if (
+      event.key === "Escape" &&
+      event.currentTarget instanceof HTMLDialogElement
+    ) {
+      event.currentTarget.close();
+    }
+  };
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.setAttribute("open", "");
+    this.addEventListener("keydown", closeOnEscape);
+    this.querySelector("button")?.focus();
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    if (!this.hasAttribute("open")) {
+      return;
+    }
+    this.removeAttribute("open");
+    this.removeEventListener("keydown", closeOnEscape);
+    this.dispatchEvent(new Event("close"));
+  };
+}

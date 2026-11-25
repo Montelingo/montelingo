@@ -45,8 +45,10 @@ export { parseMapNotice } from "./model/notices";
 export {
   chapterPath,
   gamePath,
+  GROWN_UPS_PATH,
   lessonPath,
   locationPath,
+  ME_PATH,
   regionPath,
 } from "./model/paths";
 export {
