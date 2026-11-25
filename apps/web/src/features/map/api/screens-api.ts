@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PLAY_PATH } from "@/features/auth/edge";
 import { type Profile, toExplorer } from "@/features/profile/edge";
-import { getProfile } from "@/features/profile/server";
+import { getPlayers, getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
@@ -100,16 +100,18 @@ export async function loadPrizes(): Promise<PrizesData> {
 }
 
 /**
- * The Ja tab: the child and their counts. Redirects to sign in when the
- * session has ended; a progress or profile failure still renders, with a
- * retry.
+ * The Ja tab: the child, their counts, and whether there is another player
+ * to switch to. Redirects to sign in when the session has ended; a progress
+ * or profile failure still renders, with a retry, and a players failure
+ * without Switch player.
  */
 export async function loadMe(): Promise<MeData> {
-  const [progress, profile] = await signedIn(ME_PATH, [
+  const [progress, profile, players] = await signedIn(ME_PATH, [
     getProgress(),
     getProfile(),
+    getPlayers(),
   ]);
-  return toMeData(progress, profile);
+  return toMeData(progress, profile, players);
 }
 
 /**

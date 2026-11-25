@@ -223,19 +223,48 @@ function progressResponse(progress: ProgressAnswer): Response {
   }
 }
 
+// The account's players (ADR 0007): Mia, who plays, then Leo, whose setup is
+// not finished yet.
+const PLAYERS: Schemas["Player"][] = [
+  {
+    id: "00000000-0000-4000-8000-00000000a001",
+    name: "Mia",
+    age_band: "5-6",
+    avatar: "owl",
+    is_complete: true,
+    is_active: true,
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000a002",
+    name: null,
+    age_band: null,
+    avatar: null,
+    is_complete: false,
+    is_active: false,
+  },
+];
+
 /**
  * Makes `fetchMock` answer like the API: progress as `progress` says, the
- * child profile as `profile` says (or `401` when signed out), the list of
- * regions, and a region or place by its exact id, as the API does, or `404`
- * for one it does not have.
+ * child profile as `profile` says (or `401` when signed out), the account's
+ * one player or two (`players`), the list of regions, and a region or place
+ * by its exact id, as the API does, or `404` for one it does not have.
  */
 export function serveApi(
   fetchMock: Mock<(request: Request) => Promise<Response>>,
   progress: ProgressAnswer = "new-account",
   profile: "set-up" | "not-set-up" = "set-up",
+  players: 1 | 2 = 1,
 ): void {
   fetchMock.mockImplementation((request) => {
     const { pathname } = new URL(request.url);
+    if (pathname === "/api/v1/players") {
+      return Promise.resolve(
+        progress === "signed-out"
+          ? errorResponse(401, "authentication_error")
+          : jsonResponse(200, PLAYERS.slice(0, players)),
+      );
+    }
     if (pathname === "/api/v1/profile") {
       // A set-up profile, or one that is not; a session that ended is signed
       // out here too.

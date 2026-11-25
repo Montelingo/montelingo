@@ -8,3 +8,4 @@ export {
   type ProfileResult,
   getProfileResult,
 } from "./api/profile-api";
+export { getPlayers, loadPlayers } from "./api/players-api";

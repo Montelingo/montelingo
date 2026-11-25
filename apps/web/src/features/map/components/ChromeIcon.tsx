@@ -10,6 +10,7 @@ const ICONS = {
   map: "/learner/icon-map.svg",
   "region-map": "/learner/icon-region-map.svg",
   lock: "/learner/icon-lock.svg",
+  switch: "/learner/icon-switch.svg",
   play: "/learner/icon-play.svg",
   words: "/learner/icon-words.svg",
   prizes: "/learner/icon-prizes.svg",

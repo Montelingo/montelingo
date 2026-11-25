@@ -1,6 +1,8 @@
 import {
+  canSwitchPlayer,
   type Explorer,
   PLACEHOLDER_EXPLORER,
+  type Player,
   type Profile,
   toExplorer,
 } from "@/features/profile/edge";
@@ -21,17 +23,27 @@ export type MeData = {
   counts: ProgressCounts | null;
   /** Whether progress or the profile failed, which offers a retry. */
   needsRetry: boolean;
+  /**
+   * Whether to offer Switch player (#184): the account has two players or
+   * more. Not when the players could not be read, which needs no retry.
+   */
+  canSwitchPlayer: boolean;
 };
 
-/** Joins progress and the profile (`null` when it failed) for the Ja tab. */
+/**
+ * Joins progress, the profile and the players (each `null` when it failed)
+ * for the Ja tab.
+ */
 export function toMeData(
   progress: ProgressResult,
   profile: Profile | null,
+  players: readonly Player[] | null,
 ): MeData {
   const explorer = profile === null ? null : toExplorer(profile);
   return {
     explorer: explorer ?? { ...PLACEHOLDER_EXPLORER, title: null },
     counts: progress.status === "ready" ? progress.progress.counts : null,
     needsRetry: progress.status === "error" || profile === null,
+    canSwitchPlayer: players !== null && canSwitchPlayer(players),
   };
 }
