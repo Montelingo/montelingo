@@ -9,7 +9,6 @@ from app.modules.auth import get_current_user
 from app.schemas.common import PageInfo, PaginatedResponse
 
 from . import domain
-from .media import word_image_url
 from .repository import SqlAlchemyContentRepository
 from .schemas import Chapter as ChapterSchema
 from .schemas import (
@@ -63,17 +62,7 @@ def _chapter(item: domain.ChapterRead) -> ChapterSchema:
         id=item.slug,
         title=item.title,
         position=item.position,
-        words=[
-            WordSchema(
-                id=str(word.id),
-                number=word.number,
-                text=word.text,
-                note=word.note,
-                image_url=word_image_url(word.number),
-                audio_url=None,
-            )
-            for word in item.words
-        ],
+        words=[WordSchema.from_read(word) for word in item.words],
     )
 
 

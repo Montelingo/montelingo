@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .domain import Content
+from .domain import Content, WordRead
 from .domain import Location as ContentLocation
 from .domain import Region as ContentRegion
 from .models import Chapter, Location, Region, VocabularyItem
@@ -118,3 +119,34 @@ async def read_map_chapters(session: AsyncSession) -> tuple[MapChapter, ...]:
         MapChapter(id=chapter_id, slug=slug, location_slug=location_slug, word_count=words)
         for chapter_id, slug, location_slug, words in result.all()
     )
+
+
+async def read_chapter_words(
+    session: AsyncSession,
+    chapter_slugs: Iterable[str],
+) -> dict[str, tuple[WordRead, ...]]:
+    """Return the words of the given chapters, keyed by chapter slug, in recording order.
+
+    One query for every chapter. A slug content no longer has is left out, and
+    a chapter without words maps to an empty tuple.
+    """
+
+    slugs = list(chapter_slugs)
+    if not slugs:
+        return {}
+
+    result = await session.execute(
+        select(Chapter.slug, VocabularyItem)
+        .outerjoin(VocabularyItem, VocabularyItem.chapter_id == Chapter.id)
+        .where(Chapter.slug.in_(slugs))
+        .order_by(Chapter.slug, VocabularyItem.position)
+    )
+
+    words: dict[str, list[WordRead]] = {}
+    for slug, word in result.all():
+        chapter_words = words.setdefault(slug, [])
+        if word is not None:
+            chapter_words.append(
+                WordRead(id=word.id, number=word.number, text=word.text, note=word.note)
+            )
+    return {slug: tuple(items) for slug, items in words.items()}

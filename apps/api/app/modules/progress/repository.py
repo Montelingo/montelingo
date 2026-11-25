@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Protocol, cast
 from uuid import UUID
 
@@ -11,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.content import (
     Content,
+    WordRead,
+    read_chapter_words,
     read_location_id,
     read_map_chapters,
     read_map_content,
@@ -134,6 +137,10 @@ class ProgressRepository(Protocol):
         learning_profile_id: UUID,
     ) -> list[ChapterProgressRecord]: ...
 
+    async def read_words(self, chapter_slugs: Iterable[str]) -> dict[str, tuple[WordRead, ...]]:
+        """The words of the given chapters, keyed by chapter slug, in recording order."""
+        ...
+
     async def record_lesson(
         self, learning_profile_id: UUID, chapter_slug: str, location_slug: str
     ) -> None: ...
@@ -231,6 +238,9 @@ class SqlAlchemyProgressRepository:
             )
             for chapter in chapters
         ]
+
+    async def read_words(self, chapter_slugs: Iterable[str]) -> dict[str, tuple[WordRead, ...]]:
+        return await read_chapter_words(self.session, chapter_slugs)
 
     async def record_lesson(
         self, learning_profile_id: UUID, chapter_slug: str, location_slug: str

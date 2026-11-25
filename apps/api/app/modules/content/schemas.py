@@ -7,6 +7,9 @@ from pydantic.types import StringConstraints
 
 from app.schemas.common import ApiSchema, UUIDString
 
+from .domain import WordRead
+from .media import word_image_url
+
 # Content is identified by its slug, which the API exposes as `id` (ADR 0005).
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9-]*$")]
 
@@ -39,6 +42,19 @@ class Word(ApiSchema):
     # Always null in phase 1. Media storage arrives in phase 2 (ADR 0005).
     image_url: str | None
     audio_url: str | None
+
+    @classmethod
+    def from_read(cls, word: WordRead) -> Word:
+        """The API word for a stored one, with its image URL if it has a picture."""
+
+        return cls(
+            id=str(word.id),
+            number=word.number,
+            text=word.text,
+            note=word.note,
+            image_url=word_image_url(word.number),
+            audio_url=None,
+        )
 
 
 class Chapter(ApiSchema):
