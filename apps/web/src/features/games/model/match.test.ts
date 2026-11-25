@@ -264,3 +264,54 @@ describe("canDealMatchGame", () => {
     ).toBe(false);
   });
 });
+
+describe("createMatchGame with a round cap (#233)", () => {
+  const TWENTY_WORDS = Array.from({ length: 20 }, (_, i) => word(i + 1));
+
+  it("plays only `rounds` words, each a different one", () => {
+    const game = createMatchGame(TWENTY_WORDS, seeded(3), { rounds: 10 });
+
+    expect(game?.rounds).toHaveLength(10);
+    expect(new Set(game?.rounds.map((round) => round.wordId)).size).toBe(10);
+  });
+
+  it("picks the words at random, not the first ones", () => {
+    const first = createMatchGame(TWENTY_WORDS, seeded(3), { rounds: 10 });
+    const second = createMatchGame(TWENTY_WORDS, seeded(7), { rounds: 10 });
+
+    expect(first?.rounds.map((round) => round.wordId)).not.toEqual(
+      second?.rounds.map((round) => round.wordId),
+    );
+    expect(first?.rounds.map((round) => round.wordId).sort()).not.toEqual(
+      TWENTY_WORDS.slice(0, 10)
+        .map((item) => item.id)
+        .sort(),
+    );
+  });
+
+  it("can offer a word with no round of its own as a wrong option", () => {
+    const game = createMatchGame(TWENTY_WORDS, seeded(3), { rounds: 2 });
+    const played = new Set(game?.rounds.map((round) => round.wordId));
+    const offered = game?.rounds.flatMap((round) =>
+      round.options.map((option) => option.wordId),
+    );
+
+    expect(offered?.some((id) => !played.has(id))).toBe(true);
+  });
+
+  it("plays every word when the cap is above their number", () => {
+    const game = createMatchGame(SIX_WORDS, seeded(3), { rounds: 10 });
+
+    expect(game?.rounds).toHaveLength(SIX_WORDS.length);
+  });
+
+  it.each([0, -1, 2.5, Number.NaN])("refuses a cap of %s", (rounds) => {
+    expect(() => createMatchGame(TWENTY_WORDS, seeded(3), { rounds })).toThrow(
+      RangeError,
+    );
+  });
+
+  it("plays every word without a cap, as a chapter does", () => {
+    expect(createMatchGame(TWENTY_WORDS, seeded(3))?.rounds).toHaveLength(20);
+  });
+});

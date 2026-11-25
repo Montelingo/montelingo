@@ -9,6 +9,11 @@ export {
 export { MatchGame, type MatchGameProps } from "./components/MatchGame";
 export { MemoryGame, type MemoryGameProps } from "./components/MemoryGame";
 export { type GameReward } from "./components/BravoScreen";
-export { canDealMatchGame, type MatchWord } from "./model/match";
+export {
+  canDealMatchGame,
+  type MatchOptions,
+  type MatchWord,
+} from "./model/match";
 export { canDealMemoryGame, type MemoryWord } from "./model/memory";
+export { PRACTICE_ROUNDS, practiceWords } from "./model/practice";
 export { ChapterGame, type ChapterGameProps } from "./components/ChapterGame";

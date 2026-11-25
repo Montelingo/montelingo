@@ -60,20 +60,43 @@ export function canDealMatchGame(words: readonly MatchWord[]): boolean {
   return createMatchGame(words, () => 0) !== null;
 }
 
+export type MatchOptions = {
+  /**
+   * At most this many rounds, for words chosen at random: practice plays
+   * `PRACTICE_ROUNDS` of all the learned words (#233). The other words can
+   * still be wrong options. Without it, every word gets a round, as in a
+   * chapter. A whole number from 1; anything else throws a `RangeError`.
+   */
+  rounds?: number;
+};
+
 /**
- * Deal a new game: a round for every word with a picture of its own, in
- * random order, each with its word and two others from the chapter, in random
- * order. `null` when not even one round can be dealt.
+ * Deal a new game: a round for every word with a picture of its own (or
+ * `rounds` of them), in random order, each with its word and two others from
+ * the list, in random order. `null` when not even one round can be dealt.
  */
 export function createMatchGame(
   words: readonly MatchWord[],
   random: Random,
+  { rounds: maxRounds = Infinity }: MatchOptions = {},
 ): MatchState | null {
+  if (
+    maxRounds !== Infinity &&
+    !(Number.isInteger(maxRounds) && maxRounds >= 1)
+  ) {
+    throw new RangeError(
+      `A match game needs at least one round, not ${maxRounds}.`,
+    );
+  }
   const distinct = distinctWords(words);
   const pictures = wordsWithOwnPicture(distinct);
 
   const rounds: MatchRound[] = [];
   for (const word of shuffle(pictures, random)) {
+    // The words come shuffled, so the first rounds dealt are a random choice.
+    if (rounds.length >= maxRounds) {
+      break;
+    }
     // Never a word that reads the same or shows the same picture: either
     // would be a second right answer.
     const others = distinct.filter(
@@ -145,7 +168,12 @@ function pick(state: MatchState, wordId: string): MatchState {
 }
 
 function sameText(a: string, b: string): boolean {
-  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+  return textKey(a) === textKey(b);
+}
+
+/** A word's text as the games compare it: "Riba " and "riba" are one word. */
+export function textKey(text: string): string {
+  return text.trim().toLocaleLowerCase();
 }
 
 /** Each word once, by id. */
