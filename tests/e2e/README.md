@@ -60,7 +60,12 @@ the lesson's ten cards are done. The test then plays the match game, and the
 memory game by the cards' accessible names, so any shuffle works. It opens the
 memory game by its URL, so the server renders it, and checks that both cards of
 a pair show the same picture and that both games save. After a reload the lesson is done, the memory game has a star
-and Obala's map shows Budva in progress.
+and Obala's map shows Budva in progress. The same account checks the Riječi tab
+(#236): before the lesson it shows the empty state, whose "Na mapu" leads to the
+map; after it, Budva's ten words, the same count as the Ja screen, and the hint
+that more words wait in Budva. Vježbaj → Memory then plays every pair to
+"Bravo!", whose "Nazad na riječi" returns to Riječi, with no request but `GET`
+and `GET /progress` unchanged: practice records nothing.
 
 Sign-up is limited to 10 an hour per IP, and one CI run shares that: `auth.sh`
 uses 1 and the browser tests 8, which leaves 1 for a retry.
