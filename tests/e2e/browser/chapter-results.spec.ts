@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, type Request, test } from "@playwright/test";
 
 import { setUpProfileAndOpenMap } from "./profile";
 
@@ -11,6 +11,9 @@ const MEMORY_URL = `${NA_PLAZI}/memory`;
 const NA_PLAZI_WORD_COUNT = 10;
 // The memory game deals 6 of them, two cards each.
 const MEMORY_CARD_COUNT = 12;
+// The Riječi tab, and its practice memory game (#234, #235).
+const WORDS = "/play/words";
+const PRACTICE_MEMORY_URL = `${WORDS}/memory`;
 
 // A memory card's accessible name while it is face down, and the end of its
 // name once its pair is found. A turn ends with its cards in either state.
@@ -51,7 +54,17 @@ function card(title: string, state: string): RegExp {
 /**
  * Every pair of Na plaži's memory game, opened by its URL, to "Bravo!": a full
  * page load, where the server renders the page and the browser hydrates it.
- * The deal is random, so it finds the pairs by the cards' accessible names. It goes through
+ */
+async function playMemory(page: Page) {
+  await page.goto(MEMORY_URL);
+  const gameSaved = saved(page, "games/memory/result");
+  await findAllPairs(page, MEMORY_CARD_COUNT);
+  await expectBravoAndSaved(page, gameSaved);
+}
+
+/**
+ * Every pair of the memory game on screen, until "Bravo!". The deal is
+ * random, so it finds the pairs by the cards' accessible names. It goes through
  * the board in order, turning each card and then that card's pair if it has
  * seen it, or else the card after it.
  *
@@ -59,16 +72,13 @@ function card(title: string, state: string): RegExp {
  * other card can turn back after 1 s, too soon to read reliably. Both cards of
  * a found pair must show the same picture.
  */
-async function playMemory(page: Page) {
-  await page.goto(MEMORY_URL);
-
+async function findAllPairs(page: Page, cardCount: number) {
   const cards = page
     .getByRole("group", { name: "Memorija" })
     .getByRole("button");
-  await expect(cards).toHaveCount(MEMORY_CARD_COUNT);
+  await expect(cards).toHaveCount(cardCount);
 
-  const gameSaved = saved(page, "games/memory/result");
-  const last = MEMORY_CARD_COUNT - 1;
+  const last = cardCount - 1;
   const seenAt = new Map<string, number>();
   for (let index = 0; index <= last; index += 1) {
     const first = cards.nth(index);
@@ -103,7 +113,7 @@ async function playMemory(page: Page) {
     }
   }
 
-  await expectBravoAndSaved(page, gameSaved);
+  await expect(page.getByRole("heading", { name: /^Bravo/ })).toBeVisible();
 }
 
 /** The match game's picture's name, its word, or `null` once it is gone. */
@@ -116,19 +126,37 @@ function pictureName(page: Page): Promise<string | null> {
   );
 }
 
+/** Follows the "Bravo!" screen's "Nazad na mjesto" to Budva. */
+function backToPlaceFromBravo(page: Page) {
+  return backFromBravo(page, "Nazad na mjesto", BUDVA);
+}
+
 /**
- * Follows the "Bravo!" screen's "Nazad na mjesto", retrying while it still
- * ignores presses: its buttons wait a moment after the screen appears.
+ * Follows the "Bravo!" screen's way back, named `label`, to `url`, retrying
+ * while it still ignores presses: its buttons wait a moment after the screen
+ * appears.
  */
-async function backToPlaceFromBravo(page: Page) {
-  const link = page.getByRole("link", { name: "Nazad na mjesto" });
+async function backFromBravo(page: Page, label: string, url: string) {
+  const link = page.getByRole("link", { name: label });
   await expect(async () => {
     if (await link.isVisible()) {
       // Short, so a link that went with the navigation fails this attempt.
       await link.click({ timeout: 1_000 });
     }
-    await expect(page).toHaveURL(BUDVA, { timeout: 1_000 });
+    await expect(page).toHaveURL(url, { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
+}
+
+/** The learner's progress, as `GET /progress` answers it. */
+async function progress(page: Page): Promise<unknown> {
+  const response = await page.request.get("/api/v1/progress");
+  expect(response.status()).toBe(200);
+  return response.json();
+}
+
+/** The word count on Riječi's header or the Ja screen, named "Riječi: N". */
+function wordCount(page: Page, count: number) {
+  return page.getByRole("group", { name: `Riječi: ${count}`, exact: true });
 }
 
 /** The save's response: `kind` is "lesson" or "games/<id>/result". */
@@ -211,16 +239,32 @@ async function playMatch(page: Page) {
 }
 
 // The lesson opens the games (#138), and the lesson and games save their
-// results (#136). Both issues share this test for its account, since sign-ups
-// are limited (README.md). Each run signs up a new one, so nothing is done
-// yet. Sign-up, the lesson and two games take longer than the default 30 s.
-test("the lesson opens the games, and both games are saved (#136, #138)", async ({
+// results (#136). The Riječi tab lists the words the lesson taught, and
+// practice plays them without saving anything (#236). The issues share this
+// test for its account, since sign-ups are limited (README.md). Each run signs
+// up a new one, so nothing is done yet. Sign-up, the lesson and three games
+// take longer than the default 30 s.
+test("the lesson opens the games, both games are saved, and Riječi lists and practises the words (#136, #138, #236)", async ({
   page,
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
 
   await test.step("a new learner opens Na plaži", () =>
     newLearnerOnNaPlazi(page));
+
+  await test.step("Riječi has no words yet, and leads to the map", async () => {
+    await page.goto(WORDS);
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Još nemaš riječi" }),
+    ).toBeVisible();
+    await expect(page.getByRole("group", { name: "Vježbaj" })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Na mapu" }).click();
+    await expect(page).toHaveURL("/play");
+
+    await page.goto(BUDVA);
+    await openNaPlazi(page);
+  });
 
   await test.step("the memory game is locked", async () => {
     const memory = naPlazi(page)
@@ -264,6 +308,55 @@ test("the lesson opens the games, and both games are saved (#136, #138)", async 
         name: card("Memory", "Ready to play"),
       }),
     ).toBeVisible();
+  });
+
+  await test.step("Riječi lists Budva's words, counted as on the Ja screen", async () => {
+    await page.goto(WORDS);
+    const budva = page.getByRole("region", { name: "Budva" });
+    await expect(budva.getByRole("figure")).toHaveCount(NA_PLAZI_WORD_COUNT);
+    await expect(wordCount(page, NA_PLAZI_WORD_COUNT)).toBeVisible();
+    // Budva's other chapters still have words to learn.
+    await expect(
+      page.getByText(/^Sljedeće mjesto: Budva · još \d+ riječi?$/),
+    ).toBeVisible();
+
+    await page.goto("/play/me");
+    await expect(wordCount(page, NA_PLAZI_WORD_COUNT)).toBeVisible();
+  });
+
+  await test.step("practise memory from Riječi: it records nothing", async () => {
+    const before = await progress(page);
+    // Any write to the API: a save would be a POST to /api/v1/chapters/….
+    const sent: string[] = [];
+    const record = (request: Request) => {
+      const { pathname } = new URL(request.url());
+      if (
+        pathname.startsWith("/api/v1/") &&
+        !["GET", "HEAD", "OPTIONS"].includes(request.method())
+      ) {
+        sent.push(`${request.method()} ${pathname}`);
+      }
+    };
+    page.on("request", record);
+
+    await page.goto(WORDS);
+    await page
+      .getByRole("group", { name: "Vježbaj" })
+      .getByRole("link", { name: "Memory" })
+      .click();
+    await expect(page).toHaveURL(PRACTICE_MEMORY_URL);
+    // Practice deals 6 pairs from every learned word: Na plaži's ten here.
+    await findAllPairs(page, MEMORY_CARD_COUNT);
+    await backFromBravo(page, "Nazad na riječi", WORDS);
+
+    // Back on Riječi, with nothing left to send: a late save would show here.
+    await page.waitForLoadState("networkidle");
+    expect(await progress(page)).toEqual(before);
+    page.off("request", record);
+    expect(sent).toEqual([]);
+
+    await page.goto(BUDVA);
+    await openNaPlazi(page);
   });
 
   await test.step("play the match game: it saves", () => playMatch(page));
