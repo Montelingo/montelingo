@@ -12,21 +12,13 @@ import {
   isMissShowing,
   memoryReducer,
 } from "./memory";
+import { seeded } from "./test-random";
 
 function word(n: number, imageUrl: string | null = `/w/${n}.webp`): MemoryWord {
   return { id: `word-${n}`, text: `word ${n}`, imageUrl };
 }
 
 const TEN_WORDS = Array.from({ length: 10 }, (_, i) => word(i + 1));
-
-/** A repeatable random source: the same seed gives the same sequence. */
-function seeded(seed: number): () => number {
-  let value = seed;
-  return () => {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
-  };
-}
 
 function newGame(words: readonly MemoryWord[] = TEN_WORDS, seed = 1) {
   const game = createMemoryGame(words, seeded(seed));

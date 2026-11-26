@@ -11,21 +11,13 @@ import {
   matchReducer,
   OPTIONS,
 } from "./match";
+import { seeded } from "./test-random";
 
 function word(n: number, imageUrl: string | null = `/w/${n}.webp`): MatchWord {
   return { id: `word-${n}`, text: `word ${n}`, imageUrl };
 }
 
 const SIX_WORDS = Array.from({ length: 6 }, (_, i) => word(i + 1));
-
-/** A repeatable random source: the same seed gives the same sequence. */
-function seeded(seed: number): () => number {
-  let value = seed;
-  return () => {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
-  };
-}
 
 function newGame(words: readonly MatchWord[] = SIX_WORDS, seed = 1) {
   const game = createMatchGame(words, seeded(seed));
@@ -173,6 +165,76 @@ describe("createMatchGame", () => {
     expect(
       createMatchGame([word(1, null), word(2, null), word(3, null)], seeded(1)),
     ).toBeNull();
+  });
+});
+
+describe("createMatchGame with a round cap", () => {
+  const TWENTY_WORDS = Array.from({ length: 20 }, (_, i) => word(i + 1));
+
+  it("plays only as many rounds as the cap, each word once", () => {
+    const game = createMatchGame(TWENTY_WORDS, seeded(1), { rounds: 5 });
+
+    const ids = game?.rounds.map((round) => round.wordId) ?? [];
+    expect(ids).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
+  });
+
+  it("chooses the capped words at random", () => {
+    const chosen = new Set<string>();
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const game = createMatchGame(TWENTY_WORDS, seeded(seed), { rounds: 5 });
+      chosen.add(
+        (game?.rounds.map((round) => round.wordId) ?? []).sort().join(),
+      );
+    }
+
+    expect(chosen.size).toBeGreaterThan(1);
+  });
+
+  it("still offers the words left out as wrong ones", () => {
+    const offered = new Set<string>();
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const game = createMatchGame(TWENTY_WORDS, seeded(seed), { rounds: 1 });
+      const [round] = game?.rounds ?? [];
+      for (const option of round?.options ?? []) {
+        if (option.wordId !== round?.wordId) {
+          offered.add(option.wordId);
+        }
+      }
+    }
+
+    // One round a game, so its wrong words are all words it left out.
+    expect(offered.size).toBeGreaterThan(OPTIONS - 1);
+  });
+
+  it("counts dealt rounds, not words it had to skip", () => {
+    // Words 1 and 2 share a picture: neither gets a round, whatever the cap.
+    const words = [
+      word(1, "/w/same.webp"),
+      word(2, "/w/same.webp"),
+      ...Array.from({ length: 4 }, (_, i) => word(i + 3)),
+    ];
+
+    for (let seed = 1; seed <= 10; seed += 1) {
+      expect(
+        createMatchGame(words, seeded(seed), { rounds: 4 })?.rounds,
+      ).toHaveLength(4);
+    }
+  });
+
+  it("plays every round when the cap is above the number of words", () => {
+    expect(createMatchGame(SIX_WORDS, seeded(3), { rounds: 50 })).toEqual(
+      newGame(SIX_WORDS, 3),
+    );
+  });
+
+  it("deals a chapter as before without a cap", () => {
+    for (let seed = 1; seed <= 5; seed += 1) {
+      expect(createMatchGame(SIX_WORDS, seeded(seed), {})).toEqual(
+        newGame(SIX_WORDS, seed),
+      );
+      expect(newGame(SIX_WORDS, seed).rounds).toHaveLength(SIX_WORDS.length);
+    }
   });
 });
 
