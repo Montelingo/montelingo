@@ -4,7 +4,7 @@
 // No timer, no score, no fail state: a wrong word is set aside and the child
 // picks again.
 
-import { type Random, shuffle } from "./random";
+import { type Random, shuffle } from "@/lib/random";
 
 /** How many words a round offers: the right one and two others. */
 export const OPTIONS = 3;

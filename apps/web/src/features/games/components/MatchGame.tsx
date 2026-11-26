@@ -15,6 +15,7 @@ import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import type { Random } from "@/lib/random";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { SETTLE_DELAY_MS } from "@/lib/use-settled";
 
@@ -28,7 +29,6 @@ import {
   type MatchState,
   type MatchWord,
 } from "../model/match";
-import type { Random } from "../model/random";
 import { useFocusOnNewButtons } from "../hooks/use-focus-on-new-buttons";
 import { useGameVisit } from "../hooks/use-game-visit";
 import { BravoScreen, type GameReward, wordsLearnedText } from "./BravoScreen";
