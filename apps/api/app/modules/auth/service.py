@@ -8,7 +8,13 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 
 from app.core.errors import ApiError, ErrorCode
-from app.core.security import DUMMY_PASSWORD_HASH, Clock, PasswordHasher, SecureToken
+from app.core.security import (
+    DUMMY_PASSWORD_HASH,
+    Clock,
+    PasswordHasher,
+    SecureToken,
+    in_hash_thread,
+)
 from app.db.transaction import TransactionManager
 from app.infrastructure.email import EmailSender, EmailSendError
 from app.modules.progress.repository import LearningProfileRepository
@@ -90,7 +96,8 @@ class AuthService:
                 status_code=422,
             )
 
-        password_hash = self.password_hasher.hash(password)
+        # Before the transaction: a connection is not held while Argon2 runs.
+        password_hash = await in_hash_thread(self.password_hasher.hash, password)
 
         try:
             async with self.transaction_manager.transaction():
@@ -125,15 +132,26 @@ class AuthService:
     async def sign_in(
         self, *, email: str, password: str, current_cookie: str | None = None
     ) -> SignInResult:
+        # Verify, and rehash if needed, with no transaction open: a connection
+        # is not held while Argon2 runs, so a burst of sign-ins cannot drain the
+        # pool. An unknown email still costs a verify, against a dummy hash.
         async with self.transaction_manager.transaction():
             user = await self.repository.get_user_by_email(email.strip().lower())
-            password_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
+        password_hash = user.password_hash if user else DUMMY_PASSWORD_HASH
 
-            if not self.password_hasher.verify(password, password_hash) or user is None:
-                raise ApiError(ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS, status_code=401)
+        verified = await in_hash_thread(self.password_hasher.verify, password, password_hash)
+        if not verified or user is None:
+            raise ApiError(ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS, status_code=401)
 
-            if self.password_hasher.needs_rehash(user.password_hash):
-                await self.repository.update_password(user.id, self.password_hasher.hash(password))
+        new_hash = (
+            await in_hash_thread(self.password_hasher.hash, password)
+            if self.password_hasher.needs_rehash(user.password_hash)
+            else None
+        )
+
+        async with self.transaction_manager.transaction():
+            if new_hash is not None:
+                await self.repository.update_password(user.id, new_hash)
 
             now = self.clock.now()
             raw_token = self.token.generate()
@@ -230,7 +248,9 @@ class AuthService:
             if user_id is None:
                 raise ApiError(ErrorCode.INVALID_RESET_TOKEN, INVALID_RESET_TOKEN, status_code=400)
 
-            await self.repository.update_password(
-                user_id, self.password_hasher.hash(new_password), password_changed_at=now
-            )
+            # Inside the transaction, so it runs only for a valid token, and the
+            # token and the password change together. Resets are rare, and the
+            # hashing threads are bounded.
+            new_hash = await in_hash_thread(self.password_hasher.hash, new_password)
+            await self.repository.update_password(user_id, new_hash, password_changed_at=now)
             await self.repository.delete_user_sessions(user_id)

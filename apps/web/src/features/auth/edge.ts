@@ -1,6 +1,6 @@
 // The auth feature's side-effect-free API: pure functions and constants only,
-// with no API client, React components, or server-only code. The middleware,
-// which runs in the Edge runtime before every matched request, imports it, and
+// with no API client, React components, or server-only code. The proxy
+// (src/proxy.ts), which runs before every matched request, imports it, and
 // so do other features, whose modules may end up in the browser bundle (the
 // map's paths, for example). Importing ./index there would pull the API client
 // and the forms in with them.

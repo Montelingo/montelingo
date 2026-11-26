@@ -3,8 +3,8 @@ import { isPathWithin } from "./url-path";
 
 /**
  * The pages that need a signed-in user: each path and everything under it
- * (`/account` and `/account/email`, not `/accounting`). The middleware matcher
- * in `src/middleware.ts` must list each one as `<path>/:path*`; its test fails
+ * (`/account` and `/account/email`, not `/accounting`). The proxy matcher
+ * in `src/proxy.ts` must list each one as `<path>/:path*`; its test fails
  * when the two drift apart.
  */
 export const PROTECTED_PATH_PREFIXES: readonly string[] = [
@@ -33,7 +33,7 @@ type SignInRedirectInput = {
 };
 
 /**
- * The middleware's decision: where to send a request for a protected page
+ * The proxy's decision: where to send a request for a protected page
  * that has no session cookie (sign-in, returning to the page with its query
  * string), or `null` to let it through.
  *

@@ -67,7 +67,7 @@ export function authPageHref(page: string, next: unknown): string {
 
 /**
  * The sign-in page, returning to `next` afterwards. Protected pages and the
- * middleware use it to send a signed-out visitor to sign in.
+ * proxy use it to send a signed-out visitor to sign in.
  */
 export function signInHref(next: unknown): string {
   return authPageHref(SIGN_IN_PATH, next);

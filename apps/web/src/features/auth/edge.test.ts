@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-// edge.ts is imported by the middleware, which runs in the Edge runtime before
-// every matched request, and by other features' modules, which may end up in
-// the browser bundle. Nothing it reaches may be server-only, call the API, or
-// render: it is pure functions and constants only.
+// edge.ts is imported by the proxy, which runs before every matched request,
+// and by other features' modules, which may end up in the browser bundle.
+// Nothing it reaches may be server-only, call the API, or render: it is pure
+// functions and constants only.
 const FORBIDDEN_IMPORTS = [
   "server-only",
   "next/headers",

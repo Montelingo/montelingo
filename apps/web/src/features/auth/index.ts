@@ -1,6 +1,6 @@
 // The auth feature's public API for routes, Client Components, and other
 // features. Server-only parts (getCurrentUser, getAuthState, SiteHeader) are
-// exported from ./server, and what the middleware needs from ./edge.
+// exported from ./server, and what the proxy needs from ./edge.
 export {
   confirmPasswordReset,
   requestPasswordReset,
