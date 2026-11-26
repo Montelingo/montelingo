@@ -106,7 +106,7 @@ API_URL=https://<staging-domain> WEB_URL=https://<staging-domain> \
 
 ## 5. Backups and restore
 
-`deploy/backup.sh` dumps the database in custom format into `/opt/montelingo/backups`, keeps 7 daily and 4 weekly (Sunday) dumps, and mirrors that folder to the Storage Box with `rsync` over SSH (port 23). The `deploy` user needs an SSH key that the Storage Box accepts.
+`deploy/backup.sh` dumps the database in custom format into `/opt/montelingo/backups`, keeps 7 daily and 3 weekly (Sunday) dumps, and mirrors that folder to the Storage Box with `rsync` over SSH (port 23). With Hetzner server backups (7 days) on top, no dump outlives 28 days, which is what the privacy policy promises (ADR 0008). Pruning runs even if that night's dump fails. The Storage Box copies only expire through the nightly `rsync --delete`, so treat a failure mail from cron as urgent. Keep Storage Box snapshots off, delete any manual Hetzner server snapshot within 7 days, and delete the Storage Box folder when the server is decommissioned. The `deploy` user needs an SSH key that the Storage Box accepts.
 
 Cron entry for `deploy` (`crontab -e`):
 
