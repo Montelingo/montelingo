@@ -183,12 +183,12 @@ const config: Config = {
       maxWidth: {
         learner: "72rem",
         // The centred column of the bottom nav's tabs (Prizes, Words, Me).
-        // Wide enough for a region of 10 stickers on one line on the Prizes
-        // screen: 10 × 96 (w-24) + 9 × 8 (gap-x-2) = 1032px, plus the card's
-        // 2 × 20 padding and 2 × 3 border = 1078px, plus the 2 × 24 gutter =
-        // 1126px ≤ 1152px. As wide as max-w-learner. On a tablet on its side
-        // (1133px) 10 still fit; on a narrower screen the row wraps.
-        tab: "72rem",
+        // Wide enough for a region of 11 stickers on one line on the Prizes
+        // screen: 11 × 96 (w-24) + 10 × 8 (gap-x-2) = 1136px, plus the card's
+        // 2 × 20 padding and 2 × 3 border = 1182px, plus the 2 × 24 gutter =
+        // 1230px ≤ 1248px. On a narrower screen the row wraps (a tablet on
+        // its side, 1133px, fits 10).
+        tab: "78rem",
       },
       borderRadius: {
         tile: "1.25rem",
