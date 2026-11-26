@@ -29,8 +29,9 @@ type MapScreenProps = MapData & {
 };
 
 // The frame MapHome and RegionScreen share (Figma "TM1" and "M1"): the top
-// bar, the side panel on the right from 1024px wide (scrolling on its own on
-// a short window), and the bottom nav (with the next stop above it, below
+// bar, the side panel on the right from 1024px wide (on a window too short
+// for it, scrolling on its own by wheel or touch, with no scrollbar drawn over
+// the map), and the bottom nav (with the next stop above it, below
 // 1024px and on a screen tall enough), around the map's frame: the space
 // they leave free, where the map fits the country or region whole. The rest
 // of the map's art spills past the frame under them, to the screen's edges,
@@ -65,7 +66,7 @@ export function MapScreen({
       </h1>
       <MapTopBar backHref={backHref} region={region} stars={0} hearts={0} />
       <MapFrame>{children}</MapFrame>
-      <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 pr-safe-r pt-4 lg:col-start-2 lg:block">
+      <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-safe-r pt-4 lg:col-start-2 lg:block">
         <MapSidePanel
           regions={regions}
           currentRegionId={region?.id ?? null}

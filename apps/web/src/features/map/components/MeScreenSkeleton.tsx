@@ -12,7 +12,7 @@ export function MeScreenSkeleton() {
           aria-hidden="true"
           className="fixed inset-0 animate-pulse bg-kid-cream"
         >
-          <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pt-safe-t sm:px-gutter">
+          <div className="mx-auto flex w-full max-w-tab flex-col gap-6 px-4 pt-safe-t sm:px-gutter">
             <div className="flex flex-col items-center gap-2 pt-6">
               <div className="mb-3 size-36 rounded-full bg-kid-line" />
               <div className="h-10 w-40 rounded-kid-sm bg-kid-line" />

@@ -44,7 +44,7 @@ export function PrizesScreen({
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-prizes flex-col gap-4 px-4 pb-8 pt-safe-t sm:px-gutter">
+        <div className="mx-auto flex w-full max-w-tab flex-col gap-4 px-4 pb-8 pt-safe-t sm:px-gutter">
           <header className="flex items-center justify-between gap-3 pt-4">
             <h1 className="text-4xl font-bold leading-tight text-kid-ink">
               Moje nagrade

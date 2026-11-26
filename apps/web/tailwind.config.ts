@@ -182,8 +182,13 @@ const config: Config = {
       },
       maxWidth: {
         learner: "72rem",
-        // The Prizes screen's centred column.
-        prizes: "44rem",
+        // The centred column of the bottom nav's tabs (Prizes, Words, Me).
+        // Wide enough for a region of 10 stickers on one line on the Prizes
+        // screen: 10 × 96 (w-24) + 9 × 8 (gap-x-2) = 1032px, plus the card's
+        // 2 × 20 padding and 2 × 3 border = 1078px, plus the 2 × 24 gutter =
+        // 1126px ≤ 1152px. As wide as max-w-learner. On a tablet on its side
+        // (1133px) 10 still fit; on a narrower screen the row wraps.
+        tab: "72rem",
       },
       borderRadius: {
         tile: "1.25rem",
@@ -246,6 +251,10 @@ const config: Config = {
         // level card leaves out its picture and the map leaves out the next
         // stop card, so the map and the card still fit without scrolling.
         short: { raw: "(max-height: 32rem)" },
+        // A screen not tall enough for the map's side panel at full size (a
+        // 720px laptop, a tablet on its side, 744px): the panel tightens its
+        // gaps and padding so it fits without scrolling.
+        compact: { raw: "(max-height: 48rem)" },
       },
       keyframes: {
         // NavigationProgress's bar: a third of the screen's width, sliding

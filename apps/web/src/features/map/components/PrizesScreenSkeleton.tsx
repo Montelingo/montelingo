@@ -12,7 +12,7 @@ export function PrizesScreenSkeleton() {
           aria-hidden="true"
           className="fixed inset-0 animate-pulse bg-kid-cream"
         >
-          <div className="mx-auto flex w-full max-w-prizes flex-col gap-4 px-4 pt-safe-t sm:px-gutter">
+          <div className="mx-auto flex w-full max-w-tab flex-col gap-4 px-4 pt-safe-t sm:px-gutter">
             <div className="flex items-center justify-between gap-3 pt-4">
               <div className="h-10 w-56 rounded-kid-sm bg-kid-line" />
               <div className="h-12 w-20 rounded-badge bg-kid-line" />
