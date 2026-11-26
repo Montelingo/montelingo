@@ -13,4 +13,9 @@ export { type GameReward } from "./components/BravoScreen";
 export { canDealMatchGame, type MatchWord } from "./model/match";
 export { canDealMemoryGame, type MemoryWord } from "./model/memory";
 export { PRACTICE_ROUNDS, practiceWords } from "./model/practice";
+export {
+  PracticeGame,
+  type PracticeGameProps,
+  practiceTitle,
+} from "./components/PracticeGame";
 export { ChapterGame, type ChapterGameProps } from "./components/ChapterGame";

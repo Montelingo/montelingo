@@ -17,6 +17,7 @@ function renderBravo(props: Partial<BravoScreenProps> = {}) {
     <BravoScreen
       message="Sad znaš još 6 novih riječi."
       placeHref={PLACE_HREF}
+      backLabel="Nazad na mjesto"
       learnerName={undefined}
       reward={null}
       onPlayAgain={() => {}}
@@ -69,6 +70,7 @@ describe("BravoScreen", () => {
       <BravoScreen
         message="Svi parovi su pronađeni!"
         placeHref={PLACE_HREF}
+        backLabel="Nazad na mjesto"
         learnerName={undefined}
         reward={null}
         onPlayAgain={() => {}}

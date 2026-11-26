@@ -42,6 +42,14 @@ export type WordsData = {
   needsRetry: boolean;
 };
 
+/** What a practice game's route loads (#235). */
+export type PracticeData = {
+  /** The learned places, or `null` when the words failed to load. */
+  places: readonly WordPlace[] | null;
+  /** The learner's name, for "Bravo, Mia!", or `null` without one. */
+  learnerName: string | null;
+};
+
 export function toLearnedWords(data: Schemas["LearnedWords"]): LearnedWords {
   // A seen lesson whose words are not recorded yet lists its place with no
   // words: nothing to show, so the place is left out.

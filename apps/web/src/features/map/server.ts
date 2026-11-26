@@ -12,6 +12,7 @@ export {
   loadLessonScreen,
   loadMap,
   loadMe,
+  loadPractice,
   loadPrizes,
   loadRegionMap,
   loadRegionName,

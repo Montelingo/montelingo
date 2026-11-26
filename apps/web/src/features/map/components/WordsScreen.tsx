@@ -10,16 +10,19 @@ import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG } from "../model/content";
+import { practicePath } from "../model/paths";
+import type { GameId } from "../model/progress";
 import { type WordPlace, type WordsData, wordCount } from "../model/words";
 import { ChromeIcon } from "./ChromeIcon";
+import { GAME_ART } from "./GamesArea";
 import { MapBottomNav } from "./MapBottomNav";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
 import { WordCard } from "./WordCard";
 
 // The Riječi tab, /play/words (#234, screen 1 of #237): "Moje riječi" and the
-// word count, then each place where the child saw a lesson, with its words,
-// and the next place, where more words wait. Before any lesson, the empty state
-// points to the map. Laid out like the Ja tab: a centred column from tablet
+// word count, the Vježbaj card (#235), then each place where the child saw a
+// lesson, with its words, and the next place, where more words wait. Before
+// any lesson, the empty state points to the map. Laid out like the Ja tab: a centred column from tablet
 // width, the full width less a 16px gutter on a phone, scrolling above the
 // bottom nav. `data-map-screen` drops LearnerShell's Back and Home bar.
 export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
@@ -60,6 +63,7 @@ export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
           {words !== null && words.places.length === 0 ? (
             <NoWords avatar={avatar} />
           ) : null}
+          {words !== null && words.places.length > 0 ? <Practice /> : null}
           {words?.places.map((place) => (
             <PlaceWords key={place.id} place={place} />
           ))}
@@ -79,6 +83,44 @@ export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
       </div>
       <div className="flex flex-col lg:items-center lg:pb-5">
         <MapBottomNav current="words" />
+      </div>
+    </div>
+  );
+}
+
+// The practice games' Memory and Spoji riječi, in the chapter's games' icons,
+// dealt from every learned word. Shown whenever there are words, even too few
+// to deal a game: the game's page then says why.
+const PRACTICE: readonly { id: GameId; label: string }[] = [
+  { id: "memory", label: "Memory" },
+  { id: "match", label: "Spoji riječi" },
+];
+
+function Practice() {
+  const titleId = useId();
+  return (
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className="flex flex-col gap-3 rounded-kid-lg border-3 border-kid-ink bg-white p-4 shadow-raised-4"
+    >
+      <h2 id={titleId} className="text-2xl font-bold text-kid-ink">
+        Vježbaj
+      </h2>
+      <div className="grid grid-cols-2 gap-3">
+        {PRACTICE.map(({ id, label }) => {
+          const { ActivityIcon, fill } = GAME_ART[id];
+          return (
+            <Link
+              key={id}
+              href={practicePath(id)}
+              className={cn(BIG_BUTTON, "gap-2 px-3 text-xl", fill)}
+            >
+              <ActivityIcon aria-hidden="true" className="size-7 shrink-0" />
+              {label}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

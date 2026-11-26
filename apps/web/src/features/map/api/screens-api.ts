@@ -18,6 +18,7 @@ import {
   gamePath,
   lessonPath,
   locationPath,
+  practicePath,
   regionPath,
 } from "../model/paths";
 import { type PrizesData, toPrizesData } from "../model/prizes";
@@ -34,7 +35,7 @@ import {
   toRegionScreen,
 } from "../model/screens";
 import type { GameId, ProgressResult } from "../model/progress";
-import { toWordsData, type WordsData } from "../model/words";
+import { type PracticeData, toWordsData, type WordsData } from "../model/words";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
 import { getLearnedWords } from "./words-api";
@@ -127,6 +128,23 @@ export async function loadWords(): Promise<WordsData> {
     getProfile(),
   ]);
   return toWordsData(words, profile);
+}
+
+/**
+ * A practice game's words (#235): every learned place, for the game to deal
+ * from, and the learner's name. Redirects to sign in, then back to the game,
+ * when the session has ended. Practice records nothing, so it needs no
+ * progress.
+ */
+export async function loadPractice(gameId: GameId): Promise<PracticeData> {
+  const [words, profile] = await signedIn(practicePath(gameId), [
+    getLearnedWords(),
+    getProfile(),
+  ]);
+  return {
+    places: words.status === "ready" ? words.words.places : null,
+    learnerName: profile?.name ?? null,
+  };
 }
 
 /**

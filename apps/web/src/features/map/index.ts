@@ -51,7 +51,9 @@ export {
   lessonPath,
   locationPath,
   ME_PATH,
+  practicePath,
   regionPath,
+  WORDS_PATH,
 } from "./model/paths";
 export {
   joinProgress,

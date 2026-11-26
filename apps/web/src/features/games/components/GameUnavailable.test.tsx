@@ -42,6 +42,12 @@ describe("GameUnavailable", () => {
       "Back to the place",
       PLACE,
     ],
+    [
+      "too-few-words",
+      "Nauči još riječi pa se vrati!",
+      "Nazad na riječi",
+      PLACE,
+    ],
   ])(
     "%s: says why, with one way on and nothing else to press",
     async (reason, message, action, href) => {
@@ -77,5 +83,22 @@ describe("gameUnavailableReason", () => {
   it("says the pictures are coming for an open game the words cannot deal", () => {
     expect(gameUnavailableReason("available", false)).toBe("no-pictures");
     expect(gameUnavailableReason("completed", false)).toBe("no-pictures");
+  });
+});
+
+describe("GameUnavailable with its own way back", () => {
+  it("names the way back as it is told", () => {
+    render(
+      <GameUnavailable
+        heading="Vježbaj: Memory"
+        reason="not-loaded"
+        lessonHref="/play/words"
+        placeHref="/play/words"
+        backLabel="Nazad na riječi"
+      />,
+    );
+
+    expect(screen.getByRole("link")).toHaveAccessibleName("Nazad na riječi");
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/play/words");
   });
 });
