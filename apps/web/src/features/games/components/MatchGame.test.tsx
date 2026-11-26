@@ -310,6 +310,37 @@ describe("MatchGame", () => {
     expect(bravo()).not.toBeInTheDocument();
   });
 
+  it("plays only as many rounds as its cap", () => {
+    renderGame({ rounds: 3 });
+
+    expect(dots()).toHaveLength(3);
+    solveRound();
+    solveRound();
+    solveRound();
+    wait(SETTLE_DELAY_MS);
+
+    expect(screen.getByText("Sad znaš još 3 nove riječi.")).toBeVisible();
+  });
+
+  it("leads back where it is told, with its own label", () => {
+    renderGame({ placeHref: "/play/words", backLabel: "Nazad na riječi" });
+
+    playToBravo();
+
+    expect(
+      screen.getByRole("link", { name: "Nazad na riječi" }),
+    ).toHaveAttribute("href", "/play/words");
+  });
+
+  it("only praises a game that teaches no new words, such as practice", () => {
+    renderGame({ teachesWords: false });
+
+    playToBravo();
+
+    expect(screen.queryByText(/riječi\./)).not.toBeInTheDocument();
+    expect(screen.getByText("Sve riječi su pronađene!")).toBeVisible();
+  });
+
   it("shows nothing for words that deal no game", () => {
     const { container } = renderGame({ words: makeWords().slice(0, 2) });
 

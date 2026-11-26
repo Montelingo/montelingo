@@ -4,7 +4,13 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import type { GameId } from "./progress";
-import { gamePath, lessonPath, locationPath, regionPath } from "./paths";
+import {
+  gamePath,
+  lessonPath,
+  locationPath,
+  practicePath,
+  regionPath,
+} from "./paths";
 
 describe("regionPath", () => {
   it("puts the region under the map", () => {
@@ -61,6 +67,26 @@ describe("every game's screen", () => {
     "has a page for %s at gamePath's route",
     (gameId) => {
       expect(existsSync(join(GAME_ROUTES, gameId, "page.tsx"))).toBe(true);
+    },
+  );
+});
+
+describe("practicePath", () => {
+  it("puts a practice game under the Riječi tab", () => {
+    expect(practicePath("match")).toBe("/play/words/match");
+  });
+});
+
+const PRACTICE_ROUTES = join(
+  __dirname,
+  "../../../app/(learner)/play/words/(practice)",
+);
+
+describe("every practice game's screen", () => {
+  it.each(Object.keys(EVERY_GAME) as GameId[])(
+    "has a page for %s at practicePath's route",
+    (gameId) => {
+      expect(existsSync(join(PRACTICE_ROUTES, gameId, "page.tsx"))).toBe(true);
     },
   );
 });

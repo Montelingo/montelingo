@@ -89,6 +89,18 @@ describe("WordsScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers practice with every word: Memory and Spoji riječi", () => {
+    render(<WordsScreen {...TWO_PLACES} />);
+
+    const practice = screen.getByRole("group", { name: "Vježbaj" });
+    expect(
+      within(practice).getByRole("link", { name: "Memory" }),
+    ).toHaveAttribute("href", "/play/words/memory");
+    expect(
+      within(practice).getByRole("link", { name: "Spoji riječi" }),
+    ).toHaveAttribute("href", "/play/words/match");
+  });
+
   it("says where to collect more words", () => {
     render(<WordsScreen {...TWO_PLACES} />);
 
@@ -125,6 +137,9 @@ describe("WordsScreen", () => {
       container.querySelector('img[src*="avatar-owl"]'),
     ).toBeInTheDocument();
     expect(screen.queryByRole("region")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Vježbaj" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/Sljedeće mjesto/)).not.toBeInTheDocument();
     // The bottom nav stays.
     expect(

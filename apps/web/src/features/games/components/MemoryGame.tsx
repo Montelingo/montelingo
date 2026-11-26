@@ -29,7 +29,12 @@ import {
   type MemoryWord,
 } from "../model/memory";
 import { useGameVisit } from "../hooks/use-game-visit";
-import { BravoScreen, type GameReward, wordsLearnedText } from "./BravoScreen";
+import {
+  BACK_TO_PLACE,
+  BravoScreen,
+  type GameReward,
+  wordsLearnedText,
+} from "./BravoScreen";
 
 export type MemoryGameProps = {
   /**
@@ -37,8 +42,18 @@ export type MemoryGameProps = {
    * ponovo", so a new chapter needs a new `key`.
    */
   words: readonly MemoryWord[];
-  /** The place's screen, where "Nazad na mjesto" leads from "Bravo!". */
+  /**
+   * Where the way back leads from "Bravo!": the place's screen, or for
+   * practice, Riječi.
+   */
   placeHref: string;
+  /** The way back's label: "Nazad na mjesto" unless given. */
+  backLabel?: string;
+  /**
+   * Whether finishing teaches new words, as a chapter's game does. Practice
+   * plays words the child already knows, so its "Bravo!" only praises.
+   */
+  teachesWords?: boolean;
   /**
    * Called once, when every pair is found: the game then counts as played
    * (ADR 0006). Playing again does not call it a second time.
@@ -89,6 +104,8 @@ type Phase = "playing" | "complete" | "bravo";
 export function MemoryGame({
   words,
   placeHref,
+  backLabel = BACK_TO_PLACE,
+  teachesWords = true,
   onCompleted,
   learnerName,
   reward,
@@ -122,9 +139,12 @@ export function MemoryGame({
     return (
       <BravoScreen
         message={
-          isReplay ? "Svi parovi su pronađeni!" : wordsLearnedText(pairs)
+          isReplay || !teachesWords
+            ? "Svi parovi su pronađeni!"
+            : wordsLearnedText(pairs)
         }
         placeHref={placeHref}
+        backLabel={backLabel}
         learnerName={learnerName}
         reward={isReplay ? null : (reward ?? null)}
         saveNotice={saveNotice}
