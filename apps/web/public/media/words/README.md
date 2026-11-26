@@ -36,6 +36,7 @@ It reads every `NNNN.png` in the folder, writes both variants here, updates `med
 | 91–100  | Šta radimo na obali (Herceg Novi) | #190     |
 | 101–110 | Kod kuće (Podgorica)              | #193     |
 | 111–120 | Porodica (Cetinje)                | #194     |
+| 121–130 | Za stolom (Nikšić)                | #195     |
 | 131–140 | Povrće i ručak (Podgorica)        | #193     |
 | 141–150 | U kuhinji (Podgorica)             | #193     |
 | 151–160 | Moje tijelo (Cetinje)             | #194     |
