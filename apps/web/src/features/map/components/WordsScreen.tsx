@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import Link from "next/link";
 import { useId } from "react";
@@ -12,12 +11,12 @@ import { fredoka } from "@/lib/fonts";
 import { CONTENT_LANG } from "../model/content";
 import { practicePath } from "../model/paths";
 import type { GameId } from "../model/progress";
-import { type WordPlace, type WordsData, wordCount } from "../model/words";
+import { type WordsData, wordCount } from "../model/words";
 import { ChromeIcon } from "./ChromeIcon";
 import { GAME_ART } from "./GamesArea";
 import { MapBottomNav } from "./MapBottomNav";
+import { PlaceWords } from "./PlaceWords";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
-import { WordCard } from "./WordCard";
 
 // The Riječi tab, /play/words (#234, screen 1 of #237): "Moje riječi" and the
 // word count, the Vježbaj card (#235), then each place where the child saw a
@@ -64,8 +63,13 @@ export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
             <NoWords avatar={avatar} />
           ) : null}
           {words !== null && words.places.length > 0 ? <Practice /> : null}
-          {words?.places.map((place) => (
-            <PlaceWords key={place.id} place={place} />
+          {/* The last place, the one reached most recently, starts open. */}
+          {words?.places.map((place, index, places) => (
+            <PlaceWords
+              key={place.id}
+              place={place}
+              defaultOpen={index === places.length - 1}
+            />
           ))}
           {words !== null &&
           words.places.length > 0 &&
@@ -123,36 +127,6 @@ function Practice() {
         })}
       </div>
     </div>
-  );
-}
-
-// One place: the green check, its name and "· N riječi", then its words,
-// in a row on a phone and up to six on a tablet. A region named by the place
-// alone, so screen readers can jump between places.
-function PlaceWords({ place }: { place: WordPlace }) {
-  const nameId = useId();
-  return (
-    <section aria-labelledby={nameId} className="flex flex-col gap-3">
-      <h2 className="flex items-center gap-2 text-kid-ink">
-        <CheckCircleIcon
-          aria-hidden="true"
-          className="size-8 shrink-0 text-kid-green"
-        />
-        <span id={nameId} lang={CONTENT_LANG} className="text-2xl font-bold">
-          {place.name}
-        </span>
-        <span className="text-base font-semibold text-kid-muted">
-          · {wordCount(place.words.length)}
-        </span>
-      </h2>
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-3">
-        {place.words.map((word) => (
-          <li key={word.id} className="flex">
-            <WordCard word={word} size="compact" />
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

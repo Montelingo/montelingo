@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -78,7 +79,7 @@ describe("WordsScreen", () => {
     expect(within(budva).getByText("· 3 riječi")).toBeInTheDocument();
     expect(
       within(budva)
-        .getAllByRole("figure")
+        .getAllByRole("figure", { hidden: true })
         .map((card) => card.textContent),
     ).toEqual(["more", "pijesak", "zmaj, igračka koja leti"]);
 
@@ -87,6 +88,29 @@ describe("WordsScreen", () => {
     expect(
       within(tivat).getByRole("figure", { name: "palma" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens only the last place at first, and each place opens and closes", async () => {
+    const user = userEvent.setup();
+    render(<WordsScreen {...TWO_PLACES} />);
+
+    const budva = screen.getByRole("region", { name: "Budva" });
+    const budvaButton = within(budva).getByRole("button", { name: /Budva/ });
+    expect(budvaButton).toHaveAttribute("aria-expanded", "false");
+    expect(within(budva).queryByRole("figure")).not.toBeInTheDocument();
+
+    const tivat = screen.getByRole("region", { name: "Tivat" });
+    expect(
+      within(tivat).getByRole("button", { name: /Tivat/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(budvaButton);
+    expect(budvaButton).toHaveAttribute("aria-expanded", "true");
+    expect(within(budva).getAllByRole("figure")).toHaveLength(3);
+
+    await user.click(budvaButton);
+    expect(budvaButton).toHaveAttribute("aria-expanded", "false");
+    expect(within(budva).queryByRole("figure")).not.toBeInTheDocument();
   });
 
   it("offers practice with every word: Memory and Spoji riječi", () => {

@@ -236,6 +236,14 @@ const config: Config = {
         // - landscape: 1085 px; 6 columns need 6·160 + 5·16 = 1040 ✓
         //   (7 would need 1216, more than max-w-learner's 1152 too)
         words: "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
+        // A line of at most 10, each at least `--row-min` wide, as many as
+        // fit below that: a place's words on the Words tab (5.25rem, gap-3)
+        // and a region's stickers on the Prizes tab (6rem, gap-x-2). The
+        // max() makes a column at least a tenth of the row less its 9 gaps,
+        // so an 11th never fits; on a narrower row the minimum wins and fewer
+        // fit. Both rows set `--row-min` and `--row-gap` beside it.
+        "row-of-10":
+          "repeat(auto-fill, minmax(max(var(--row-min), (100% - 9 * var(--row-gap)) / 10), 1fr))",
         // The map screen (MapScreen): the map's frame, and the side panel from
         // 1024px wide.
         "map-screen": "minmax(0, 1fr) auto",
