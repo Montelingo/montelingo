@@ -40,5 +40,6 @@ It reads every `NNNN.png` in the folder, writes both variants here, updates `med
 | 131–140 | Povrće i ručak (Podgorica)        | #193     |
 | 141–150 | U kuhinji (Podgorica)             | #193     |
 | 151–160 | Moje tijelo (Cetinje)             | #194     |
+| 161–170 | Oblačimo se (Danilovgrad)         | #196     |
 | 171–180 | U vrtiću (Podgorica)              | #193     |
 | 181–190 | Muzika i slavlje (Cetinje)        | #194     |
