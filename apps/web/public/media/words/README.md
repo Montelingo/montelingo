@@ -44,3 +44,5 @@ It reads every `NNNN.png` in the folder, writes both variants here, updates `med
 | 171–180 | U vrtiću (Podgorica)              | #193     |
 | 181–190 | Muzika i slavlje (Cetinje)        | #194     |
 | 191–200 | Pored jezera (Skadarsko jezero)   | #197     |
+| 221–230 | Šumske životinje (Berane)         | #200     |
+| 281–290 | Brojimo (Berane)                  | #200     |
