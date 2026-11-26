@@ -36,7 +36,7 @@ export function MapSidePanel({
   return (
     <aside
       aria-label="Regije"
-      className="pointer-events-auto flex w-[22.5rem] flex-col gap-3.5 rounded-kid-xl border-3 border-kid-ink bg-kid-cream p-5 shadow-raised-6"
+      className="pointer-events-auto flex w-side-panel flex-col gap-3.5 rounded-kid-xl border-3 border-kid-ink bg-kid-cream p-5 shadow-raised-6"
     >
       <ExplorerBadge explorer={explorer} />
       <h2 className="text-2xl font-semibold leading-tight text-kid-ink">

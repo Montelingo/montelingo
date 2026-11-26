@@ -164,6 +164,8 @@ const config: Config = {
       width: {
         // The bottom nav, floating from 1024px wide.
         "bottom-nav": "32.5rem",
+        // The map screen's side panel, from 1024px wide.
+        "side-panel": "22.5rem",
       },
       // Tailwind 3.4 derives these from `spacing` too; listed so the touch
       // sizes do not depend on that.

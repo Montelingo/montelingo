@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -97,6 +98,9 @@ export function MontenegroMap({
     null,
   );
   const view = mapViewBox(focusRegionId);
+  const mapAspectStyle: CSSProperties & { "--map-aspect": number } = {
+    "--map-aspect": view.width / view.height,
+  };
   const [, , fullWidth, fullHeight] = MAP_GEOMETRY.viewBox;
   const focusRegion = regions.find(({ id }) => id === focusRegionId) ?? null;
   const openRegionIds = new Set(
@@ -143,9 +147,18 @@ export function MontenegroMap({
             : `Mapa Crne Gore, regija ${focusRegion.name}`
         }
         role="group"
+        // From 1024px wide the frame spans the screen, under the side panel
+        // (MapScreen). The box is then as wide as the map drawn in it (the
+        // frame's height times the view's aspect, or less when the room left
+        // of the panel is narrower), centred on the screen, or moved left as
+        // far as it needs to stay clear of the panel.
+        style={mapAspectStyle}
         className={cn(
           fredoka.className,
           "absolute inset-0 size-full overflow-visible",
+          "lg:[--map-width:min(100cqw_-_var(--map-panel-room),100cqh_*_var(--map-aspect))]",
+          "lg:right-auto lg:w-[--map-width]",
+          "lg:left-[min(50cqw_-_var(--map-width)_/_2,100cqw_-_var(--map-panel-room)_-_var(--map-width))]",
         )}
       >
         <MapBaseImage />
