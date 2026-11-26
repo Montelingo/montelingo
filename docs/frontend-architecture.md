@@ -11,6 +11,7 @@ Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:w
 ```text
 apps/web/src/
   proxy.ts                          # runs before matched requests; protected-route fast path (§5.4)
+  mdx-components.tsx                # required by @next/mdx; each .mdx gets its styles where it is rendered
   app/                              # routing only: pages, layouts, loading/error/not-found files
     layout.tsx                      # <html>, <body>, and the skip link; no header (§5.4)
     globals.css
@@ -27,6 +28,7 @@ apps/web/src/
       layout.tsx
       (auth)/                       # forgot-password and reset-password
       account/
+      privatnost/                   # the privacy policy, readable signed out (features/privacy)
     (learner)/                      # the learner area: full screen, its own chrome (§8)
       layout.tsx
       loading.tsx
@@ -85,6 +87,7 @@ apps/web/src/
       index.ts                      # the feature's public API
       server.ts                     # the feature's server-only public API (only if it has server-only code)
       edge.ts                       # the feature's side-effect-free API: pure functions and constants (only if needed)
+      content/                      # long text kept as Markdown (.mdx), compiled into the build (features/privacy)
   components/
     ui/                             # shared, domain-free primitives (TextField, SubmitButton, TileCard)
   hooks/                            # shared, domain-free hooks (use-media-query)

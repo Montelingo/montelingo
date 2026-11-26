@@ -24,7 +24,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node", "mdx"]
   },
   "include": [
     "next-env.d.ts",

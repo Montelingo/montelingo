@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
 // Its URL carries a password-reset token (`?token=`).
@@ -44,4 +45,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Compiles imported .mdx files at build time (the privacy policy, #255), so
+// their text is part of the bundle and needs no file read in the standalone
+// server.
+const withMDX = createMDX();
+
+export default withMDX(nextConfig);
