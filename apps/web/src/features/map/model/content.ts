@@ -89,7 +89,7 @@ export function toRegionDetail(data: Schemas["RegionDetail"]): RegionDetail {
   };
 }
 
-function toWord(data: Schemas["Word"]): Word {
+export function toWord(data: Schemas["Word"]): Word {
   return {
     id: data.id,
     number: data.number,

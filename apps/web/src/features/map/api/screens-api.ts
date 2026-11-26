@@ -13,6 +13,7 @@ import { type MeData, toMeData } from "../model/me";
 import {
   ME_PATH,
   PRIZES_PATH,
+  WORDS_PATH,
   chapterPath,
   gamePath,
   lessonPath,
@@ -33,8 +34,10 @@ import {
   toRegionScreen,
 } from "../model/screens";
 import type { GameId, ProgressResult } from "../model/progress";
+import { toWordsData, type WordsData } from "../model/words";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
+import { getLearnedWords } from "./words-api";
 
 // What the map's routes load: content and progress in parallel, joined into
 // what a screen draws. Content failures reach the error boundary and unknown
@@ -110,6 +113,20 @@ export async function loadMe(): Promise<MeData> {
     getProfile(),
   ]);
   return toMeData(progress, profile);
+}
+
+/**
+ * The Riječi tab: the child's learned words by place, and their buddy for the
+ * empty state. Redirects to sign in when the session has ended; a words
+ * failure still renders, with a retry, and a profile failure only means the
+ * placeholder buddy.
+ */
+export async function loadWords(): Promise<WordsData> {
+  const [words, profile] = await signedIn(WORDS_PATH, [
+    getLearnedWords(),
+    getProfile(),
+  ]);
+  return toWordsData(words, profile);
 }
 
 /**

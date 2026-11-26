@@ -223,11 +223,76 @@ function progressResponse(progress: ProgressAnswer): Response {
   }
 }
 
+// The words of a seen lesson's chapters, as GET /words lists them by place.
+function apiLearnedPlace(
+  id: string,
+  regionId: string,
+  name: string,
+  chapters: readonly Schemas["Chapter"][],
+): Schemas["LearnedPlace"] {
+  return {
+    id,
+    region_id: regionId,
+    name,
+    words: chapters.flatMap(({ words }) => words),
+  };
+}
+
+// What GET /words answers with each progress: a new account has no words yet
+// and Budva's to learn; with Podgorica open, Budva's two lessons and
+// Podgorica's first two, 40 words, as `counts.words_learned` says.
+function wordsResponse(progress: ProgressAnswer): Response {
+  switch (progress) {
+    case "new-account":
+      return jsonResponse(200, {
+        places: [],
+        next_place: {
+          id: "budva",
+          region_id: "coast",
+          name: "Budva",
+          word_count: 20,
+        },
+      });
+    case "podgorica-open":
+    case "podgorica-open-without-chapters":
+      return jsonResponse(200, {
+        places: [
+          apiLearnedPlace("budva", "coast", "Budva", [
+            apiChapter("budva-beach", "Na plaži", 1, 1, "pictures"),
+            apiChapter("budva-summer-clothes", "Ljetna odjeća", 2, 11),
+          ]),
+          apiLearnedPlace("podgorica", "central", "Podgorica", [
+            apiChapter("podgorica-home", "Kod kuće", 11, 101),
+            apiChapter(
+              "podgorica-vegetables",
+              "Povrće i ručak",
+              14,
+              131,
+              "pictures",
+            ),
+          ]),
+        ],
+        next_place: {
+          id: "podgorica",
+          region_id: "central",
+          name: "Podgorica",
+          word_count: 20,
+        },
+      });
+    case "failed":
+      return errorResponse(500, "internal_server_error");
+    case "empty":
+      return jsonResponse(200, { places: [], next_place: null });
+    case "signed-out":
+      return errorResponse(401, "authentication_error");
+  }
+}
+
 /**
- * Makes `fetchMock` answer like the API: progress as `progress` says, the
- * child profile as `profile` says (or `401` when signed out), the list of
- * regions, and a region or place by its exact id, as the API does, or `404`
- * for one it does not have.
+ * Makes `fetchMock` answer like the API: progress and the learned words as
+ * `progress` says, the child profile as `profile` says (or `401` when signed
+ * out), the list of regions, and a region or place by its exact id, as the
+ * API does, or `404` for one it does not have.
  */
 export function serveApi(
   fetchMock: Mock<(request: Request) => Promise<Response>>,
@@ -262,6 +327,9 @@ export function serveApi(
     }
     if (pathname === "/api/v1/progress") {
       return Promise.resolve(progressResponse(progress));
+    }
+    if (pathname === "/api/v1/words") {
+      return Promise.resolve(wordsResponse(progress));
     }
     if (pathname === "/api/v1/regions") {
       return Promise.resolve(

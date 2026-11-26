@@ -8,6 +8,11 @@ import { CONTENT_LANG, type Word } from "../model/content";
 
 type WordCardProps = {
   word: Word;
+  /**
+   * `compact` for the Riječi tab's grid, where a phone fits three cards in a
+   * row; `regular`, the default, for a place's screen.
+   */
+  size?: "regular" | "compact";
 };
 
 // One word of a place: its picture and the word, to look at, not to press
@@ -15,7 +20,8 @@ type WordCardProps = {
 // ("igračka koja leti", a flying toy, for "zmaj", a kite): it is heard after
 // the word but not shown, so the card shows one word. The picture is
 // decorative: the word carries the meaning.
-export function WordCard({ word }: WordCardProps) {
+export function WordCard({ word, size = "regular" }: WordCardProps) {
+  const isCompact = size === "compact";
   const captionId = useId();
   return (
     // Named by its caption, so the name has one source: the word, then the
@@ -26,11 +32,18 @@ export function WordCard({ word }: WordCardProps) {
     <figure
       aria-labelledby={captionId}
       lang={CONTENT_LANG}
-      className="flex flex-1 flex-col overflow-hidden rounded-kid-lg border-3 border-kid-line bg-white shadow-raised-line-4"
+      className={cn(
+        "flex flex-1 flex-col overflow-hidden border-3 border-kid-line bg-white shadow-raised-line-4",
+        isCompact ? "rounded-kid" : "rounded-kid-lg",
+      )}
     >
       <div
         aria-hidden="true"
-        className="m-2 mb-0 aspect-tile overflow-hidden rounded-kid"
+        className={cn(
+          "aspect-tile overflow-hidden",
+          // mb-0 after the margin, or tailwind-merge drops it.
+          isCompact ? "m-1.5 mb-0 rounded-kid-sm" : "m-2 mb-0 rounded-kid",
+        )}
       >
         {word.imageUrl !== null ? (
           // Word images are same-origin static files, already WebP at their
@@ -53,7 +66,8 @@ export function WordCard({ word }: WordCardProps) {
         id={captionId}
         className={cn(
           fredoka.className,
-          "break-words px-3 pb-3 pt-2 text-center text-xl font-semibold leading-snug text-kid-ink",
+          "break-words text-center font-semibold leading-snug text-kid-ink",
+          isCompact ? "px-1.5 pb-2 pt-1 text-base" : "px-3 pb-3 pt-2 text-xl",
         )}
       >
         {word.text}

@@ -1,5 +1,4 @@
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -141,12 +140,13 @@ describe("PrizesScreen", () => {
     expect(map).not.toHaveAttribute("aria-current");
   });
 
-  it("still says Riječi is coming", async () => {
+  it("links Riječi to the words", () => {
     renderPrizes();
 
-    await userEvent.click(screen.getByRole("button", { name: "Riječi" }));
-
-    expect(await screen.findByText("Riječi: uskoro!")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Riječi" })).toHaveAttribute(
+      "href",
+      "/play/words",
+    );
   });
 
   it("offers a retry when progress failed", () => {
