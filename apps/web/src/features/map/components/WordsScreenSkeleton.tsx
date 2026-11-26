@@ -18,7 +18,7 @@ export function WordsScreenSkeleton() {
               <div className="h-11 w-20 rounded-badge bg-white" />
             </div>
             <div className="h-8 w-36 rounded-kid-sm bg-kid-line/60" />
-            <div className="grid grid-cols-row-of-10 gap-3 [--row-gap:theme(spacing.3)] [--row-min:5.25rem]">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-3 sm:grid-cols-5 lg:grid-cols-10">
               {Array.from({ length: 4 }, (_, index) => (
                 <div key={index} className="h-28 rounded-kid bg-white" />
               ))}

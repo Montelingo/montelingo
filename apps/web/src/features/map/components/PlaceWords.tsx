@@ -19,8 +19,10 @@ type PlaceWordsProps = {
 
 // One place on the Riječi tab: the green check, its name and "· N riječi" as
 // a button that shows or hides its words (the disclosure pattern: a heading
-// holding a button with aria-expanded), then its words, at most 10 to a line,
-// fewer on a narrower screen. A region named by the place alone, so screen
+// holding a button with aria-expanded), then its words: 10 to a line from
+// 1024px wide (a laptop, a tablet on its side; 10 × 84 + 9 × 12 = 948px ≤ the
+// 976px row), 5 from 640px (an upright tablet), so each lesson's 10 words
+// make whole lines, and on a phone as many cards of 5.25rem as fit. A region named by the place alone, so screen
 // readers can jump between places.
 export function PlaceWords({ place, defaultOpen }: PlaceWordsProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -64,7 +66,7 @@ export function PlaceWords({ place, defaultOpen }: PlaceWordsProps) {
         // would override the attribute's display: none.
         hidden={!isOpen}
         className={cn(
-          "grid grid-cols-row-of-10 gap-3 [--row-gap:theme(spacing.3)] [--row-min:5.25rem]",
+          "grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-3 sm:grid-cols-5 lg:grid-cols-10",
           !isOpen && "hidden",
         )}
       >
