@@ -12,9 +12,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // @app/api-client ships TypeScript source, so Next.js must compile it.
   transpilePackages: ["@app/api-client"],
-  // `pnpm lint:web` owns linting in CI; Next's build-time lint duplicates it and
-  // cannot detect plugins registered only for **/*.{ts,tsx} in eslint.config.mjs.
-  eslint: { ignoreDuringBuilds: true },
   // Headers apply before any of the page is parsed. Next.js renders the page's
   // own <meta name="referrer"> after the stylesheet and scripts in <head>,
   // which the browser may already be requesting with the full URL as Referer.

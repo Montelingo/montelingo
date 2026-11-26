@@ -18,7 +18,7 @@ const { redirect } = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({ redirect }));
 
-// The request headers the middleware forwards.
+// The request headers the proxy forwards.
 const requestHeaders = vi.hoisted(() => ({ current: new Headers() }));
 vi.mock("next/headers", () => ({
   headers: () => Promise.resolve(requestHeaders.current),

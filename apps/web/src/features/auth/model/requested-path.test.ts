@@ -42,7 +42,7 @@ describe("requestedPathWithin", () => {
   });
 
   // The router decodes the path, so these are /play/kotor and /play, which
-  // the middleware protects as part of /play. They return as requested.
+  // the proxy protects as part of /play. They return as requested.
   it.each([
     ["/%70lay/kotor", ""],
     ["/%70lay/kotor", "?step=2"],

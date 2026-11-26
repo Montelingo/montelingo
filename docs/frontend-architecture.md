@@ -1,6 +1,6 @@
 # Frontend architecture conventions
 
-This document defines how `apps/web` (Next.js 15 App Router, React 19, TypeScript, Tailwind) is organized. It is the frontend counterpart to [FastAPI modular-monolith boundaries and rules](fastapi-modular-monolith.md): features are the frontend equivalent of backend modules, routes are the equivalent of routers, and `@app/api-client` is the only bridge between the two.
+This document defines how `apps/web` (Next.js 16 App Router, React 19, TypeScript, Tailwind) is organized. It is the frontend counterpart to [FastAPI modular-monolith boundaries and rules](fastapi-modular-monolith.md): features are the frontend equivalent of backend modules, routes are the equivalent of routers, and `@app/api-client` is the only bridge between the two.
 
 Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:web`. `pnpm lint:web` runs with `--max-warnings 0`, so lint warnings fail CI too. Everything else is enforced in code review.
 
@@ -10,7 +10,7 @@ Rules marked **(enforced)** fail CI through `pnpm lint:web` or `pnpm typecheck:w
 
 ```text
 apps/web/src/
-  middleware.ts                     # runs before matched requests; protected-route fast path (§5.4)
+  proxy.ts                          # runs before matched requests; protected-route fast path (§5.4)
   app/                              # routing only: pages, layouts, loading/error/not-found files
     layout.tsx                      # <html>, <body>, and the skip link; no header (§5.4)
     globals.css
@@ -130,7 +130,7 @@ app/  ──▶  features/<x>/index.ts  ──▶  components/ui, hooks, lib, @a
 - Shared folders (`components/`, `hooks/`, `lib/`) must never import from `features/` or `app/`.
 - Inside a feature, use relative imports (`../model/scoring`).
 
-- `src/middleware.ts` follows the rules for `app/`.
+- `src/proxy.ts` follows the rules for `app/`.
 
 ESLint (`no-restricted-imports`) rejects deep imports into another feature (anything under `@/features/<name>/` except `server` and `edge`) and any import from `@/features` in shared folders. Other features also may not import values from the auth barrel, `@/features/auth`, which exports the sign-in forms and the browser API client: they use `@/features/auth/edge` (`PLAY_PATH`, `signInHref()`) or `@/features/auth/server`. A feature module can end up in the browser bundle, and the barrel would bring the forms and the client with it.
 
@@ -448,7 +448,7 @@ Authentication is the API's session cookie, `montelingo_session` by default ([AD
 
 #### The cookie name
 
-The API lets `MONTELINGO_SESSION_COOKIE_NAME` rename the cookie (`session_cookie_name` in `apps/api/app/core/config.py`). The web app reads the same variable, with the same default, through `getSessionCookieName()`, at runtime on every call. It is not a `NEXT_PUBLIC_` variable, so the build does not inline it, and the middleware sees the running server's environment. Set it for both apps or for neither: in Docker Compose both read the shared `.env`. If only the API had it, the middleware would never find the session and every protected page would loop back to sign-in. `session-cookie.test.ts` checks that the web default matches the API's default and variable name.
+The API lets `MONTELINGO_SESSION_COOKIE_NAME` rename the cookie (`session_cookie_name` in `apps/api/app/core/config.py`). The web app reads the same variable, with the same default, through `getSessionCookieName()`, at runtime on every call. It is not a `NEXT_PUBLIC_` variable, so the build does not inline it, and the proxy sees the running server's environment. Set it for both apps or for neither: in Docker Compose both read the shared `.env`. If only the API had it, the proxy would never find the session and every protected page would loop back to sign-in. `session-cookie.test.ts` checks that the web default matches the API's default and variable name.
 
 #### Reading the current user on the server
 
@@ -480,13 +480,13 @@ Client Components do not fetch the user. A Server Component reads it and passes 
 
 Protection has two layers, and a protected page needs both:
 
-1. **Middleware (fast path).** `src/middleware.ts` sends a request without a session cookie to `/sign-in?next=<path and query>` with a `307`. Its decision is the pure function `signInRedirectFor()` in `src/features/auth/model/protected-routes.ts`, with unit tests. It only checks that the cookie is there, because the middleware cannot afford an API call per request, so a stale (expired or revoked) cookie gets through.
+1. **Proxy (fast path).** `src/proxy.ts` (Next.js 16's name for middleware) sends a request without a session cookie to `/sign-in?next=<path and query>` with a `307`. Its decision is the pure function `signInRedirectFor()` in `src/features/auth/model/protected-routes.ts`, with unit tests. It only checks that the cookie is there, because the proxy cannot afford an API call per request, so a stale (expired or revoked) cookie gets through.
 2. **The page (authoritative).** The page calls `getCurrentUser()` and redirects on `null`, using `signInHref()` so the destination is checked like every other `next`. Because the page streams (it has a `loading.tsx`), this redirect is not a `307`: the response is a `200` whose HTML carries a `<meta http-equiv="refresh">` to the sign-in page, and client-side navigations follow the redirect in the RSC payload.
 
 To protect a new section:
 
 1. Add its path to `PROTECTED_PATH_PREFIXES` in `src/features/auth/model/protected-routes.ts`. A prefix covers the path and everything under it (`/account`, `/account/email`), not lookalikes (`/accounting`). This list is the single source of truth.
-2. Add the same path as `<path>/:path*` to `config.matcher` in `src/middleware.ts`. Next.js reads the matcher at build time, so it must be a literal. `middleware.test.ts` fails when it and the list disagree.
+2. Add the same path as `<path>/:path*` to `config.matcher` in `src/proxy.ts`. Next.js reads the matcher at build time, so it must be a literal. `proxy.test.ts` fails when it and the list disagree.
 3. In each page, check the session itself. `src/app/(site)/account/page.tsx` is the reference (or, for a whole section, its layout; see below):
 
 ```tsx
@@ -513,10 +513,10 @@ export default async function AccountPage() {
 The learner area checks the session once, for everything under `/play`, in `src/app/(learner)/play/layout.tsx` rather than in each page:
 
 - **One level below the group's layout.** An `error.tsx` never catches errors thrown by the layout of its own segment, and the root has no error boundary. With the check in `play/layout.tsx`, a failed lookup reaches `(learner)/error.tsx` and the wait shows `(learner)/loading.tsx` (a neutral skeleton, §9.2), both inside the learner chrome. `(learner)/layout.tsx` itself is chrome only and loads no data.
-- **The requested path comes from the middleware.** A layout is not told its URL, so the middleware hands every request it lets through its path and query string in the `x-montelingo-path` request header (`REQUESTED_PATH_HEADER`, set with `withRequestedPath()` through `NextResponse.next({ request: { headers } })`). It always overwrites the header, so on the paths it runs for a client cannot set it, and it is sent upstream only, never to the browser. The layout passes it through `requestedPathWithin(PLAY_PATH, …)`, which accepts only a safe path inside `/play` and otherwise returns `/play`, then redirects to `signInHref()` of the result. It decides "inside" with `isPathWithin()` (`model/url-path.ts`), the same decoding check `isProtectedPath()` uses, so every path the middleware protects as part of `/play` (`/%70lay/kotor`, which the router reads as `/play/kotor`) returns there too. A stale cookie on `/play/kotor?step=2` returns there after signing in, like the middleware's own redirect.
+- **The requested path comes from the proxy.** A layout is not told its URL, so the proxy hands every request it lets through its path and query string in the `x-montelingo-path` request header (`REQUESTED_PATH_HEADER`, set with `withRequestedPath()` through `NextResponse.next({ request: { headers } })`). It always overwrites the header, so on the paths it runs for a client cannot set it, and it is sent upstream only, never to the browser. The layout passes it through `requestedPathWithin(PLAY_PATH, …)`, which accepts only a safe path inside `/play` and otherwise returns `/play`, then redirects to `signInHref()` of the result. It decides "inside" with `isPathWithin()` (`model/url-path.ts`), the same decoding check `isProtectedPath()` uses, so every path the proxy protects as part of `/play` (`/%70lay/kotor`, which the router reads as `/play/kotor`) returns there too. A stale cookie on `/play/kotor?step=2` returns there after signing in, like the proxy's own redirect.
 - **Full loads only.** Layouts do not run again on client-side navigation between pages under them, so the layout is the gate when a learner page is loaded or refreshed, not on every navigation. The learner pages' data (#67, #68) comes from server adapters that send the session cookie, and they must treat a `401` as signed out, never as data. The map's loaders do: a `401` from any of their calls redirects to `signInHref()` of the loader's own screen (`redirectOnSignedOut()` in `features/map/errors.ts`), so a session that ends mid-visit returns there after signing in. A loader waits for all its calls to settle before deciding, so a `401` wins over any other failure (a signed-out visitor never learns whether a region exists), and otherwise the first failure in the order the calls are listed is thrown, however they race.
 
-The middleware imports from `@/features/auth/edge`, never `@/features/auth`. It runs in the Edge runtime before every matched request, and the main entry would pull the API client and the forms into its bundle. `edge.ts` exports only pure functions and constants, so other features import auth's routes from it too (§1.4). `edge.test.ts` follows its imports and fails if any of them reaches `server-only`, `next/headers`, `react`, the auth barrel, `@/lib/api`, `@/lib/api-config`, `@/lib/browser-api`, or `@app/api-client`.
+The proxy imports from `@/features/auth/edge`, never `@/features/auth`. It runs before every matched request, and the main entry would pull the API client and the forms into its bundle. `edge.ts` exports only pure functions and constants, so other features import auth's routes from it too (§1.4). `edge.test.ts` follows its imports and fails if any of them reaches `server-only`, `next/headers`, `react`, the auth barrel, `@/lib/api`, `@/lib/api-config`, `@/lib/browser-api`, or `@app/api-client`.
 
 #### Signing out
 
@@ -618,7 +618,7 @@ import { scoreLesson } from "../model/scoring";
 
 - Use **named exports** everywhere. Default exports are used only where Next.js requires them (`page`, `layout`, `loading`, `error`, `global-error`, `not-found`, `template`, `default`) and in config files (`next.config.ts`, `vitest.config.ts`, `tailwind.config.ts`).
 - Each feature has one `index.ts` that re-exports its public API: the components routes compose, loaders/adapters routes call, and domain types other features need. Everything not exported from `index.ts` (or `server.ts`, below) is private to the feature.
-- `src/middleware.ts` imports a feature through its `edge.ts`: pure functions and constants that are safe in the Edge runtime and the browser, with no API client, React components, or `server-only` code. Add one only when the middleware or another feature needs something from the feature that its `index.ts` would bring in with heavier code (§5.4).
+- `src/proxy.ts` imports a feature through its `edge.ts`: pure functions and constants that are safe in the proxy and the browser, with no API client, React components, or `server-only` code. Add one only when the proxy or another feature needs something from the feature that its `index.ts` would bring in with heavier code (§5.4).
 - `index.ts` must be safe to import from a Client Component. Anything that is server-only (it imports `server-only`, `next/headers`, or `@/lib/api`) is exported from the feature's `server.ts` instead, which starts with `import "server-only"`. Routes import it as `@/features/<name>/server`. Next.js fails the client build as soon as `server-only` is anywhere in a Client Component's import graph. Tree-shaking runs too late to remove it, so a single server-only re-export in `index.ts` would break every Client Component that imports the feature.
 - `apps/web/package.json` declares `"sideEffects": ["*.css"]`, so the bundler drops whatever a Client Component does not use from a feature's `index.ts`. A button that imports only `signOut` from `@/features/auth` does not ship `zod` or the form schemas. As a result, a module must never rely on being imported for its side effects, except stylesheets and packages such as `server-only`. Because a re-export can be skipped, every module that is server-only starts with `import "server-only"` itself, not only the `server.ts` that re-exports it.
 - Do not add `index.ts` barrels inside a feature's subfolders or in `components/ui`. Import primitives by file path.
@@ -856,7 +856,7 @@ expect(container).toMatchSnapshot();
 - browser-side adapters for mutations (sign-up, sign-in, sign-out, password reset);
 - the server-only session lookups `getCurrentUser()` and `getAuthState()`, wrapped in React `cache()` and exported from `server.ts` (§5.4). They skip the API call when the request has no `montelingo_session` cookie;
 - the site header (`SiteHeader`, in `(site)/layout.tsx` and the root `not-found.tsx`) with its account controls and `SignOutButton` (§5.4);
-- route protection: the middleware fast path (`edge.ts`, `signInRedirectFor()`), the requested-path header for layouts (`withRequestedPath()`, `requestedPathWithin()`), the reference protected page, `/account`, and the reference protected section, `/play` (§5.4);
+- route protection: the proxy fast path (`edge.ts`, `signInRedirectFor()`), the requested-path header for layouts (`withRequestedPath()`, `requestedPathWithin()`), the reference protected page, `/account`, and the reference protected section, `/play` (§5.4);
 - form validation with `zod` (`schemas.ts`);
 - the open-redirect guard `safeRedirectPath()`, and `postAuthRedirectPath()`, which sends a missing or unsafe destination, or one that is an auth page (`/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`, in any case or encoding, with or without a trailing slash), to the map, `/play`, so a learner lands there after signing in. Pages and forms use the latter for where to go after signing in, and `authPageHref()` leaves out a `?next=` that is `/play`. Signing out still goes to `/`;
 - error-code mapping in `errors.ts`;

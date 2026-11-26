@@ -239,12 +239,12 @@ async function playMatch(page: Page) {
 }
 
 // The lesson opens the games (#138), and the lesson and games save their
-// results (#136). The Riječi tab lists the words the lesson taught, and
+// results (#136), which a place already shown picks up (#225). The Riječi tab lists the words the lesson taught, and
 // practice plays them without saving anything (#236). The issues share this
 // test for its account, since sign-ups are limited (README.md). Each run signs
 // up a new one, so nothing is done yet. Sign-up, the lesson and three games
 // take longer than the default 30 s.
-test("the lesson opens the games, both games are saved, and Riječi lists and practises the words (#136, #138, #236)", async ({
+test("the lesson opens the games, both games are saved, and Riječi lists and practises the words (#136, #138, #225, #236)", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -361,11 +361,31 @@ test("the lesson opens the games, both games are saved, and Riječi lists and pr
 
   await test.step("play the match game: it saves", () => playMatch(page));
 
+  // Back, and a link to a place already visited, show it from the router's
+  // cache, which #136 refreshes once the save is in. On Next.js 15.5 that
+  // refresh was dropped (#225), so both showed the state from before the game.
+  await test.step("by Back, the chapter shows the game completed (#225)", async () => {
+    await page.goBack();
+    await expect(page).toHaveURL(NA_PLAZI);
+    await expect(
+      naPlazi(page).getByRole("link", { name: card("Match", "Completed") }),
+    ).toBeVisible();
+  });
+
+  // Budva was visited after the lesson, so this link reuses the cached place.
+  await test.step("by a link to the place visited before, it shows the game too (#225)", async () => {
+    await page
+      .getByRole("navigation", { name: "Learner" })
+      .getByRole("link", { name: "Back" })
+      .click();
+    await expect(page).toHaveURL(BUDVA);
+    await expect(naPlaziCard(page)).toContainText("2 of 3 done");
+  });
+
   await test.step("play the memory game, opened by its URL: it saves", () =>
     playMemory(page));
 
-  // A reload, since without one the place can show its state from before the
-  // game (#225).
+  // After a full reload, so what shows is the server's state, not the router's.
   await test.step("after a reload, the lesson is done and the game has a star", async () => {
     await backToPlaceFromBravo(page);
     await openNaPlazi(page);
@@ -391,34 +411,3 @@ test("the lesson opens the games, both games are saved, and Riječi lists and pr
     ).toBeVisible();
   });
 });
-
-// Back, and the link to a place already visited, show the place from the
-// router's cache, which #136 refreshes once the save is in. The place's screen
-// ignores that refresh (#225), so either can show the state from before the
-// game. Skipped until #225 is fixed.
-test.fixme(
-  "after a saved game, the place shows its new state (#225)",
-  async ({ page }) => {
-    test.setTimeout(120_000);
-
-    await newLearnerOnNaPlazi(page);
-    await watchLesson(page);
-    await backToPlaceFromBravo(page);
-    await openNaPlazi(page);
-    await playMatch(page);
-
-    await test.step("by Back", async () => {
-      await page.goBack();
-      await expect(page).toHaveURL(NA_PLAZI);
-      await expect(
-        naPlazi(page).getByRole("link", { name: card("Match", "Completed") }),
-      ).toBeVisible();
-    });
-
-    await test.step("by the link, on a later visit", async () => {
-      await page.goForward();
-      await backToPlaceFromBravo(page);
-      await expect(naPlaziCard(page)).toContainText("2 of 3 done");
-    });
-  },
-);

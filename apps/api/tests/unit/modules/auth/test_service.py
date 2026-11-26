@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
@@ -20,12 +21,17 @@ class FakeHasher:
         self.rehash = rehash
         self.verified_hashes: list[str] = []
         self.hashed_passwords: list[str] = []
+        # The thread each hash or verify ran on: Argon2 is slow, so the service
+        # must run it off the event loop.
+        self.threads: list[int] = []
 
     def hash(self, password: str) -> str:
+        self.threads.append(threading.get_ident())
         self.hashed_passwords.append(password)
         return "new-hash"
 
     def verify(self, password: str, password_hash: str) -> bool:
+        self.threads.append(threading.get_ident())
         self.verified_hashes.append(password_hash)
         return self.valid
 
@@ -39,16 +45,23 @@ class FakeClock:
 
 
 class FakeTransaction:
+    def __init__(self, owner: FakeTransactions) -> None:
+        self.owner = owner
+
     async def __aenter__(self) -> None:
-        return None
+        self.owner.open += 1
 
     async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        return None
+        self.owner.open -= 1
 
 
 class FakeTransactions:
+    def __init__(self) -> None:
+        # How many transactions are open: each holds a pooled connection.
+        self.open = 0
+
     def transaction(self) -> FakeTransaction:
-        return FakeTransaction()
+        return FakeTransaction(self)
 
 
 class FakeRepository:
@@ -166,3 +179,59 @@ async def test_expired_session_is_deleted_and_rejected() -> None:
 
     assert result is None
     assert repository.deleted == [SecureToken.hash("expired-token")]
+
+
+@pytest.mark.asyncio
+async def test_sign_in_verifies_and_rehashes_off_the_event_loop() -> None:
+    user = make_user()
+    hasher = FakeHasher(rehash=True)
+    service = make_service(FakeRepository(user), hasher)
+
+    await service.sign_in(email=user.email, password="secret")
+
+    assert len(hasher.threads) == 2
+    assert threading.get_ident() not in hasher.threads
+
+
+@pytest.mark.asyncio
+async def test_failed_sign_in_verifies_off_the_event_loop() -> None:
+    hasher = FakeHasher(valid=False)
+    service = make_service(FakeRepository(), hasher)
+
+    with pytest.raises(ApiError):
+        await service.sign_in(email="nobody@example.com", password="secret")
+
+    assert hasher.threads
+    assert threading.get_ident() not in hasher.threads
+
+
+@pytest.mark.asyncio
+async def test_sign_in_hashes_with_no_transaction_open() -> None:
+    # A transaction holds a pooled connection: waiting for Argon2 with one open
+    # would let a burst of sign-ins drain the pool.
+    user = make_user()
+    transactions = FakeTransactions()
+    open_while_hashing: list[int] = []
+
+    class WatchingHasher(FakeHasher):
+        def hash(self, password: str) -> str:
+            open_while_hashing.append(transactions.open)
+            return super().hash(password)
+
+        def verify(self, password: str, password_hash: str) -> bool:
+            open_while_hashing.append(transactions.open)
+            return super().verify(password, password_hash)
+
+    service = AuthService(
+        repository=FakeRepository(user),
+        password_hasher=WatchingHasher(rehash=True),
+        token=SecureToken,
+        clock=FakeClock(),
+        transaction_manager=transactions,
+        session_ttl=3600,
+    )
+
+    result = await service.sign_in(email=user.email, password="secret")
+
+    assert result.user == user
+    assert open_while_hashing == [0, 0]

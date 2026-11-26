@@ -67,7 +67,7 @@ check_redirect() {
   echo "[e2e] $description: OK ($status to $location)"
 }
 
-# A protected page with a session cookie the API rejects: the middleware lets
+# A protected page with a session cookie the API rejects: the proxy lets
 # it through (it only checks that a cookie is there), and the page, finding no
 # user, redirects to sign-in. The page streams, so the redirect is not a 307
 # but a 200 whose HTML carries a meta refresh (and an RSC redirect for
@@ -127,7 +127,7 @@ if [[ "$me_status" == "401" ]]; then
   check_stale_session_redirect "Protected page with a stale session" "$WEB_URL/account" \
     "/sign-in?next=%2Faccount"
   # The learner area checks the session in a layout, which learns the
-  # requested path (and query) from the middleware.
+  # requested path (and query) from the proxy.
   check_stale_session_redirect "Learner area with a stale session" "$WEB_URL/play?x=1" \
     "/sign-in?next=%2Fplay%3Fx%3D1"
 else
