@@ -240,7 +240,7 @@ async function playMatch(page: Page) {
 
 // The lesson opens the games (#138), and the lesson and games save their
 // results (#136), which a place already shown picks up (#225). The Riječi tab lists the words the lesson taught, and
-// practice plays them without saving anything (#236). The issues share this
+// practice plays them, recording only a heart (#236, #276). The issues share this
 // test for its account, since sign-ups are limited (README.md). Each run signs
 // up a new one, so nothing is done yet. Sign-up, the lesson and three games
 // take longer than the default 30 s.
@@ -324,9 +324,9 @@ test("the lesson opens the games, both games are saved, and Riječi lists and pr
     await expect(wordCount(page, NA_PLAZI_WORD_COUNT)).toBeVisible();
   });
 
-  await test.step("practise memory from Riječi: it records nothing", async () => {
-    const before = await progress(page);
-    // Any write to the API: a save would be a POST to /api/v1/chapters/….
+  await test.step("practise memory from Riječi: it records a heart, nothing else (#276)", async () => {
+    const before = (await progress(page)) as { counts: { hearts: number } };
+    // Any write to the API: practice's one is POST /api/v1/practice/….
     const sent: string[] = [];
     const record = (request: Request) => {
       const { pathname } = new URL(request.url());
@@ -347,13 +347,21 @@ test("the lesson opens the games, both games are saved, and Riječi lists and pr
     await expect(page).toHaveURL(PRACTICE_MEMORY_URL);
     // Practice deals 6 pairs from every learned word: Na plaži's ten here.
     await findAllPairs(page, MEMORY_CARD_COUNT);
+    // A new account is far from the daily cap, so the game earns a heart.
+    await expect(
+      page.getByText("+1 srce", { exact: true }).first(),
+    ).toBeVisible();
     await backFromBravo(page, "Nazad na riječi", WORDS);
 
-    // Back on Riječi, with nothing left to send: a late save would show here.
+    // Back on Riječi, with nothing left to send: a second save would show here.
     await page.waitForLoadState("networkidle");
-    expect(await progress(page)).toEqual(before);
+    // No lock, star or count moves: only the heart (ADR 0009).
+    expect(await progress(page)).toEqual({
+      ...before,
+      counts: { ...before.counts, hearts: before.counts.hearts + 1 },
+    });
     page.off("request", record);
-    expect(sent).toEqual([]);
+    expect(sent).toEqual(["POST /api/v1/practice/memory/result"]);
 
     await page.goto(BUDVA);
     await openNaPlazi(page);

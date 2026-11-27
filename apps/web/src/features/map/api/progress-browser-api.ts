@@ -23,6 +23,19 @@ export async function completeLesson(chapterId: string): Promise<Recorded> {
   return { heartEarned: result.heart_earned };
 }
 
+/**
+ * Records a practice game from the Riječi tab, played to the end (ADR 0009).
+ * Every one is recorded, and may earn a heart. Rejects on any failure.
+ */
+export async function completePractice(gameId: GameId): Promise<Recorded> {
+  const result = await unwrap(
+    getBrowserApiClient().POST("/api/v1/practice/{game_id}/result", {
+      params: { path: { game_id: gameId } },
+    }),
+  );
+  return { heartEarned: result.heart_earned };
+}
+
 /** Records the chapter's game as completed. Rejects on any failure. */
 export async function completeGame(
   chapterId: string,

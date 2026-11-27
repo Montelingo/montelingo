@@ -26,11 +26,22 @@ vi.mock("@/lib/api", () => ({
     createApiClient({ baseUrl: "http://api.test", fetch: fetchMock }),
 }));
 
-// Like Next.js, redirect() throws, so nothing after it runs.
+// Practice records each game from the browser (#276), through its own client.
+const browserFetch = vi.hoisted(() =>
+  vi.fn<(request: Request) => Promise<Response>>(),
+);
+vi.mock("@/lib/browser-api", () => ({
+  getBrowserApiClient: (): ApiClient =>
+    createApiClient({ baseUrl: "http://web.test", fetch: browserFetch }),
+}));
+
+// Like Next.js, redirect() throws, so nothing after it runs. The save's
+// router is a stand-in: the page renders without Next.js's app router.
 const navigation = vi.hoisted(() => ({
   redirect: vi.fn((url: string): never => {
     throw new Error(`NEXT_REDIRECT ${url}`);
   }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
@@ -42,6 +53,14 @@ let consoleError: MockInstance<typeof console.error>;
 beforeEach(() => {
   vi.clearAllMocks();
   serveApi(fetchMock, "podgorica-open");
+  browserFetch.mockImplementation(() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ heart_earned: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 

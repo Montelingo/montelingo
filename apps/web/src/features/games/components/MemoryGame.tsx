@@ -59,6 +59,11 @@ export type MemoryGameProps = {
    * (ADR 0006). Playing again does not call it a second time.
    */
   onCompleted?: () => void;
+  /**
+   * Calls `onCompleted` for every game played to the end, not only the
+   * first: practice records each one (ADR 0009).
+   */
+  reportsEveryGame?: boolean;
   /** The learner's name, for "Bravo, Mia!". Without it, "Bravo!". */
   learnerName?: string;
   /**
@@ -107,6 +112,7 @@ export function MemoryGame({
   backLabel = BACK_TO_PLACE,
   teachesWords = true,
   onCompleted,
+  reportsEveryGame = false,
   learnerName,
   reward,
   saveNotice,
@@ -133,6 +139,7 @@ export function MemoryGame({
   const { game, isReplay, playAgain } = useGameVisit(
     phase !== "playing",
     onCompleted,
+    reportsEveryGame,
   );
 
   if (phase === "bravo") {

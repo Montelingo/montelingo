@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { endNavigation } from "@/lib/navigation-progress";
 
-import { type ChapterResult, useSaveResult } from "./use-save-result";
+import { type SavedResult, useSaveResult } from "./use-save-result";
 
 type Recorded = { heartEarned: boolean };
 
@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   completeLesson: vi.fn<(chapterId: string) => Promise<Recorded>>(),
   completeGame:
     vi.fn<(chapterId: string, gameId: string) => Promise<Recorded>>(),
+  completePractice: vi.fn<(gameId: string) => Promise<Recorded>>(),
 }));
 vi.mock("../api/progress-browser-api", () => api);
 
@@ -23,8 +24,9 @@ const router = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 const PLACE_HREF = "/play/coast/budva";
-const LESSON: ChapterResult = { kind: "lesson", chapterId: "na-plazi" };
-const MATCH: ChapterResult = {
+const LESSON: SavedResult = { kind: "lesson", chapterId: "na-plazi" };
+const PRACTICE: SavedResult = { kind: "practice", gameId: "memory" };
+const MATCH: SavedResult = {
   kind: "game",
   chapterId: "na-plazi",
   gameId: "match",
@@ -36,7 +38,7 @@ function apiError(status: number, code: string): ApiClientError {
   });
 }
 
-function renderSave(result: ChapterResult = LESSON) {
+function renderSave(result: SavedResult = LESSON) {
   return renderHook(() => useSaveResult(result, PLACE_HREF));
 }
 
@@ -54,6 +56,7 @@ describe("useSaveResult", () => {
     vi.clearAllMocks();
     api.completeLesson.mockResolvedValue({ heartEarned: false });
     api.completeGame.mockResolvedValue({ heartEarned: false });
+    api.completePractice.mockResolvedValue({ heartEarned: false });
   });
 
   afterEach(() => {
@@ -92,6 +95,48 @@ describe("useSaveResult", () => {
     await run(() => result.current.save());
 
     expect(result.current.heartEarned).toBe(true);
+  });
+
+  it("records every practice game, one at a time (ADR 0009)", async () => {
+    const { result } = renderSave(PRACTICE);
+
+    await run(() => {
+      result.current.save();
+      result.current.save();
+    });
+    await run(() => result.current.save());
+
+    expect(api.completePractice).toHaveBeenCalledTimes(2);
+    expect(api.completePractice).toHaveBeenCalledWith("memory");
+    expect(api.completeLesson).not.toHaveBeenCalled();
+  });
+
+  it("starts each practice game without the last one's heart or failure", async () => {
+    api.completePractice
+      .mockResolvedValueOnce({ heartEarned: true })
+      .mockRejectedValueOnce(apiError(500, "internal_error"));
+    const { result } = renderSave(PRACTICE);
+
+    await run(() => result.current.save());
+    expect(result.current.heartEarned).toBe(true);
+
+    await run(() => result.current.save());
+    expect(result.current.heartEarned).toBe(false);
+    expect(result.current.hasFailed).toBe(true);
+
+    let finish = () => {};
+    api.completePractice.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = () => resolve({ heartEarned: false });
+      }),
+    );
+    await run(() => result.current.save());
+    expect(result.current.hasFailed).toBe(false);
+    await act(async () => {
+      finish();
+      await Promise.resolve();
+    });
+    expect(result.current.status).toBe("saved");
   });
 
   it("records the game with its chapter and game ids", async () => {
