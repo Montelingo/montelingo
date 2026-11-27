@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
+import { gate, passGate, tapWrongDigit } from "./grown-ups";
+
 // The first chapter of Budva, the starting location, in recording order
 // (apps/api/app/modules/content/data/content.json, chapter "budva-beach").
 const NA_PLAZI_WORDS = [
@@ -18,13 +20,16 @@ const NA_PLAZI_WORDS = [
 ];
 
 // The happy path of phase 1: a new learner signs up, signs in, and reaches
-// the first words. Each run makes its own account, so runs never share
-// progress. Sign-up is rate limited per IP (10 an hour): README.md has how
-// the suite shares them.
-test("a new learner reaches Budva's first words", async ({ page }) => {
-  // Two password hashes and a dozen screens: near the default 30 s when the
-  // stack is cold or every worker is busy.
-  test.setTimeout(60_000);
+// the first words. Then a grown-up opens the Ja tab and passes the gate into
+// the grown-ups area (#180). Each run makes its own account, so runs never
+// share progress. Sign-up is rate limited per IP (10 an hour), so #180 shares
+// this test's account: README.md has how the suite shares them.
+test("a new learner reaches Budva's first words, and a grown-up opens the grown-ups area (#180)", async ({
+  page,
+}) => {
+  // Two password hashes, a dozen screens and two 1.5 s holds of the gate:
+  // over the default 30 s when the stack is cold or every worker is busy.
+  test.setTimeout(90_000);
   const email = `e2e-budva-${randomUUID()}@example.com`;
   const password = `e2e-${randomUUID()}`;
 
@@ -153,5 +158,60 @@ test("a new learner reaches Budva's first words", async ({ page }) => {
       .getByRole("link", { name: "Back" })
       .click();
     await expect(page).toHaveURL("/play/coast/budva/budva-beach");
+  });
+
+  await test.step("the Ja tab shows the child and their counts", async () => {
+    await page.goto("/play");
+    await page
+      .getByRole("navigation", { name: "Glavni meni" })
+      .getByRole("link", { name: "Ja" })
+      .click();
+
+    await expect(page).toHaveURL("/play/me");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Mia" }),
+    ).toBeVisible();
+    await expect(page.getByText("Istraživač · 5–6 godina")).toBeVisible();
+    // The lesson was opened but not finished, so nothing is collected yet.
+    for (const name of ["Zvjezdice: 0", "Riječi: 0", "Naljepnice: 0"]) {
+      await expect(page.getByRole("group", { name })).toBeVisible();
+    }
+  });
+
+  await test.step("a wrong digit keeps the gate shut", async () => {
+    await page.getByRole("button", { name: "Za roditelje" }).click();
+    await expect(gate(page)).toBeVisible();
+
+    await tapWrongDigit(page);
+
+    await expect(gate(page)).toBeVisible();
+    await expect(page).toHaveURL("/play/me");
+  });
+
+  await test.step("holding the named digit opens the grown-ups area", async () => {
+    await passGate(page);
+
+    await expect(page).toHaveURL("/play/me/grown-ups");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Za roditelje" }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Nalog" })).toContainText(
+      email,
+    );
+    await expect(
+      page.getByRole("group", { name: "Obala: 0 od 6 mjesta" }),
+    ).toBeVisible();
+  });
+
+  await test.step("a reload shows the gate again", async () => {
+    await page.reload();
+
+    await expect(gate(page)).toBeVisible();
+    await expect(page.getByText(email)).toHaveCount(0);
+
+    await passGate(page);
+    await expect(page.getByRole("region", { name: "Nalog" })).toContainText(
+      email,
+    );
   });
 });
