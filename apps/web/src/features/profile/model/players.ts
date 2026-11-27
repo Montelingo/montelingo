@@ -24,6 +24,14 @@ export function toPlayer(player: Schemas["Player"]): Player {
   return { ...toProfile(player), id: player.id, isActive: player.is_active };
 }
 
+/** At most this many players per account (ADR 0007); the API refuses more. */
+export const PLAYERS_LIMIT = 4;
+
+/** Whether the grown-ups area offers Add (#183): fewer than the limit. */
+export function canAddPlayer(players: readonly Player[]): boolean {
+  return players.length < PLAYERS_LIMIT;
+}
+
 /** Whether there is anyone to switch to: two players or more. */
 export function canSwitchPlayer(players: readonly Player[]): boolean {
   return players.length >= 2;

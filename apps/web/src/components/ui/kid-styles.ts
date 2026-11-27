@@ -17,3 +17,7 @@ export const SMALL_LINK = `inline-flex h-touch items-center rounded-kid px-3 tex
 
 /** The round 56px icon button (back, sound, close). */
 export const ICON_BUTTON = `inline-flex size-touch-lg shrink-0 items-center justify-center rounded-full border-3 border-kid-ink bg-white shadow-raised-4 ${FOCUS_RING}`;
+
+/** A card of the grown-ups area: white, with the ink edge (Figma Me3). */
+export const GROWN_UPS_CARD =
+  "flex flex-col gap-2.5 rounded-kid-md border-3 border-kid-ink bg-white px-4 pb-4 pt-3.5";
