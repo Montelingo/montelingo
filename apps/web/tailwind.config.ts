@@ -110,6 +110,9 @@ const config: Config = {
           "sea-soft": "#DDF4FB",
           pink: "#FF8FB8",
           "pink-soft": "#FFE3EE",
+          // The grown-ups area's "Odjavi se": only at 24px semibold, large
+          // text, where it is AA on white.
+          red: "#E5484D",
         },
         // PlaceholderArt palettes: background, pattern, and initial.
         art: {

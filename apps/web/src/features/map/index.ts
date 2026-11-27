@@ -7,6 +7,8 @@
 // retry.
 export { ChapterScreen } from "./components/ChapterScreen";
 export { LocationScreen } from "./components/LocationScreen";
+export { GrownUpsArea } from "./components/GrownUpsArea";
+export { GrownUpsAreaSkeleton } from "./components/GrownUpsAreaSkeleton";
 export { MapArt } from "./components/MapArt";
 export { LocationScreenSkeleton } from "./components/LocationScreenSkeleton";
 export { MapHome } from "./components/MapHome";
