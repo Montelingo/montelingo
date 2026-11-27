@@ -1,20 +1,18 @@
 "use client";
 
-import Image from "next/image";
-
 import { FormAlert } from "@/components/ui/FormAlert";
-import { FOCUS_RING, SMALL_LINK } from "@/components/ui/kid-styles";
+import { SMALL_LINK } from "@/components/ui/kid-styles";
 import { cn } from "@/lib/cn";
 import { replaceDocument } from "@/lib/navigation";
 
 import { authErrorMessages } from "../errors";
 import { useSignOut } from "../hooks/use-sign-out";
 import { HOME_PATH } from "../model/routes";
+import { PendingLabel } from "./PendingLabel";
 
-// The places that sign out, each with its own look and language: the site
-// header (still in English, #153 leaves it), the welcome screens' small links,
-// in Montenegrin, and the grown-ups area's red row with its icon (#178; #179
-// asks first).
+// The places that sign out at once, each with its own look and language: the
+// site header (still in English, #153 leaves it) and the welcome screens'
+// small links, in Montenegrin. The grown-ups area asks first: SignOutConfirm.
 const APPEARANCES = {
   site: {
     label: "Sign out",
@@ -27,7 +25,6 @@ const APPEARANCES = {
     pendingButton: "hover:bg-white",
     // Floats below the header's button, so it does not push the header around.
     alert: "absolute right-0 top-full z-10 mt-2 w-64",
-    icon: null,
   },
   welcome: {
     label: "Odjavi se",
@@ -36,16 +33,6 @@ const APPEARANCES = {
     button: SMALL_LINK,
     pendingButton: undefined,
     alert: "mt-2",
-    icon: null,
-  },
-  "grown-ups": {
-    label: "Odjavi se",
-    pendingLabel: "Odjavljujem…",
-    failure: authErrorMessages.signOutFailed,
-    button: `inline-flex min-h-touch items-center gap-2.5 rounded-kid text-2xl font-semibold leading-tight text-kid-red ${FOCUS_RING}`,
-    pendingButton: undefined,
-    alert: "mt-2",
-    icon: "/learner/icon-logout.svg",
   },
 } as const;
 
@@ -78,39 +65,11 @@ export function SignOutButton({ appearance = "site" }: SignOutButtonProps) {
           isPending ? ["cursor-wait", copy.pendingButton] : undefined,
         )}
       >
-        {copy.icon !== null ? (
-          <Image
-            src={copy.icon}
-            alt=""
-            aria-hidden="true"
-            width={22}
-            height={22}
-            unoptimized
-            className="shrink-0"
-          />
-        ) : null}
-        {/* Both labels share one grid cell, so the button keeps the width of
-            the longer one and nothing around it moves when it changes. */}
-        <span className="grid">
-          <span
-            aria-hidden={isPending || undefined}
-            className={cn(
-              "col-start-1 row-start-1",
-              isPending ? "invisible" : undefined,
-            )}
-          >
-            {copy.label}
-          </span>
-          <span
-            aria-hidden={!isPending || undefined}
-            className={cn(
-              "col-start-1 row-start-1",
-              isPending ? undefined : "invisible",
-            )}
-          >
-            {copy.pendingLabel}
-          </span>
-        </span>
+        <PendingLabel
+          label={copy.label}
+          pendingLabel={copy.pendingLabel}
+          isPending={isPending}
+        />
       </button>
       <FormAlert
         message={error === null ? null : copy.failure}

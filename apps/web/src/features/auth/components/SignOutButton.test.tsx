@@ -131,22 +131,6 @@ describe("SignOutButton", () => {
     );
   });
 
-  it("is the grown-ups area's row, with its icon, and loads the welcome screen", async () => {
-    signOut.mockResolvedValue(undefined);
-    const user = userEvent.setup();
-    const { container } = render(<SignOutButton appearance="grown-ups" />);
-
-    const button = screen.getByRole("button", { name: "Odjavi se" });
-    expect(button.querySelector('img[src*="icon-logout"]')).toBeInTheDocument();
-    expect(await axe(container)).toHaveNoViolations();
-
-    await user.click(button);
-
-    await waitFor(() => {
-      expect(replaceDocument).toHaveBeenCalledWith("/");
-    });
-  });
-
   it("can try again after a failure", async () => {
     signOut.mockRejectedValueOnce(makeApiError(500, "internal_server_error"));
     const { user } = renderButton();

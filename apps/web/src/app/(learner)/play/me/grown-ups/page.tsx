@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SMALL_LINK } from "@/components/ui/kid-styles";
-import { signInHref, SignOutButton } from "@/features/auth";
+import { signInHref, SignOutConfirm } from "@/features/auth";
 import { getCurrentUser } from "@/features/auth/server";
 import { GrownUpsGate } from "@/features/grown-ups";
 import { GROWN_UPS_PATH, GrownUpsArea, ME_PATH } from "@/features/map";
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 };
 
 // The grown-ups area: the gate first on every load (#177), then the child's
-// progress and the account (#178). "Odjavi se" signs out at once until #179
-// asks first. It links to the privacy policy (#255).
+// progress and the account (#178). "Odjavi se" asks first, then signs out to
+// the welcome screen (#179). It links to the privacy policy (#255).
 export default async function GrownUpsPage() {
   // The same call as play/layout.tsx's on a full load. The layout does not
   // run again on a client-side visit, when the session may have ended.
@@ -32,7 +32,7 @@ export default async function GrownUpsPage() {
       <GrownUpsArea
         {...data}
         email={user.email}
-        signOut={<SignOutButton appearance="grown-ups" />}
+        signOut={<SignOutConfirm email={user.email} />}
       >
         <Link href={PRIVACY_PATH} className={cn(SMALL_LINK, "self-start")}>
           Politika privatnosti
