@@ -1,6 +1,11 @@
 "use client";
 
-import { type GameId, SaveNotice, useSaveResult } from "@/features/map";
+import {
+  type GameId,
+  hasResultNotice,
+  ResultNotice,
+  useSaveResult,
+} from "@/features/map";
 
 import { MatchGame, type MatchGameProps } from "./MatchGame";
 import { MemoryGame, type MemoryGameProps } from "./MemoryGame";
@@ -25,15 +30,16 @@ export type ChapterGameProps = SharedProps & {
 
 // A chapter's game that saves itself (#136, ADR 0006): completing it records
 // the game, once a visit, through the map feature, which owns the progress
-// API. A failed save shows a retry on the "Bravo!" screen.
+// API. The "Bravo!" screen shows a replay's heart (ADR 0009) and a failed
+// save's retry.
 export function ChapterGame({ gameId, chapterId, ...props }: ChapterGameProps) {
-  const { status, hasFailed, save, retry } = useSaveResult(
+  const saved = useSaveResult(
     { kind: "game", chapterId, gameId },
     props.placeHref,
   );
-  const saveNotice = hasFailed ? (
-    <SaveNotice status={status} onRetry={retry} />
+  const saveNotice = hasResultNotice(saved) ? (
+    <ResultNotice {...saved} />
   ) : null;
   const Game = GAMES[gameId];
-  return <Game {...props} onCompleted={save} saveNotice={saveNotice} />;
+  return <Game {...props} onCompleted={saved.save} saveNotice={saveNotice} />;
 }

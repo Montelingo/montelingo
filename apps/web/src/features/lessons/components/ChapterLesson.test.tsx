@@ -46,14 +46,17 @@ function errorResponse(status: number, code: string): Response {
   });
 }
 
-const SAVED = jsonResponse(200, {
-  id: "na-plazi",
-  lesson: "done",
-  games: [
-    { id: "memory", state: "available" },
-    { id: "match", state: "available" },
-  ],
-});
+function saved({ heartEarned = false } = {}): Response {
+  return jsonResponse(200, {
+    id: "na-plazi",
+    lesson: "done",
+    games: [
+      { id: "memory", state: "available" },
+      { id: "match", state: "available" },
+    ],
+    heart_earned: heartEarned,
+  });
+}
 
 function lessonPosts() {
   return fetchMock.mock.calls.filter(
@@ -85,7 +88,7 @@ describe("ChapterLesson", () => {
     // Here, not after each test: unmounting a test's screen refreshes.
     vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ["Date"] });
-    fetchMock.mockImplementation(() => Promise.resolve(SAVED.clone()));
+    fetchMock.mockImplementation(() => Promise.resolve(saved()));
   });
 
   afterEach(() => {
@@ -106,9 +109,25 @@ describe("ChapterLesson", () => {
     expect(lessonPosts()).toHaveLength(1);
   });
 
+  it("shows +1 srce on Bravo when watching it again earned a heart (ADR 0009)", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(saved({ heartEarned: true })),
+    );
+    await finishLesson();
+
+    expect(await screen.findByText("+1 srce")).toBeVisible();
+  });
+
+  it("says nothing about hearts when the save earned none", async () => {
+    await finishLesson();
+    await waitFor(() => expect(lessonPosts()).toHaveLength(1));
+
+    expect(screen.queryByText(/src/)).toBeNull();
+  });
+
   it("keeps a failed save on the Bravo screen with a calm retry", async () => {
     fetchMock.mockResolvedValueOnce(errorResponse(500, "internal_error"));
-    fetchMock.mockResolvedValueOnce(SAVED.clone());
+    fetchMock.mockResolvedValueOnce(saved());
     const { user } = await finishLesson();
 
     const retry = await screen.findByRole("button", {

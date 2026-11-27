@@ -25,13 +25,14 @@ function errorResponse(status: number, code: string): Response {
   });
 }
 
-const CHAPTER_STATE = {
+const CHAPTER_RESULT = {
   id: "na-plazi",
   lesson: "done",
   games: [
     { id: "memory", state: "available" },
     { id: "match", state: "available" },
   ],
+  heart_earned: false,
 };
 
 function lastRequest(): Request {
@@ -45,7 +46,7 @@ function lastRequest(): Request {
 describe("progress browser API", () => {
   beforeEach(() => {
     fetchMock.mockReset();
-    fetchMock.mockResolvedValue(jsonResponse(200, CHAPTER_STATE));
+    fetchMock.mockResolvedValue(jsonResponse(200, CHAPTER_RESULT));
   });
 
   it("records the lesson with POST /chapters/{id}/lesson", async () => {
@@ -68,6 +69,26 @@ describe("progress browser API", () => {
       );
     },
   );
+
+  it("says whether a replay earned a heart (ADR 0009)", async () => {
+    await expect(completeLesson("na-plazi")).resolves.toEqual({
+      heartEarned: false,
+    });
+
+    // A new response each call: a body can be read only once.
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        jsonResponse(200, { ...CHAPTER_RESULT, heart_earned: true }),
+      ),
+    );
+
+    await expect(completeLesson("na-plazi")).resolves.toEqual({
+      heartEarned: true,
+    });
+    await expect(completeGame("na-plazi", "memory")).resolves.toEqual({
+      heartEarned: true,
+    });
+  });
 
   it("rejects with the API's error, so a 409 can be told apart", async () => {
     fetchMock.mockResolvedValue(errorResponse(409, "game_locked"));

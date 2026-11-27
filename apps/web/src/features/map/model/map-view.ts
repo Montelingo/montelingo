@@ -44,6 +44,8 @@ export type MapData = {
   explorer: Explorer | null;
   /** Every place's stars, or `null` when progress failed: then not known. */
   stars: number | null;
+  /** The player's hearts, or `null` when progress failed (ADR 0009). */
+  hearts: number | null;
 };
 
 /** A region's map screen: the zoomed region, and the whole map. */
@@ -74,6 +76,8 @@ export function toMapData(
   return {
     explorer,
     stars: progress.status === "ready" ? progress.progress.counts.stars : null,
+    hearts:
+      progress.status === "ready" ? progress.progress.counts.hearts : null,
     regions: joined.regions.map(({ id, name, state, locations }) => ({
       id,
       name,

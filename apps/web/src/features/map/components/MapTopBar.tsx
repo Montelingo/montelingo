@@ -15,8 +15,8 @@ type MapTopBarProps = {
   region: MapRegion | null;
   /** Every place's stars, or `null` when progress failed (ADR 0009). */
   stars: number | null;
-  /** Hearts come with #275, so always 0 for now. */
-  hearts: number;
+  /** The player's hearts, or `null` when progress failed (ADR 0009). */
+  hearts: number | null;
 };
 
 // The map's top bar (Figma "Top bar"): Back, the region's progress, the star

@@ -6,7 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signInHref } from "@/features/auth/edge";
 import { useNavigate } from "@/lib/use-navigate";
 
-import { completeGame, completeLesson } from "../api/progress-browser-api";
+import {
+  completeGame,
+  completeLesson,
+  type Recorded,
+} from "../api/progress-browser-api";
 import { isSignedOut } from "../errors";
 import type { GameId } from "../model/progress";
 
@@ -25,13 +29,15 @@ export type SaveResult = {
   status: SaveStatus;
   /** Whether a save has failed this visit: the notice stays after that. */
   hasFailed: boolean;
+  /** Whether the save earned a heart: a replay, under the daily cap (ADR 0009). */
+  heartEarned: boolean;
   /** Saves the result once a visit; later calls do nothing. */
   save: () => void;
   /** Saves again after a failure. Does nothing at any other time. */
   retry: () => void;
 };
 
-function record(result: ChapterResult): Promise<void> {
+function record(result: ChapterResult): Promise<Recorded> {
   return result.kind === "lesson"
     ? completeLesson(result.chapterId)
     : completeGame(result.chapterId, result.gameId);
@@ -65,6 +71,7 @@ export function useSaveResult(
   const navigate = useNavigate();
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [hasFailed, setHasFailed] = useState(false);
+  const [heartEarned, setHeartEarned] = useState(false);
   // Set at once, unlike `status`, so a double call saves only once.
   const isSaving = useRef(false);
   const hasStarted = useRef(false);
@@ -98,9 +105,10 @@ export function useSaveResult(
     setStatus("saving");
     const { result: current } = latest.current;
     record(current).then(
-      () => {
+      (recorded) => {
         isSaving.current = false;
         setStatus("saved");
+        setHeartEarned(recorded.heartEarned);
         if (isMounted.current) {
           isSaved.current = true;
         } else {
@@ -137,5 +145,5 @@ export function useSaveResult(
     }
   }, [run]);
 
-  return { status, hasFailed, save, retry };
+  return { status, hasFailed, heartEarned, save, retry };
 }

@@ -317,6 +317,7 @@ export const NO_COUNTS: ProgressCounts = {
   wordsLearned: 0,
   stickers: 0,
   stars: 0,
+  hearts: 0,
 };
 
 /** Everything open: every region and place `available`, as a preview might. */
