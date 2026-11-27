@@ -11,6 +11,7 @@ from app.modules.auth import get_current_user
 from app.modules.progress.dependencies import get_learning_profile
 from app.modules.progress.router import get_game_progress_service, get_progress_service
 from app.modules.progress.schemas import (
+    ChapterResult,
     ChapterState,
     GameState,
     LocationState,
@@ -46,7 +47,7 @@ class FakeDatabaseProgressService:
                     ],
                 )
             ],
-            counts=ProgressCounts(words_learned=10, stickers=1, stars=1),
+            counts=ProgressCounts(words_learned=10, stickers=1, stars=1, hearts=2),
         )
 
 
@@ -93,7 +94,7 @@ def test_get_progress_uses_current_learning_profile(
                 ],
             }
         ]
-        assert body["counts"] == {"words_learned": 10, "stickers": 1, "stars": 1}
+        assert body["counts"] == {"words_learned": 10, "stickers": 1, "stars": 1, "hearts": 2}
     finally:
         app.dependency_overrides.clear()
 
@@ -162,15 +163,16 @@ class FakeGameProgressService:
 
     async def complete_game(
         self, learning_profile_id: UUID, chapter_slug: str, game_slug: str
-    ) -> ChapterState:
+    ) -> ChapterResult:
         self.received = (learning_profile_id, chapter_slug, game_slug)
-        return ChapterState(
+        return ChapterResult(
             id=chapter_slug,
             lesson="done",
             games=[
                 GameState(id="memory", state="completed"),
                 GameState(id="match", state="available"),
             ],
+            heart_earned=True,
         )
 
 
@@ -195,6 +197,7 @@ def test_game_route_records_for_the_current_learning_profile(
                 {"id": "memory", "state": "completed"},
                 {"id": "match", "state": "available"},
             ],
+            "heart_earned": True,
         }
     finally:
         app.dependency_overrides.clear()

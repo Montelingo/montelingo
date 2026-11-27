@@ -12,7 +12,7 @@ from app.modules.content.schemas import Slug
 from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
-from .schemas import ChapterState, LearnedWords, Profile, ProfileUpdate, ProgressState
+from .schemas import ChapterResult, LearnedWords, Profile, ProfileUpdate, ProgressState
 from .service import (
     ChildProfileService,
     DatabaseProgressService,
@@ -100,7 +100,7 @@ _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
     "/chapters/{chapter_id}/lesson",
     operation_id="progress_complete_lesson",
     tags=["progress"],
-    response_model=ChapterState,
+    response_model=ChapterResult,
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
@@ -108,7 +108,7 @@ async def complete_lesson(
     chapter_id: Slug,
     learning_profile: LearningProfile = Depends(get_learning_profile),
     service: LessonProgressService = Depends(get_lesson_service),
-) -> ChapterState:
+) -> ChapterResult:
     return await service.complete_lesson(learning_profile.id, chapter_id)
 
 
@@ -116,7 +116,7 @@ async def complete_lesson(
     "/chapters/{chapter_id}/games/{game_id}/result",
     operation_id="progress_complete_game",
     tags=["progress"],
-    response_model=ChapterState,
+    response_model=ChapterResult,
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
@@ -127,7 +127,7 @@ async def complete_game(
     game_id: Slug,
     learning_profile: LearningProfile = Depends(get_learning_profile),
     service: GameProgressService = Depends(get_game_progress_service),
-) -> ChapterState:
+) -> ChapterResult:
     return await service.complete_game(learning_profile.id, chapter_id, game_id)
 
 

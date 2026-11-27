@@ -334,6 +334,26 @@ export interface components {
             words: components["schemas"]["Word"][];
         };
         /**
+         * ChapterResult
+         * @description What recording a lesson or a game answers: the chapter, and whether it gave a heart.
+         *
+         *     A heart comes from a replay, up to a daily cap (ADR 0009). Past the cap,
+         *     or the first time, `heart_earned` is false and nothing else changes.
+         */
+        ChapterResult: {
+            /** Games */
+            games: components["schemas"]["GameState"][];
+            /** Heart Earned */
+            heart_earned: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Lesson
+             * @enum {string}
+             */
+            lesson: "todo" | "done";
+        };
+        /**
          * ChapterState
          * @description A chapter's lesson and its games, always listed `memory`, then `match`.
          */
@@ -579,6 +599,8 @@ export interface components {
          *     The server counts them, so the frontend never does (ADR 0005).
          */
         ProgressCounts: {
+            /** Hearts */
+            hearts: number;
             /** Stars */
             stars: number;
             /** Stickers */
@@ -972,7 +994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChapterState"];
+                    "application/json": components["schemas"]["ChapterResult"];
                 };
             };
             /** @description Unauthorized */
@@ -1048,7 +1070,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChapterState"];
+                    "application/json": components["schemas"]["ChapterResult"];
                 };
             };
             /** @description Unauthorized */

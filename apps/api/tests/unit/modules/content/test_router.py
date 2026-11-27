@@ -92,7 +92,7 @@ def test_progress_returns_the_starting_state(
                     LocationState(id="kotor", state="locked", stars=0),
                 ],
                 chapters=[],
-                counts=ProgressCounts(words_learned=0, stickers=0, stars=1),
+                counts=ProgressCounts(words_learned=0, stickers=0, stars=1, hearts=0),
             )
 
     client.app.dependency_overrides[get_progress_service] = lambda: FakeProgressService()
@@ -105,6 +105,6 @@ def test_progress_returns_the_starting_state(
 
         assert {"id": "budva", "state": "available", "stars": 1} in body["locations"]
         assert {"id": "coast", "state": "available"} in body["regions"]
-        assert body["counts"] == {"words_learned": 0, "stickers": 0, "stars": 1}
+        assert body["counts"] == {"words_learned": 0, "stickers": 0, "stars": 1, "hearts": 0}
     finally:
         client.app.dependency_overrides.pop(get_progress_service, None)

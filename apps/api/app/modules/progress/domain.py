@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, tzinfo
+from zoneinfo import ZoneInfo
 
 from app.modules.content import Content
 from app.modules.progress.schemas import (
@@ -340,6 +341,26 @@ def _is_chapter_completed(chapter: ChapterState) -> bool:
     # A recorded game counts as `completed` even without the lesson, so the
     # lesson is checked too.
     return chapter.lesson == "done" and all(game.state == "completed" for game in chapter.games)
+
+
+# At most this many hearts a day per player, across lessons, games and
+# practice (ADR 0009). To confirm with Product.
+HEARTS_PER_DAY = 5
+# The day a heart counts toward is the calendar day where the children are.
+HEART_TIME_ZONE: tzinfo = ZoneInfo("Europe/Podgorica")
+
+
+def heart_day_start(now: datetime) -> datetime:
+    """The start of the day `now` falls in, in `HEART_TIME_ZONE`. `now` must be aware."""
+
+    local = now.astimezone(HEART_TIME_ZONE)
+    return datetime.combine(local.date(), time.min, tzinfo=HEART_TIME_ZONE)
+
+
+def has_room_for_heart(hearts_today: int) -> bool:
+    """Whether a player who earned `hearts_today` today may earn one more."""
+
+    return hearts_today < HEARTS_PER_DAY
 
 
 class InvalidChildProfile(ValueError):
