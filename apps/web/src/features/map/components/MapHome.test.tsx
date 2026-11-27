@@ -39,7 +39,7 @@ const uncovered = toMapData(seedRegionDetails(), {
       { id: "coast", state: "available" },
       { id: "central", state: "locked" },
     ],
-    locations: [{ id: "budva", state: "available" }],
+    locations: [{ id: "budva", state: "available", stars: 0 }],
     chapters: [],
     counts: NO_COUNTS,
   },
@@ -306,6 +306,22 @@ describe("MapHome", () => {
       screen.getByRole("group", { name: "Zvjezdice: 0" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Srca: 0" })).toBeInTheDocument();
+  });
+
+  it("shows the server's total of stars in the top bar", () => {
+    renderHome({ ...newAccount, stars: 7 });
+
+    expect(
+      screen.getByRole("group", { name: "Zvjezdice: 7" }),
+    ).toHaveTextContent("7");
+  });
+
+  it("shows a dash for the stars, never a wrong 0, when progress failed", () => {
+    renderHome(failed);
+
+    expect(
+      screen.getByRole("group", { name: "Zvjezdice: nije učitano" }),
+    ).toHaveTextContent("–");
   });
 
   it("lists the regions in the side panel, the locked ones only as locked", () => {

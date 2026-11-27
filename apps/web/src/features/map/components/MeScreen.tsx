@@ -13,11 +13,6 @@ import { ChromeIcon, type ChromeIconName } from "./ChromeIcon";
 import { MapBottomNav } from "./MapBottomNav";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
 
-type MeScreenProps = MeData & {
-  /** All the child's stars: not in the API yet, so 0 for now. */
-  stars: number;
-};
-
 type Tile = {
   /** Spoken before the count, as the top bar's counters do. */
   label: string;
@@ -58,12 +53,7 @@ const STICKERS: Tile = {
 // gutter on a phone, scrolling on its own above the bottom nav, which is
 // docked or floating as on the map. `data-map-screen` tells LearnerShell to
 // drop its own Back and Home bar, as on the Prizes screen.
-export function MeScreen({
-  explorer,
-  counts,
-  needsRetry,
-  stars,
-}: MeScreenProps) {
+export function MeScreen({ explorer, counts, needsRetry }: MeData) {
   return (
     <div
       data-map-screen
@@ -102,7 +92,7 @@ export function MeScreen({
           ) : null}
           {/* Unknown counts (progress failed) show a dash, never a wrong 0. */}
           <ul className="grid grid-cols-3 gap-3">
-            <CountTile tile={STARS} value={counts === null ? null : stars} />
+            <CountTile tile={STARS} value={counts?.stars ?? null} />
             <CountTile tile={WORDS} value={counts?.wordsLearned ?? null} />
             <CountTile tile={STICKERS} value={counts?.stickers ?? null} />
           </ul>

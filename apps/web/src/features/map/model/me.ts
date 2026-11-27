@@ -8,8 +8,7 @@ import {
 import type { ProgressCounts, ProgressResult } from "./progress";
 
 // The Ja tab (screen 1 of #174): the child's buddy, name and title, and what
-// they have collected. The server counts it all (ADR 0005); stars come from
-// the backend later, so the screen takes them as a prop, as Prizes does.
+// they have collected. The server counts it all, stars too (ADR 0005, 0009).
 
 export type MeData = {
   /**

@@ -405,7 +405,7 @@ describe("assertLocationOpen", () => {
         status: "ready",
         progress: {
           regions: [{ id: "coast", state: regionState }],
-          locations: [{ id: "budva", state: locationState }],
+          locations: [{ id: "budva", state: locationState, stars: 0 }],
           chapters: [],
           counts: NO_COUNTS,
         },
@@ -453,7 +453,7 @@ describe("assertLocationOpen", () => {
         status: "ready",
         progress: {
           regions: [],
-          locations: [{ id: "budva", state: "available" }],
+          locations: [{ id: "budva", state: "available", stars: 0 }],
           chapters: [],
           counts: NO_COUNTS,
         },

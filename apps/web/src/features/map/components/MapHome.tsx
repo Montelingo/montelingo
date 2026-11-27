@@ -11,13 +11,20 @@ type MapHomeProps = MapData & {
 
 // The learner's home, /play: the whole country, every place on it. Back leads
 // out of the learner area, to where adults find their account.
-export function MapHome({ regions, places, explorer, notice }: MapHomeProps) {
+export function MapHome({
+  regions,
+  places,
+  explorer,
+  stars,
+  notice,
+}: MapHomeProps) {
   return (
     <MapScreen
       title="Mapa"
       regions={regions}
       places={places}
       explorer={explorer}
+      stars={stars}
       focusRegionId={null}
       backHref="/"
       notice={notice}

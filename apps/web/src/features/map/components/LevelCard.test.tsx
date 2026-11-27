@@ -58,12 +58,23 @@ describe("LevelCard", () => {
     expect(card).toHaveTextContent("Obala · mjesto 1");
   });
 
-  it("shows the place's stars, none earned yet", () => {
+  it("shows a new place's three stars, none filled", () => {
     renderAt("/play/coast?place=budva");
 
-    expect(
-      screen.getByRole("img", { name: "0 od 3 zvjezdice" }),
-    ).toBeInTheDocument();
+    const stars = screen.getByRole("img", { name: "Zvjezdice: 0 od 3" });
+    expect(stars.querySelectorAll('[data-filled="true"]')).toHaveLength(0);
+    expect(stars.querySelectorAll('[data-filled="false"]')).toHaveLength(3);
+  });
+
+  it("fills as many stars as the place has", () => {
+    const places = map.places.map((place) =>
+      place.id === "budva" ? { ...place, stars: 2 } : place,
+    );
+    window.history.replaceState(null, "", "/play/coast?place=budva");
+    render(<LevelCard regions={map.regions} places={places} />);
+
+    const stars = screen.getByRole("img", { name: "Zvjezdice: 2 od 3" });
+    expect(stars.querySelectorAll('[data-filled="true"]')).toHaveLength(2);
   });
 
   it("leads Kreni! into the place", () => {

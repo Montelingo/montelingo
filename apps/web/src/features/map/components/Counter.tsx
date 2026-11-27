@@ -3,7 +3,8 @@ import { ChromeIcon } from "./ChromeIcon";
 type CounterProps = {
   icon: "star" | "heart";
   label: string;
-  value: number;
+  /** `null` when it is not known (progress failed): a dash, never a wrong 0. */
+  value: number | null;
 };
 
 // A white pill with an icon and a number (Figma "Counter"): the top bar's
@@ -12,7 +13,7 @@ export function Counter({ icon, label, value }: CounterProps) {
   return (
     <div
       role="group"
-      aria-label={`${label}: ${value}`}
+      aria-label={`${label}: ${value ?? "nije učitano"}`}
       className="flex items-center gap-1.5 rounded-badge border-3 border-kid-ink bg-white py-1.5 pl-2 pr-3.5 shadow-raised-4"
     >
       <ChromeIcon name={icon} size={26} />
@@ -20,7 +21,7 @@ export function Counter({ icon, label, value }: CounterProps) {
         aria-hidden="true"
         className="text-2xl font-semibold leading-tight text-kid-ink"
       >
-        {value}
+        {value ?? "–"}
       </span>
     </div>
   );

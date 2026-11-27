@@ -93,7 +93,7 @@ describe("fetchProgress", () => {
       jsonResponse(200, {
         regions: [{ id: "coast", state: "available" }],
         locations: [
-          { id: "budva", state: "available", stars: 0 },
+          { id: "budva", state: "available", stars: 1 },
           { id: "kotor", state: "locked", stars: 0 },
         ],
         chapters: [
@@ -106,7 +106,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
-        counts: { words_learned: 10, stickers: 0, stars: 0 },
+        counts: { words_learned: 10, stickers: 0, stars: 1 },
       }),
     );
 
@@ -115,8 +115,8 @@ describe("fetchProgress", () => {
       progress: {
         regions: [{ id: "coast", state: "available" }],
         locations: [
-          { id: "budva", state: "available" },
-          { id: "kotor", state: "locked" },
+          { id: "budva", state: "available", stars: 1 },
+          { id: "kotor", state: "locked", stars: 0 },
         ],
         chapters: [
           {
@@ -128,7 +128,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
-        counts: { wordsLearned: 10, stickers: 0 },
+        counts: { wordsLearned: 10, stickers: 0, stars: 1 },
       },
     });
   });

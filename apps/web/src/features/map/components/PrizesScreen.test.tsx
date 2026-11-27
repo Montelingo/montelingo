@@ -11,7 +11,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
 }));
 
-// The coast started (Budva done), the centre and the north locked.
+// The coast started (Budva done, Kotor with one star), the centre and the
+// north locked.
 const BUDVA_DONE: ProgressResult = {
   status: "ready",
   progress: {
@@ -21,27 +22,22 @@ const BUDVA_DONE: ProgressResult = {
       { id: "north", state: "locked" },
     ],
     locations: [
-      { id: "budva", state: "completed" },
-      { id: "kotor", state: "available" },
-      { id: "ulcinj", state: "locked" },
-      { id: "herceg-novi", state: "locked" },
-      { id: "tivat", state: "locked" },
-      { id: "bar", state: "locked" },
+      { id: "budva", state: "completed", stars: 3 },
+      { id: "kotor", state: "in-progress", stars: 1 },
+      { id: "ulcinj", state: "locked", stars: 0 },
+      { id: "herceg-novi", state: "locked", stars: 0 },
+      { id: "tivat", state: "locked", stars: 0 },
+      { id: "bar", state: "locked", stars: 0 },
     ],
     chapters: [],
-    counts: NO_COUNTS,
+    counts: { ...NO_COUNTS, stars: 4 },
   },
 };
 
-function renderPrizes(
-  progress: ProgressResult = BUDVA_DONE,
-  stars: { stars?: number; regionStars?: Record<string, number> } = {},
-) {
+function renderPrizes(progress: ProgressResult = BUDVA_DONE) {
   return render(
     <PrizesScreen
       {...toPrizesData(seedRegions(), seedRegionDetails(), progress)}
-      stars={stars.stars ?? 0}
-      regionStars={stars.regionStars ?? {}}
     />,
   );
 }
@@ -52,34 +48,39 @@ function region(name: string) {
 
 describe("PrizesScreen", () => {
   it("is titled, with the star counter", () => {
-    renderPrizes(BUDVA_DONE, { stars: 6 });
+    renderPrizes();
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Moje nagrade" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("group", { name: "Zvjezdice: 6" }),
+      screen.getByRole("group", { name: "Zvjezdice: 4" }),
     ).toBeInTheDocument();
   });
 
   it("shows an open region's stars out of three per place", () => {
-    renderPrizes(BUDVA_DONE, { regionStars: { coast: 6 } });
-
-    expect(
-      within(region("Obala")).getByRole("group", {
-        name: "Zvjezdice: 6 od 18",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("counts a region's stars as 0 until the server sends them", () => {
     renderPrizes();
 
     expect(
       within(region("Obala")).getByRole("group", {
-        name: "Zvjezdice: 0 od 18",
+        name: "Zvjezdice: 4 od 18",
       }),
-    ).toBeInTheDocument();
+    ).toHaveTextContent("4 / 18");
+  });
+
+  it("shows a dash for the stars, never a wrong 0, when progress failed", () => {
+    renderPrizes({ status: "error" });
+
+    expect(
+      within(screen.getByRole("banner")).getByRole("group", {
+        name: "Zvjezdice: nije učitano",
+      }),
+    ).toHaveTextContent("–");
+    expect(
+      within(region("Obala")).getByRole("group", {
+        name: "Zvjezdice: nije učitano",
+      }),
+    ).toHaveTextContent("– / 18");
   });
 
   it("shows a sticker per place in content order, named", () => {
