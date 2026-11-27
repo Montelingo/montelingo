@@ -1,6 +1,6 @@
 import { type ApiClient, createApiClient } from "@app/api-client";
 import type * as Navigation from "next/navigation";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   afterEach,
   beforeEach,
@@ -70,11 +70,19 @@ describe("WordsPage", () => {
     await renderPage();
 
     expect(screen.getAllByRole("region")).toHaveLength(2);
-    expect(screen.getByRole("region", { name: "Budva" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("region", { name: "Podgorica" }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("figure")).toHaveLength(40);
+    // The most recent place starts open, the earlier one folded away.
+    const budva = screen.getByRole("region", { name: "Budva" });
+    const podgorica = screen.getByRole("region", { name: "Podgorica" });
+    expect(within(budva).getByRole("button")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(within(podgorica).getByRole("button")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(within(budva).queryAllByRole("figure")).toHaveLength(0);
+    expect(within(podgorica).getAllByRole("figure")).toHaveLength(20);
     expect(
       screen.getByRole("group", { name: "Riječi: 40" }),
     ).toBeInTheDocument();
