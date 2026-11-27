@@ -12,16 +12,24 @@ from app.modules.content.schemas import Slug
 from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
-from .schemas import ChapterState, LearnedWords, Profile, ProfileUpdate, ProgressState
+from .schemas import (
+    ChapterResult,
+    LearnedWords,
+    PracticeResult,
+    Profile,
+    ProfileUpdate,
+    ProgressState,
+)
 from .service import (
     ChildProfileService,
     DatabaseProgressService,
     GameProgressService,
     LessonProgressService,
+    PracticeProgressService,
 )
 
-# The module owns four top-level resources, /progress, /words, /chapters and /profile,
-# so its routes carry their paths and tags.
+# The module owns five top-level resources, /progress, /words, /chapters,
+# /practice and /profile, so its routes carry their paths and tags.
 router = APIRouter()
 
 
@@ -45,6 +53,15 @@ def get_game_progress_service(
     session: AsyncSession = Depends(get_db_session),
 ) -> GameProgressService:
     return GameProgressService(
+        repository=SqlAlchemyProgressRepository(session),
+        transaction_manager=SessionTransactionManager(session),
+    )
+
+
+def get_practice_progress_service(
+    session: AsyncSession = Depends(get_db_session),
+) -> PracticeProgressService:
+    return PracticeProgressService(
         repository=SqlAlchemyProgressRepository(session),
         transaction_manager=SessionTransactionManager(session),
     )
@@ -100,7 +117,7 @@ _RECORD_ERRORS = error_responses(401, 403, 404, 409, 422, 500)
     "/chapters/{chapter_id}/lesson",
     operation_id="progress_complete_lesson",
     tags=["progress"],
-    response_model=ChapterState,
+    response_model=ChapterResult,
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
@@ -108,7 +125,7 @@ async def complete_lesson(
     chapter_id: Slug,
     learning_profile: LearningProfile = Depends(get_learning_profile),
     service: LessonProgressService = Depends(get_lesson_service),
-) -> ChapterState:
+) -> ChapterResult:
     return await service.complete_lesson(learning_profile.id, chapter_id)
 
 
@@ -116,7 +133,7 @@ async def complete_lesson(
     "/chapters/{chapter_id}/games/{game_id}/result",
     operation_id="progress_complete_game",
     tags=["progress"],
-    response_model=ChapterState,
+    response_model=ChapterResult,
     responses=_RECORD_ERRORS,
     dependencies=_RECORD_DEPENDENCIES,
 )
@@ -127,8 +144,26 @@ async def complete_game(
     game_id: Slug,
     learning_profile: LearningProfile = Depends(get_learning_profile),
     service: GameProgressService = Depends(get_game_progress_service),
-) -> ChapterState:
+) -> ChapterResult:
     return await service.complete_game(learning_profile.id, chapter_id, game_id)
+
+
+@router.post(
+    "/practice/{game_id}/result",
+    operation_id="progress_complete_practice",
+    tags=["progress"],
+    response_model=PracticeResult,
+    responses=_RECORD_ERRORS,
+    dependencies=_RECORD_DEPENDENCIES,
+)
+async def complete_practice(
+    # A slug, not the game literal, so an unknown game is a 404, as for chapters.
+    game_id: Slug,
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+    service: PracticeProgressService = Depends(get_practice_progress_service),
+) -> PracticeResult:
+    """A practice game from the Riječi tab, played to the end (ADR 0009)."""
+    return await service.complete_practice(learning_profile.id, game_id)
 
 
 @router.get(

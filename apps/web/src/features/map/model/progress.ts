@@ -4,6 +4,12 @@ import type { MapElementState, ServerMapState } from "./map-state";
 
 type ProgressEntry = { readonly id: string; readonly state: ServerMapState };
 
+/** A place's state and its stars, 0 to `STARS_PER_PLACE` (ADR 0009). */
+type LocationEntry = ProgressEntry & { readonly stars: number };
+
+/** The most stars a place gives: one for its lessons, one for each game. */
+export const STARS_PER_PLACE = 3;
+
 /** A chapter's games, in the order the server lists them (ADR 0006). */
 export type GameId = Schemas["GameState"]["id"];
 
@@ -34,6 +40,10 @@ export type ProgressCounts = {
   readonly wordsLearned: number;
   /** The places that are `completed`, one sticker each. */
   readonly stickers: number;
+  /** Every place's stars, added up (ADR 0009). */
+  readonly stars: number;
+  /** Every heart the player has earned by practising (ADR 0009). */
+  readonly hearts: number;
 };
 
 /**
@@ -42,7 +52,7 @@ export type ProgressCounts = {
  */
 export type Progress = {
   readonly regions: readonly ProgressEntry[];
-  readonly locations: readonly ProgressEntry[];
+  readonly locations: readonly LocationEntry[];
   readonly chapters: readonly ChapterState[];
   readonly counts: ProgressCounts;
 };
@@ -64,7 +74,11 @@ type Identified = { id: string };
 export function toProgress(data: Schemas["ProgressState"]): Progress {
   return {
     regions: data.regions.map(({ id, state }) => ({ id, state })),
-    locations: data.locations.map(({ id, state }) => ({ id, state })),
+    locations: data.locations.map(({ id, state, stars }) => ({
+      id,
+      state,
+      stars,
+    })),
     chapters: data.chapters.map(({ id, lesson, games }) => ({
       id,
       lesson,
@@ -73,8 +87,26 @@ export function toProgress(data: Schemas["ProgressState"]): Progress {
     counts: {
       wordsLearned: data.counts.words_learned,
       stickers: data.counts.stickers,
+      stars: data.counts.stars,
+      hearts: data.counts.hearts,
     },
   };
+}
+
+/**
+ * Every place's stars as the server counted them, by place id, or `null`
+ * when progress failed: then no place's stars are known. The frontend never
+ * counts a star (ADR 0005).
+ */
+export function starsByPlace(
+  progress: ProgressResult,
+): ReadonlyMap<string, number> | null {
+  if (progress.status !== "ready") {
+    return null;
+  }
+  return new Map(
+    progress.progress.locations.map(({ id, stars }) => [id, stars]),
+  );
 }
 
 /**

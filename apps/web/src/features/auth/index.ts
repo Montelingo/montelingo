@@ -19,6 +19,7 @@ export { ResetPasswordForm } from "./components/ResetPasswordForm";
 export { SignInForm } from "./components/SignInForm";
 export { SignInFormSkeleton } from "./components/SignInFormSkeleton";
 export { SignOutButton } from "./components/SignOutButton";
+export { SignOutConfirm } from "./components/SignOutConfirm";
 export { SignUpForm } from "./components/SignUpForm";
 export { SignUpFormSkeleton } from "./components/SignUpFormSkeleton";
 export {

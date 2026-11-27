@@ -7,10 +7,11 @@ import {
   seedRegionDetails,
   seedRegions,
 } from "../test-fixtures";
-import type { ProgressResult } from "./progress";
-import { hiddenStickersText, STARS_PER_PLACE, toPrizesData } from "./prizes";
+import { hiddenStickersText, toPrizesData } from "./prizes";
+import { type ProgressResult, STARS_PER_PLACE } from "./progress";
 
-// The coast and Budva done, the centre open, the north locked.
+// The coast and Budva done, the centre open, the north locked. Kotor has
+// one star, and Podgorica, in the centre, two.
 const COAST_STARTED: ProgressResult = {
   status: "ready",
   progress: {
@@ -20,12 +21,13 @@ const COAST_STARTED: ProgressResult = {
       { id: "north", state: "locked" },
     ],
     locations: [
-      { id: "budva", state: "completed" },
-      { id: "kotor", state: "in-progress" },
-      { id: "tivat", state: "completed" },
+      { id: "budva", state: "completed", stars: 3 },
+      { id: "kotor", state: "in-progress", stars: 1 },
+      { id: "tivat", state: "completed", stars: 3 },
+      { id: "podgorica", state: "in-progress", stars: 2 },
     ],
     chapters: [],
-    counts: NO_COUNTS,
+    counts: { ...NO_COUNTS, stars: 9 },
   },
 };
 
@@ -67,6 +69,36 @@ describe("toPrizesData", () => {
 
     expect(STARS_PER_PLACE).toBe(3);
     expect(coast).toMatchObject({ kind: "open", maxStars: 18 });
+  });
+
+  it("gives an open region its places' stars, added up", () => {
+    const [coast, central] = toPrizesData(
+      seedRegions(),
+      seedRegionDetails(),
+      COAST_STARTED,
+    ).regions;
+
+    expect(coast).toMatchObject({ kind: "open", stars: 7 });
+    expect(central).toMatchObject({ kind: "open", stars: 2 });
+  });
+
+  it("keeps the server's total of stars", () => {
+    expect(
+      toPrizesData(seedRegions(), seedRegionDetails(), COAST_STARTED).stars,
+    ).toBe(9);
+  });
+
+  it("knows no stars when progress failed", () => {
+    const data = toPrizesData(seedRegions(), seedRegionDetails(), {
+      status: "error",
+    });
+
+    expect(data.stars).toBeNull();
+    expect(
+      data.regions.map((region) =>
+        region.kind === "open" ? region.stars : "locked",
+      ),
+    ).toEqual([null, null, null]);
   });
 
   it("shows a locked region only with its name and how many stickers it hides", () => {
@@ -124,6 +156,7 @@ describe("toPrizesData", () => {
         locations: seedRegionDetail("coast").locations.map(({ id }) => ({
           id,
           state: "available" as const,
+          stars: 0,
         })),
         chapters: [],
         counts: NO_COUNTS,

@@ -12,6 +12,7 @@ import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG } from "../model/content";
 import { isOpenState } from "../model/map-state";
+import { STARS_PER_PLACE } from "../model/progress";
 import {
   LEVEL_CARD_PARAM,
   type MapPlace,
@@ -31,7 +32,7 @@ type LevelCardProps = {
 // or the next stop's play button, as `?place=<id>` on the map's URL, so Back
 // closes it and a link to it works. A bottom sheet on phones and portrait
 // tablets, a centred card from 1024px wide. It shows the place's number and
-// region, a picture of it from the map, its stars (none earned yet), and
+// region, a picture of it from the map, its stars as the server counted them, and
 // "Kreni!", which opens the place. A native modal <dialog>: it keeps focus
 // inside, and Escape or a tap on the backdrop closes it.
 export function LevelCard({ regions, places }: LevelCardProps) {
@@ -111,19 +112,7 @@ export function LevelCard({ regions, places }: LevelCardProps) {
           </button>
         </div>
         <PlacePicture place={place} />
-        <div
-          role="img"
-          aria-label="0 od 3 zvjezdice"
-          className="flex justify-center gap-2"
-        >
-          {[0, 1, 2].map((star) => (
-            <StarIcon
-              key={star}
-              aria-hidden="true"
-              className="size-10 fill-white stroke-kid-ink stroke-2"
-            />
-          ))}
-        </div>
+        <PlaceStars stars={place.stars} />
         <Link
           href={place.href}
           className={cn(
@@ -136,6 +125,35 @@ export function LevelCard({ regions, places }: LevelCardProps) {
         </Link>
       </div>
     </dialog>
+  );
+}
+
+// The place's stars: as many filled as it has, the rest empty. When progress
+// failed they are all empty, and the name says they are not known, never a
+// wrong 0.
+function PlaceStars({ stars }: { stars: number | null }) {
+  return (
+    <div
+      role="img"
+      aria-label={
+        stars === null
+          ? "Zvjezdice: nije učitano"
+          : `Zvjezdice: ${stars} od ${STARS_PER_PLACE}`
+      }
+      className="flex justify-center gap-2"
+    >
+      {Array.from({ length: STARS_PER_PLACE }, (_, star) => (
+        <StarIcon
+          key={star}
+          aria-hidden="true"
+          data-filled={stars !== null && star < stars}
+          className={cn(
+            "size-10 stroke-kid-ink stroke-2",
+            stars !== null && star < stars ? "fill-kid-yellow" : "fill-white",
+          )}
+        />
+      ))}
+    </div>
   );
 }
 

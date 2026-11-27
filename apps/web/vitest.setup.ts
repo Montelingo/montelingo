@@ -31,8 +31,9 @@ if (typeof HTMLCanvasElement !== "undefined") {
 }
 
 // jsdom has no modal dialogs. As in a browser: showModal() opens the dialog
-// and moves the focus to its first button, Escape closes it, and close()
-// fires `close` if it was open. A test file may still replace these.
+// and moves the focus to its first button, Escape fires a cancelable `cancel`
+// and closes it unless that was cancelled, and close() fires `close` if it
+// was open. A test file may still replace these.
 if (
   typeof HTMLDialogElement !== "undefined" &&
   typeof HTMLDialogElement.prototype.showModal !== "function"
@@ -42,7 +43,10 @@ if (
       event.key === "Escape" &&
       event.currentTarget instanceof HTMLDialogElement
     ) {
-      event.currentTarget.close();
+      const dialog = event.currentTarget;
+      if (dialog.dispatchEvent(new Event("cancel", { cancelable: true }))) {
+        dialog.close();
+      }
     }
   };
   HTMLDialogElement.prototype.showModal = function showModal() {

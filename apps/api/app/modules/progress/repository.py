@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Protocol, cast
 from uuid import UUID
 
@@ -20,8 +21,8 @@ from app.modules.content import (
 )
 
 from .domain import ChapterProgressRecord, ChildProfile, LocationProgressRecord
-from .models import ChapterProgress, GameResult, LearningProfile, LocationProgress
-from .schemas import AgeBand, Avatar, GameId
+from .models import ChapterProgress, GameResult, HeartEvent, LearningProfile, LocationProgress
+from .schemas import AgeBand, Avatar, GameId, HeartSource
 
 
 class LearningProfileRepository(Protocol):
@@ -171,6 +172,28 @@ class ProgressRepository(Protocol):
         self,
         learning_profile_id: UUID,
         location_slug: str,
+    ) -> None: ...
+
+    async def count_hearts(self, learning_profile_id: UUID, since: datetime | None = None) -> int:
+        """The player's hearts, or only those earned at or after `since`."""
+        ...
+
+    async def lock_hearts(self, learning_profile_id: UUID) -> None:
+        """Lock the player until the transaction ends, so the day's hearts count one at a time.
+
+        Must be called in a transaction, before `count_hearts` and `add_heart`
+        (ADR 0009), as adding a player locks the account (ADR 0007).
+        """
+        ...
+
+    async def add_heart(
+        self,
+        learning_profile_id: UUID,
+        *,
+        earned_at: datetime,
+        source: HeartSource,
+        chapter_slug: str | None = None,
+        game: GameId | None = None,
     ) -> None: ...
 
 
@@ -347,6 +370,49 @@ class SqlAlchemyProgressRepository:
             )
             .values(completed_at=func.now())
         )
+
+    async def count_hearts(self, learning_profile_id: UUID, since: datetime | None = None) -> int:
+        query = select(func.count()).where(HeartEvent.learning_profile_id == learning_profile_id)
+        if since is not None:
+            query = query.where(HeartEvent.earned_at >= since)
+        return await self.session.scalar(query) or 0
+
+    async def lock_hearts(self, learning_profile_id: UUID) -> None:
+        await self.session.execute(
+            select(LearningProfile.id)
+            .where(LearningProfile.id == learning_profile_id)
+            .with_for_update()
+        )
+
+    async def add_heart(
+        self,
+        learning_profile_id: UUID,
+        *,
+        earned_at: datetime,
+        source: HeartSource,
+        chapter_slug: str | None = None,
+        game: GameId | None = None,
+    ) -> None:
+        """Store one heart. The caller has locked the player and checked the day's cap."""
+
+        chapter_id = None
+        if chapter_slug is not None:
+            chapters = await read_map_chapters(self.session)
+            chapter = next((item for item in chapters if item.slug == chapter_slug), None)
+            if chapter is None:
+                raise LookupError(f"Chapter {chapter_slug!r} is no longer in the content.")
+            chapter_id = chapter.id
+
+        self.session.add(
+            HeartEvent(
+                learning_profile_id=learning_profile_id,
+                earned_at=earned_at,
+                source=source,
+                chapter_id=chapter_id,
+                game=game,
+            )
+        )
+        await self.session.flush()
 
     async def _location_id(self, location_slug: str) -> UUID:
         location_id = await read_location_id(self.session, location_slug)

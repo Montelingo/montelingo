@@ -76,7 +76,10 @@ export function toGrownUpsData(
 }
 
 /** "8 naučenih riječi · 2 naljepnice", with the Montenegrin plurals. */
-export function countsText({ wordsLearned, stickers }: ProgressCounts): string {
+export function countsText({
+  wordsLearned,
+  stickers,
+}: Pick<ProgressCounts, "wordsLearned" | "stickers">): string {
   const words = pluralOf(wordsLearned, [
     "naučena riječ",
     "naučene riječi",

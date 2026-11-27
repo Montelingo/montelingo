@@ -20,7 +20,9 @@ class FakeProgressRepository:
         progress: list[LocationProgressRecord],
         chapters: list[ChapterProgressRecord] | None = None,
         words: dict[str, tuple[WordRead, ...]] | None = None,
+        hearts: int = 0,
     ) -> None:
+        self.hearts = hearts
         self.content = content
         self.progress = progress
         self.chapters = chapters or []
@@ -42,6 +44,9 @@ class FakeProgressRepository:
     ) -> list[ChapterProgressRecord]:
         self.received_chapters_profile_id = learning_profile_id
         return self.chapters
+
+    async def count_hearts(self, learning_profile_id: UUID, since: object = None) -> int:
+        return self.hearts
 
     async def read_words(self, chapter_slugs: Iterable[str]) -> dict[str, tuple[WordRead, ...]]:
         self.received_word_chapters = list(chapter_slugs)
@@ -211,7 +216,12 @@ async def test_new_account_has_nothing_counted() -> None:
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0, "stars": 0}
+    assert result.counts.model_dump() == {
+        "words_learned": 0,
+        "stickers": 0,
+        "stars": 0,
+        "hearts": 0,
+    }
 
 
 async def test_counts_learned_words_and_completed_places() -> None:
@@ -235,11 +245,16 @@ async def test_counts_learned_words_and_completed_places() -> None:
         LocationProgressRecord(location_slug="budva", started_at=NOW, completed_at=NOW),
         LocationProgressRecord(location_slug="kotor", started_at=NOW),
     ]
-    repository = FakeProgressRepository(example_content(), progress, chapters)
+    repository = FakeProgressRepository(example_content(), progress, chapters, hearts=4)
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1, "stars": 3}
+    assert result.counts.model_dump() == {
+        "words_learned": 17,
+        "stickers": 1,
+        "stars": 3,
+        "hearts": 4,
+    }
 
 
 def word(number: int, text: str) -> WordRead:

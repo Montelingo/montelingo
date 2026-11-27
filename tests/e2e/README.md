@@ -52,7 +52,13 @@ page loads with its heading and button.
 path. It signs up a new account through the form, signs out, signs in, lands on
 `/play`, opens Obala, opens Budva, opens the "Na plaži" chapter from its card, and
 checks that it lists its 10 words in recording order, and that Back from the
-lesson returns to the chapter. Each run signs up a fresh account.
+lesson returns to the chapter. Then, on the same account (#180), the Ja tab
+shows the child's name, title and counts; "Za roditelje" opens the grown-ups
+gate, a wrong digit keeps it shut, and holding the named digit opens the
+grown-ups area with the account's email and Obala's row; a reload shows the
+gate again. The gate's helpers ([`grown-ups.ts`](browser/grown-ups.ts)) read
+the target number from its heading, so any random draw works, and hold it with
+Space, which the gate takes as a held finger. Each run signs up a fresh account.
 
 [`chapter-results.spec.ts`](browser/chapter-results.spec.ts) is the phase 2 happy
 path, on one fresh account. Na plaži's memory game is locked, also by URL, until

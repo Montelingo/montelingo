@@ -47,6 +47,31 @@ class ChapterState(ApiSchema):
     games: list[GameState]
 
 
+class ChapterResult(ChapterState):
+    """What recording a lesson or a game answers: the chapter, and whether it gave a heart.
+
+    A heart comes from a replay, up to a daily cap (ADR 0009). Past the cap,
+    or the first time, `heart_earned` is false and nothing else changes.
+    """
+
+    heart_earned: bool
+
+
+class PracticeResult(ApiSchema):
+    """What recording a practice game answers: whether it gave a heart (ADR 0009).
+
+    Practice changes no lock, sticker, star or count of words. Past the daily
+    cap `heart_earned` is false.
+    """
+
+    heart_earned: bool
+
+
+# What a heart was earned for (ADR 0009).
+HeartSource = Literal["lesson", "game", "practice"]
+HEART_SOURCES: tuple[HeartSource, ...] = get_args(HeartSource)
+
+
 class ProgressCounts(ApiSchema):
     """What the child has collected, for the Ja screen and the grown-ups area (#175).
 
@@ -59,6 +84,8 @@ class ProgressCounts(ApiSchema):
     stickers: int
     # The sum of every place's `stars` (ADR 0009).
     stars: int
+    # Every heart the player has earned (ADR 0009).
+    hearts: int
 
 
 class ProgressState(ApiSchema):

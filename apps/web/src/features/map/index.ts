@@ -4,7 +4,7 @@
 // loaders and the location gate, and the error mapping, which need the API
 // client, are server-only and exported from ./server. Saving a finished
 // lesson or game runs in the browser: useSaveResult, with SaveNotice for its
-// retry.
+// retry and HeartNotice for the heart a replay earned.
 export { ChapterScreen } from "./components/ChapterScreen";
 export { LocationScreen } from "./components/LocationScreen";
 export { GrownUpsArea } from "./components/GrownUpsArea";
@@ -19,6 +19,8 @@ export { PrizesScreen } from "./components/PrizesScreen";
 export { PrizesScreenSkeleton } from "./components/PrizesScreenSkeleton";
 export { RegionScreen } from "./components/RegionScreen";
 export { RegionScreenSkeleton } from "./components/RegionScreenSkeleton";
+export { HeartNotice } from "./components/HeartNotice";
+export { hasResultNotice, ResultNotice } from "./components/ResultNotice";
 export { SaveNotice, type SaveNoticeProps } from "./components/SaveNotice";
 export { WordsScreen } from "./components/WordsScreen";
 export { WordsScreenSkeleton } from "./components/WordsScreenSkeleton";

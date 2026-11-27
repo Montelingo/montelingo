@@ -14,11 +14,6 @@ import { ChromeIcon, type ChromeIconName } from "./ChromeIcon";
 import { MapBottomNav } from "./MapBottomNav";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
 
-type MeScreenProps = MeData & {
-  /** All the child's stars: not in the API yet, so 0 for now. */
-  stars: number;
-};
-
 type Tile = {
   /** Spoken before the count, as the top bar's counters do. */
   label: string;
@@ -36,6 +31,14 @@ const STARS: Tile = {
   icon: "star",
   tileClass: "bg-kid-yellow-soft",
   chipClass: "bg-kid-yellow",
+};
+const HEARTS: Tile = {
+  label: "Srca",
+  caption: "srca",
+  icon: "heart",
+  // Until Figma has the tile: the stars tile's shape, in the heart's coral.
+  tileClass: "bg-kid-fog",
+  chipClass: "bg-kid-coral",
 };
 const WORDS: Tile = {
   label: "Riječi",
@@ -60,20 +63,19 @@ const ROW_CLASS = cn(
 );
 
 // The Ja tab, /play/me (Figma 27:61076, screen 1 of #174): the child's buddy
-// in the big gold ring, their name and title, three count tiles, Switch
-// player when the account has another child (#184), and the way to the
-// grown-ups area, through its gate (#177), which opens over this screen. A
-// centred column from tablet width, the full width less a 16px gutter on a
-// phone, scrolling on its own above the bottom nav, which is docked or
-// floating as on the map. `data-map-screen` tells LearnerShell to drop its own
-// Back and Home bar, as on the Prizes screen.
+// in the big gold ring, their name and title, four count tiles, Switch player
+// when the account has another child (#184), and the way to the grown-ups
+// area, through its gate (#177), which opens over this screen. A centred
+// column from tablet width, the full width less a 16px gutter on a phone,
+// scrolling on its own above the bottom nav, which is docked or floating as on
+// the map. `data-map-screen` tells LearnerShell to drop its own Back and Home
+// bar, as on the Prizes screen.
 export function MeScreen({
   explorer,
   counts,
   needsRetry,
   canSwitchPlayer,
-  stars,
-}: MeScreenProps) {
+}: MeData) {
   return (
     <div
       data-map-screen
@@ -111,8 +113,9 @@ export function MeScreen({
             <ProgressErrorNotice message="Your page didn’t load fully. Something went wrong on our side. Let’s try again." />
           ) : null}
           {/* Unknown counts (progress failed) show a dash, never a wrong 0. */}
-          <ul className="grid grid-cols-3 gap-3">
-            <CountTile tile={STARS} value={counts === null ? null : stars} />
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <CountTile tile={STARS} value={counts?.stars ?? null} />
+            <CountTile tile={HEARTS} value={counts?.hearts ?? null} />
             <CountTile tile={WORDS} value={counts?.wordsLearned ?? null} />
             <CountTile tile={STICKERS} value={counts?.stickers ?? null} />
           </ul>

@@ -86,6 +86,65 @@ describe("toMapData", () => {
     expect([coast?.completedCount, coast?.placeCount]).toEqual([1, 6]);
   });
 
+  it("gives each place the server's stars, and the total", () => {
+    const progress = newAccountProgress();
+    if (progress.status !== "ready") throw new Error("expected ready");
+    const { places, stars } = toMapData(seedRegionDetails(), {
+      status: "ready",
+      progress: {
+        ...progress.progress,
+        locations: progress.progress.locations.map((location) =>
+          location.id === "budva" ? { ...location, stars: 2 } : location,
+        ),
+        counts: { ...progress.progress.counts, stars: 2 },
+      },
+    });
+
+    expect(places.find(({ id }) => id === "budva")?.stars).toBe(2);
+    expect(places.find(({ id }) => id === "kotor")?.stars).toBe(0);
+    expect(stars).toBe(2);
+  });
+
+  it("knows no place's stars, nor the totals, when progress failed", () => {
+    const { places, stars, hearts } = toMapData(seedRegionDetails(), {
+      status: "error",
+    });
+
+    expect(places.every((place) => place.stars === null)).toBe(true);
+    expect(stars).toBeNull();
+    expect(hearts).toBeNull();
+  });
+
+  it("keeps the server's hearts (ADR 0009)", () => {
+    const progress = newAccountProgress();
+    if (progress.status !== "ready") throw new Error("expected ready");
+    const { hearts } = toMapData(seedRegionDetails(), {
+      status: "ready",
+      progress: {
+        ...progress.progress,
+        counts: { ...progress.progress.counts, hearts: 4 },
+      },
+    });
+
+    expect(hearts).toBe(4);
+  });
+
+  it("knows no stars for a place progress has no entry for", () => {
+    const progress = newAccountProgress();
+    if (progress.status !== "ready") throw new Error("expected ready");
+    const { places } = toMapData(seedRegionDetails(), {
+      status: "ready",
+      progress: {
+        ...progress.progress,
+        locations: progress.progress.locations.filter(
+          ({ id }) => id !== "kotor",
+        ),
+      },
+    });
+
+    expect(places.find(({ id }) => id === "kotor")?.stars).toBeNull();
+  });
+
   it("puts every place in the error state when progress failed", () => {
     const { regions, places } = toMapData(seedRegionDetails(), {
       status: "error",

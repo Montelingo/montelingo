@@ -13,9 +13,10 @@ type MapTopBarProps = {
   backHref: string;
   /** The region the progress pill shows, if any is open. */
   region: MapRegion | null;
-  /** Stars and hearts: not earned yet in this phase, so always 0 for now. */
-  stars: number;
-  hearts: number;
+  /** Every place's stars, or `null` when progress failed (ADR 0009). */
+  stars: number | null;
+  /** The player's hearts, or `null` when progress failed (ADR 0009). */
+  hearts: number | null;
 };
 
 // The map's top bar (Figma "Top bar"): Back, the region's progress, the star

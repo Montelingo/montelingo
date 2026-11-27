@@ -16,13 +16,6 @@ import { Counter } from "./Counter";
 import { MapBottomNav } from "./MapBottomNav";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
 
-type PrizesScreenProps = PrizesData & {
-  /** All the learner's stars, for the header's counter. */
-  stars: number;
-  /** Stars earned in each region, by region id; a missing one is 0. */
-  regionStars: Readonly<Record<string, number>>;
-};
-
 // The Prizes tab, /play/prizes (Figma "My prizes"): the title and the star
 // counter, then each region in content order, an open one with a sticker per
 // place and a locked one as a muted card. A centred column from tablet width,
@@ -33,8 +26,7 @@ export function PrizesScreen({
   regions,
   needsProgressRetry,
   stars,
-  regionStars,
-}: PrizesScreenProps) {
+}: PrizesData) {
   return (
     <div
       data-map-screen
@@ -54,11 +46,7 @@ export function PrizesScreen({
           {needsProgressRetry ? <ProgressErrorNotice /> : null}
           {regions.map((region) =>
             region.kind === "open" ? (
-              <OpenRegion
-                key={region.id}
-                region={region}
-                stars={regionStars[region.id] ?? 0}
-              />
+              <OpenRegion key={region.id} region={region} />
             ) : (
               <LockedRegion key={region.id} region={region} />
             ),
@@ -72,14 +60,15 @@ export function PrizesScreen({
   );
 }
 
-type OpenRegionProps = {
-  region: Extract<PrizeRegion, { kind: "open" }>;
-  stars: number;
-};
-
 // A white card with the raised ink edge: the name, stars out of the most it
-// can give, and a sticker per place, at most 10 to a line.
-function OpenRegion({ region, stars }: OpenRegionProps) {
+// can give (a dash when progress failed, never a wrong 0), and a sticker per
+// place, at most 10 to a line.
+function OpenRegion({
+  region,
+}: {
+  region: Extract<PrizeRegion, { kind: "open" }>;
+}) {
+  const stars = region.stars ?? "–";
   const titleId = useId();
   return (
     <section
@@ -96,7 +85,11 @@ function OpenRegion({ region, stars }: OpenRegionProps) {
         </h2>
         <div
           role="group"
-          aria-label={`Zvjezdice: ${stars} od ${region.maxStars}`}
+          aria-label={
+            region.stars === null
+              ? "Zvjezdice: nije učitano"
+              : `Zvjezdice: ${region.stars} od ${region.maxStars}`
+          }
           className="flex shrink-0 items-center gap-1 font-semibold text-kid-ink"
         >
           <ChromeIcon name="star" size={20} />

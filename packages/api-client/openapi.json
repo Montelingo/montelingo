@@ -35,6 +35,43 @@
         "title": "Chapter",
         "type": "object"
       },
+      "ChapterResult": {
+        "description": "What recording a lesson or a game answers: the chapter, and whether it gave a heart.\n\nA heart comes from a replay, up to a daily cap (ADR 0009). Past the cap,\nor the first time, `heart_earned` is false and nothing else changes.",
+        "properties": {
+          "games": {
+            "items": {
+              "$ref": "#/components/schemas/GameState"
+            },
+            "title": "Games",
+            "type": "array"
+          },
+          "heart_earned": {
+            "title": "Heart Earned",
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lesson": {
+            "enum": [
+              "todo",
+              "done"
+            ],
+            "title": "Lesson",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lesson",
+          "games",
+          "heart_earned"
+        ],
+        "title": "ChapterResult",
+        "type": "object"
+      },
       "ChapterState": {
         "description": "A chapter's lesson and its games, always listed `memory`, then `match`.",
         "properties": {
@@ -569,6 +606,20 @@
         "title": "Player",
         "type": "object"
       },
+      "PracticeResult": {
+        "description": "What recording a practice game answers: whether it gave a heart (ADR 0009).\n\nPractice changes no lock, sticker, star or count of words. Past the daily\ncap `heart_earned` is false.",
+        "properties": {
+          "heart_earned": {
+            "title": "Heart Earned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "heart_earned"
+        ],
+        "title": "PracticeResult",
+        "type": "object"
+      },
       "Profile": {
         "description": "The current account's child profile. Fields stay null until it is set up.",
         "properties": {
@@ -674,6 +725,10 @@
       "ProgressCounts": {
         "description": "What the child has collected, for the Ja screen and the grown-ups area (#175).\n\nThe server counts them, so the frontend never does (ADR 0005).",
         "properties": {
+          "hearts": {
+            "title": "Hearts",
+            "type": "integer"
+          },
           "stars": {
             "title": "Stars",
             "type": "integer"
@@ -690,7 +745,8 @@
         "required": [
           "words_learned",
           "stickers",
-          "stars"
+          "stars",
+          "hearts"
         ],
         "title": "ProgressCounts",
         "type": "object"
@@ -1270,7 +1326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChapterState"
+                  "$ref": "#/components/schemas/ChapterResult"
                 }
               }
             },
@@ -1363,7 +1419,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChapterState"
+                  "$ref": "#/components/schemas/ChapterResult"
                 }
               }
             },
@@ -1755,6 +1811,100 @@
         "summary": "Select Player",
         "tags": [
           "players"
+        ]
+      }
+    },
+    "/api/v1/practice/{game_id}/result": {
+      "post": {
+        "description": "A practice game from the Rije\u010di tab, played to the end (ADR 0009).",
+        "operationId": "progress_complete_practice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "title": "Game Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Complete Practice",
+        "tags": [
+          "progress"
         ]
       }
     },

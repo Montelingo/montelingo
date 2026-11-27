@@ -226,6 +226,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/practice/{game_id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Practice
+         * @description A practice game from the Riječi tab, played to the end (ADR 0009).
+         */
+        post: operations["progress_complete_practice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -332,6 +352,26 @@ export interface components {
             title: string;
             /** Words */
             words: components["schemas"]["Word"][];
+        };
+        /**
+         * ChapterResult
+         * @description What recording a lesson or a game answers: the chapter, and whether it gave a heart.
+         *
+         *     A heart comes from a replay, up to a daily cap (ADR 0009). Past the cap,
+         *     or the first time, `heart_earned` is false and nothing else changes.
+         */
+        ChapterResult: {
+            /** Games */
+            games: components["schemas"]["GameState"][];
+            /** Heart Earned */
+            heart_earned: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Lesson
+             * @enum {string}
+             */
+            lesson: "todo" | "done";
         };
         /**
          * ChapterState
@@ -541,6 +581,17 @@ export interface components {
             name: string | null;
         };
         /**
+         * PracticeResult
+         * @description What recording a practice game answers: whether it gave a heart (ADR 0009).
+         *
+         *     Practice changes no lock, sticker, star or count of words. Past the daily
+         *     cap `heart_earned` is false.
+         */
+        PracticeResult: {
+            /** Heart Earned */
+            heart_earned: boolean;
+        };
+        /**
          * Profile
          * @description The current account's child profile. Fields stay null until it is set up.
          */
@@ -579,6 +630,8 @@ export interface components {
          *     The server counts them, so the frontend never does (ADR 0005).
          */
         ProgressCounts: {
+            /** Hearts */
+            hearts: number;
             /** Stars */
             stars: number;
             /** Stickers */
@@ -972,7 +1025,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChapterState"];
+                    "application/json": components["schemas"]["ChapterResult"];
                 };
             };
             /** @description Unauthorized */
@@ -1048,7 +1101,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChapterState"];
+                    "application/json": components["schemas"]["ChapterResult"];
                 };
             };
             /** @description Unauthorized */
@@ -1357,6 +1410,82 @@ export interface operations {
             };
             /** @description Resource not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    progress_complete_practice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeResult"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

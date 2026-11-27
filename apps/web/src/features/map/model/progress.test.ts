@@ -5,6 +5,7 @@ import type { MapElementState, ServerMapState } from "./map-state";
 import {
   joinProgress,
   pickNextPlace,
+  starsByPlace,
   type Progress,
   type ProgressResult,
   toProgress,
@@ -41,7 +42,7 @@ describe("joinProgress", () => {
         { regions: [coast], locations: [budva] },
         ready({
           regions: [{ id: "coast", state }],
-          locations: [{ id: "budva", state }],
+          locations: [{ id: "budva", state, stars: 0 }],
         }),
       );
 
@@ -55,7 +56,7 @@ describe("joinProgress", () => {
       { regions, locations },
       ready({
         regions: [{ id: "coast", state: "available" }],
-        locations: [{ id: "budva", state: "available" }],
+        locations: [{ id: "budva", state: "available", stars: 0 }],
       }),
     );
 
@@ -79,8 +80,8 @@ describe("joinProgress", () => {
           { id: "atlantis", state: "completed" },
         ],
         locations: [
-          { id: "budva", state: "locked" },
-          { id: "atlantis-town", state: "available" },
+          { id: "budva", state: "locked", stars: 0 },
+          { id: "atlantis-town", state: "available", stars: 0 },
         ],
       }),
     );
@@ -98,9 +99,9 @@ describe("joinProgress", () => {
       { regions: [], locations },
       ready({
         locations: [
-          { id: "durmitor", state: "locked" },
-          { id: "kotor", state: "locked" },
-          { id: "budva", state: "available" },
+          { id: "durmitor", state: "locked", stars: 0 },
+          { id: "kotor", state: "locked", stars: 0 },
+          { id: "budva", state: "available", stars: 0 },
         ],
       }),
     );
@@ -150,7 +151,7 @@ describe("joinProgress", () => {
     expect(
       joinProgress(
         { regions: [], locations: [] },
-        ready({ locations: [{ id: "budva", state: "available" }] }),
+        ready({ locations: [{ id: "budva", state: "available", stars: 0 }] }),
       ),
     ).toEqual({ regions: [], locations: [] });
   });
@@ -201,20 +202,43 @@ describe("pickNextPlace", () => {
   });
 });
 
+describe("starsByPlace", () => {
+  it("gives each place the server's stars, by id", () => {
+    const stars = starsByPlace({
+      status: "ready",
+      progress: {
+        regions: [],
+        locations: [
+          { id: "budva", state: "completed", stars: 3 },
+          { id: "kotor", state: "in-progress", stars: 1 },
+        ],
+        chapters: [],
+        counts: { ...NO_COUNTS, stars: 4 },
+      },
+    });
+
+    expect(stars && Object.fromEntries(stars)).toEqual({ budva: 3, kotor: 1 });
+  });
+
+  it("knows no stars when progress failed", () => {
+    expect(starsByPlace({ status: "error" })).toBeNull();
+  });
+});
+
 describe("toProgress", () => {
-  it("keeps only the id and state of each entry", () => {
+  it("keeps each entry's id and state, and each place's stars", () => {
     expect(
       toProgress({
         regions: [{ id: "coast", state: "available" }],
         locations: [{ id: "budva", state: "in-progress", stars: 1 }],
         chapters: [],
-        counts: { words_learned: 0, stickers: 0, stars: 1 },
+        counts: { words_learned: 0, stickers: 0, stars: 1, hearts: 0 },
       }),
     ).toEqual({
       regions: [{ id: "coast", state: "available" }],
-      locations: [{ id: "budva", state: "in-progress" }],
+      locations: [{ id: "budva", state: "in-progress", stars: 1 }],
       chapters: [],
-      counts: { wordsLearned: 0, stickers: 0 },
+      counts: { wordsLearned: 0, stickers: 0, stars: 1, hearts: 0 },
     });
   });
 
@@ -224,9 +248,9 @@ describe("toProgress", () => {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 40, stickers: 1, stars: 3 },
+        counts: { words_learned: 40, stickers: 1, stars: 3, hearts: 2 },
       }).counts,
-    ).toEqual({ wordsLearned: 40, stickers: 1 });
+    ).toEqual({ wordsLearned: 40, stickers: 1, stars: 3, hearts: 2 });
   });
 
   it("keeps each chapter's lesson and games, in the server's order", () => {
@@ -244,7 +268,7 @@ describe("toProgress", () => {
         regions: [],
         locations: [],
         chapters: [chapter],
-        counts: { words_learned: 10, stickers: 0, stars: 0 },
+        counts: { words_learned: 10, stickers: 0, stars: 0, hearts: 0 },
       }).chapters,
     ).toEqual([chapter]);
   });

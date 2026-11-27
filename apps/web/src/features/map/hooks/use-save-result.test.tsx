@@ -6,9 +6,12 @@ import { endNavigation } from "@/lib/navigation-progress";
 
 import { type ChapterResult, useSaveResult } from "./use-save-result";
 
+type Recorded = { heartEarned: boolean };
+
 const api = vi.hoisted(() => ({
-  completeLesson: vi.fn<(chapterId: string) => Promise<void>>(),
-  completeGame: vi.fn<(chapterId: string, gameId: string) => Promise<void>>(),
+  completeLesson: vi.fn<(chapterId: string) => Promise<Recorded>>(),
+  completeGame:
+    vi.fn<(chapterId: string, gameId: string) => Promise<Recorded>>(),
 }));
 vi.mock("../api/progress-browser-api", () => api);
 
@@ -49,8 +52,8 @@ describe("useSaveResult", () => {
   beforeEach(() => {
     // Here, not after each test: unmounting a test's hook after it refreshes.
     vi.clearAllMocks();
-    api.completeLesson.mockResolvedValue(undefined);
-    api.completeGame.mockResolvedValue(undefined);
+    api.completeLesson.mockResolvedValue({ heartEarned: false });
+    api.completeGame.mockResolvedValue({ heartEarned: false });
   });
 
   afterEach(() => {
@@ -70,6 +73,25 @@ describe("useSaveResult", () => {
     expect(api.completeLesson).toHaveBeenCalledTimes(1);
     expect(api.completeLesson).toHaveBeenCalledWith("na-plazi");
     expect(api.completeGame).not.toHaveBeenCalled();
+  });
+
+  it("earns no heart until a save says so (ADR 0009)", async () => {
+    const { result } = renderSave(MATCH);
+    expect(result.current.heartEarned).toBe(false);
+
+    await run(() => result.current.save());
+
+    expect(result.current.status).toBe("saved");
+    expect(result.current.heartEarned).toBe(false);
+  });
+
+  it("keeps the heart a replay earned", async () => {
+    api.completeGame.mockResolvedValue({ heartEarned: true });
+    const { result } = renderSave(MATCH);
+
+    await run(() => result.current.save());
+
+    expect(result.current.heartEarned).toBe(true);
   });
 
   it("records the game with its chapter and game ids", async () => {
@@ -101,7 +123,7 @@ describe("useSaveResult", () => {
     let finish = () => {};
     api.completeLesson.mockReturnValue(
       new Promise((resolve) => {
-        finish = resolve;
+        finish = () => resolve({ heartEarned: false });
       }),
     );
     const { result, unmount } = renderSave();
@@ -178,7 +200,7 @@ describe("useSaveResult", () => {
     let finish = () => {};
     api.completeLesson.mockReturnValueOnce(
       new Promise((resolve) => {
-        finish = resolve;
+        finish = () => resolve({ heartEarned: false });
       }),
     );
     await run(() => {
