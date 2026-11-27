@@ -128,7 +128,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
-        counts: { wordsLearned: 10, stickers: 0, stars: 1 },
+        counts: { wordsLearned: 10, stickers: 0, stars: 1, hearts: 0 },
       },
     });
   });

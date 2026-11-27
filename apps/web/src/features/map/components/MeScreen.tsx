@@ -31,6 +31,14 @@ const STARS: Tile = {
   tileClass: "bg-kid-yellow-soft",
   chipClass: "bg-kid-yellow",
 };
+const HEARTS: Tile = {
+  label: "Srca",
+  caption: "srca",
+  icon: "heart",
+  // Until Figma has the tile: the stars tile's shape, in the heart's coral.
+  tileClass: "bg-kid-fog",
+  chipClass: "bg-kid-coral",
+};
 const WORDS: Tile = {
   label: "Riječi",
   caption: "riječi",
@@ -47,7 +55,7 @@ const STICKERS: Tile = {
 };
 
 // The Ja tab, /play/me (Figma 27:61076, screen 1 of #174): the child's buddy
-// in the big gold ring, their name and title, three count tiles, and the way
+// in the big gold ring, their name and title, four count tiles, and the way
 // to the grown-ups area, through its gate (#177), which opens over this
 // screen. A centred column from tablet width, the full width less a 16px
 // gutter on a phone, scrolling on its own above the bottom nav, which is
@@ -91,8 +99,9 @@ export function MeScreen({ explorer, counts, needsRetry }: MeData) {
             <ProgressErrorNotice message="Your page didn’t load fully. Something went wrong on our side. Let’s try again." />
           ) : null}
           {/* Unknown counts (progress failed) show a dash, never a wrong 0. */}
-          <ul className="grid grid-cols-3 gap-3">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <CountTile tile={STARS} value={counts?.stars ?? null} />
+            <CountTile tile={HEARTS} value={counts?.hearts ?? null} />
             <CountTile tile={WORDS} value={counts?.wordsLearned ?? null} />
             <CountTile tile={STICKERS} value={counts?.stickers ?? null} />
           </ul>

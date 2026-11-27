@@ -26,7 +26,7 @@ function progressWith(wordsLearned: number, stickers: number): ProgressResult {
       regions: [],
       locations: [],
       chapters: [],
-      counts: { wordsLearned, stickers, stars: 0 },
+      counts: { wordsLearned, stickers, stars: 0, hearts: 0 },
     },
   };
 }
@@ -39,7 +39,7 @@ describe("toMeData", () => {
         avatar: "owl",
         title: "Istraživač · 5–6 godina",
       },
-      counts: { wordsLearned: 40, stickers: 1, stars: 0 },
+      counts: { wordsLearned: 40, stickers: 1, stars: 0, hearts: 0 },
       needsRetry: false,
     });
   });
@@ -59,7 +59,12 @@ describe("toMeData", () => {
     const me = toMeData(progressWith(10, 0), null);
 
     expect(me.explorer.name).toBe("Istraživač");
-    expect(me.counts).toEqual({ wordsLearned: 10, stickers: 0, stars: 0 });
+    expect(me.counts).toEqual({
+      wordsLearned: 10,
+      stickers: 0,
+      stars: 0,
+      hearts: 0,
+    });
     expect(me.needsRetry).toBe(true);
   });
 

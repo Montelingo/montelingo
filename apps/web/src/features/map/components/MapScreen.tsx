@@ -43,6 +43,7 @@ export function MapScreen({
   places,
   explorer,
   stars,
+  hearts,
   focusRegionId,
   backHref,
   notice,
@@ -65,7 +66,12 @@ export function MapScreen({
       <h1 id={titleId} className="sr-only">
         {title}
       </h1>
-      <MapTopBar backHref={backHref} region={region} stars={stars} hearts={0} />
+      <MapTopBar
+        backHref={backHref}
+        region={region}
+        stars={stars}
+        hearts={hearts}
+      />
       <MapFrame>{children}</MapFrame>
       <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-safe-r pt-4 lg:col-start-2 lg:block">
         <MapSidePanel

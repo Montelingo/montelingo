@@ -238,7 +238,7 @@ describe("toProgress", () => {
       regions: [{ id: "coast", state: "available" }],
       locations: [{ id: "budva", state: "in-progress", stars: 1 }],
       chapters: [],
-      counts: { wordsLearned: 0, stickers: 0, stars: 1 },
+      counts: { wordsLearned: 0, stickers: 0, stars: 1, hearts: 0 },
     });
   });
 
@@ -248,9 +248,9 @@ describe("toProgress", () => {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 40, stickers: 1, stars: 3, hearts: 0 },
+        counts: { words_learned: 40, stickers: 1, stars: 3, hearts: 2 },
       }).counts,
-    ).toEqual({ wordsLearned: 40, stickers: 1, stars: 3 });
+    ).toEqual({ wordsLearned: 40, stickers: 1, stars: 3, hearts: 2 });
   });
 
   it("keeps each chapter's lesson and games, in the server's order", () => {

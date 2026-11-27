@@ -42,6 +42,8 @@ export type ProgressCounts = {
   readonly stickers: number;
   /** Every place's stars, added up (ADR 0009). */
   readonly stars: number;
+  /** Every heart the player has earned by practising (ADR 0009). */
+  readonly hearts: number;
 };
 
 /**
@@ -86,6 +88,7 @@ export function toProgress(data: Schemas["ProgressState"]): Progress {
       wordsLearned: data.counts.words_learned,
       stickers: data.counts.stickers,
       stars: data.counts.stars,
+      hearts: data.counts.hearts,
     },
   };
 }

@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 
 const MIA: MeData = {
   explorer: { name: "Mia", avatar: "owl", title: "Istraživač · 5–6 godina" },
-  counts: { wordsLearned: 40, stickers: 3, stars: 7 },
+  counts: { wordsLearned: 40, stickers: 3, stars: 7, hearts: 2 },
   needsRetry: false,
 };
 
@@ -63,13 +63,16 @@ describe("MeScreen", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the stars, words and stickers, each in its tile", () => {
+  it("shows the stars, hearts, words and stickers, each in its tile", () => {
     renderMe();
 
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
     expect(
       screen.getByRole("group", { name: "Zvjezdice: 7" }),
     ).toHaveTextContent("7zvjezdice");
+    expect(screen.getByRole("group", { name: "Srca: 2" })).toHaveTextContent(
+      "2srca",
+    );
     expect(screen.getByRole("group", { name: "Riječi: 40" })).toHaveTextContent(
       "40riječi",
     );
@@ -79,9 +82,16 @@ describe("MeScreen", () => {
   });
 
   it("shows a new child's counts as 0", () => {
-    renderMe({ counts: { wordsLearned: 0, stickers: 0, stars: 0 } });
+    renderMe({
+      counts: { wordsLearned: 0, stickers: 0, stars: 0, hearts: 0 },
+    });
 
-    for (const name of ["Zvjezdice: 0", "Riječi: 0", "Naljepnice: 0"]) {
+    for (const name of [
+      "Zvjezdice: 0",
+      "Srca: 0",
+      "Riječi: 0",
+      "Naljepnice: 0",
+    ]) {
       expect(screen.getByRole("group", { name })).toBeInTheDocument();
     }
   });
@@ -114,6 +124,7 @@ describe("MeScreen", () => {
     ).toBeInTheDocument();
     for (const name of [
       "Zvjezdice: nije učitano",
+      "Srca: nije učitano",
       "Riječi: nije učitano",
       "Naljepnice: nije učitano",
     ]) {

@@ -105,13 +105,28 @@ describe("toMapData", () => {
     expect(stars).toBe(2);
   });
 
-  it("knows no place's stars, nor the total, when progress failed", () => {
-    const { places, stars } = toMapData(seedRegionDetails(), {
+  it("knows no place's stars, nor the totals, when progress failed", () => {
+    const { places, stars, hearts } = toMapData(seedRegionDetails(), {
       status: "error",
     });
 
     expect(places.every((place) => place.stars === null)).toBe(true);
     expect(stars).toBeNull();
+    expect(hearts).toBeNull();
+  });
+
+  it("keeps the server's hearts (ADR 0009)", () => {
+    const progress = newAccountProgress();
+    if (progress.status !== "ready") throw new Error("expected ready");
+    const { hearts } = toMapData(seedRegionDetails(), {
+      status: "ready",
+      progress: {
+        ...progress.progress,
+        counts: { ...progress.progress.counts, hearts: 4 },
+      },
+    });
+
+    expect(hearts).toBe(4);
   });
 
   it("knows no stars for a place progress has no entry for", () => {

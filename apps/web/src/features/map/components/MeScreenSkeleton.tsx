@@ -1,7 +1,7 @@
 import { SkeletonScreen } from "@/components/ui/SkeletonScreen";
 
 // Stands in for MeScreen while /play/me loads: the cream page, with blocks
-// where the buddy's ring, the name, the title, the three tiles, the grown-ups
+// where the buddy's ring, the name, the title, the four tiles, the grown-ups
 // row and the bottom nav will be. `data-map-screen` drops LearnerShell's Back
 // and Home bar here too, as on the screen itself.
 export function MeScreenSkeleton() {
@@ -18,7 +18,8 @@ export function MeScreenSkeleton() {
               <div className="h-10 w-40 rounded-kid-sm bg-kid-line" />
               <div className="h-6 w-52 rounded-kid-sm bg-kid-line/60" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="h-36 rounded-kid-xl bg-white" />
               <div className="h-36 rounded-kid-xl bg-white" />
               <div className="h-36 rounded-kid-xl bg-white" />
               <div className="h-36 rounded-kid-xl bg-white" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { SaveNotice, useSaveResult } from "@/features/map";
+import { hasResultNotice, ResultNotice, useSaveResult } from "@/features/map";
 
 import { LessonCards, type LessonCardsProps } from "./LessonCards";
 
@@ -14,19 +14,15 @@ export type ChapterLessonProps = Omit<
 
 // A chapter's lesson that saves itself (#136, ADR 0006): reaching the last
 // card records the lesson as seen, through the map feature, which owns the
-// progress API. A failed save shows a retry on the "Bravo!" screen.
+// progress API. The "Bravo!" screen shows a heart when watching it again
+// earned one (ADR 0009), and a failed save's retry.
 export function ChapterLesson({ chapterId, ...props }: ChapterLessonProps) {
-  const { status, hasFailed, save, retry } = useSaveResult(
-    { kind: "lesson", chapterId },
-    props.placeHref,
-  );
+  const saved = useSaveResult({ kind: "lesson", chapterId }, props.placeHref);
   return (
     <LessonCards
       {...props}
-      onFinished={save}
-      saveNotice={
-        hasFailed ? <SaveNotice status={status} onRetry={retry} /> : null
-      }
+      onFinished={saved.save}
+      saveNotice={hasResultNotice(saved) ? <ResultNotice {...saved} /> : null}
     />
   );
 }

@@ -28,7 +28,7 @@ const COAST_STARTED: ProgressResult = {
       { id: "tivat", state: "completed", stars: 0 },
     ],
     chapters: [],
-    counts: { wordsLearned: 8, stickers: 2, stars: 0 },
+    counts: { wordsLearned: 8, stickers: 2, stars: 0, hearts: 0 },
   },
 };
 
@@ -47,7 +47,12 @@ describe("toGrownUpsData", () => {
       { id: "north", name: "Sjever i planine", completed: 0, total: 6 },
     ]);
     expect(data.explorer).toEqual({ name: "Mia", avatar: "owl" });
-    expect(data.counts).toEqual({ wordsLearned: 8, stickers: 2, stars: 0 });
+    expect(data.counts).toEqual({
+      wordsLearned: 8,
+      stickers: 2,
+      stars: 0,
+      hearts: 0,
+    });
     expect(data.needsRetry).toBe(false);
   });
 

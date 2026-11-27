@@ -316,12 +316,20 @@ describe("MapHome", () => {
     ).toHaveTextContent("7");
   });
 
-  it("shows a dash for the stars, never a wrong 0, when progress failed", () => {
+  it("shows the server's hearts in the top bar", () => {
+    renderHome({ ...newAccount, hearts: 3 });
+
+    expect(screen.getByRole("group", { name: "Srca: 3" })).toHaveTextContent(
+      "3",
+    );
+  });
+
+  it("shows a dash for the stars and hearts, never a wrong 0, when progress failed", () => {
     renderHome(failed);
 
-    expect(
-      screen.getByRole("group", { name: "Zvjezdice: nije učitano" }),
-    ).toHaveTextContent("–");
+    for (const name of ["Zvjezdice: nije učitano", "Srca: nije učitano"]) {
+      expect(screen.getByRole("group", { name })).toHaveTextContent("–");
+    }
   });
 
   it("lists the regions in the side panel, the locked ones only as locked", () => {

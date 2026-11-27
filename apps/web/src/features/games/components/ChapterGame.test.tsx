@@ -46,7 +46,7 @@ function errorResponse(status: number, code: string): Response {
   });
 }
 
-function saved(): Response {
+function saved({ heartEarned = false } = {}): Response {
   return jsonResponse(200, {
     id: "na-plazi",
     lesson: "done",
@@ -54,6 +54,7 @@ function saved(): Response {
       { id: "memory", state: "available" },
       { id: "match", state: "completed" },
     ],
+    heart_earned: heartEarned,
   });
 }
 
@@ -137,6 +138,25 @@ describe("ChapterGame", () => {
     unmount();
 
     expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows +1 srce on Bravo when the replay earned a heart (ADR 0009)", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(saved({ heartEarned: true })),
+    );
+    await playMatchToBravo();
+    await wait(200);
+
+    // Drawn for the eye, and said once in its status line.
+    expect(screen.getByText("+1 srce", { selector: "p" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("+1 srce");
+  });
+
+  it("says nothing about hearts when the save earned none", async () => {
+    await playMatchToBravo();
+    await wait(200);
+
+    expect(screen.queryByText(/src/)).toBeNull();
   });
 
   it("records the game once, however often it is played again", async () => {

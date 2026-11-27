@@ -16,6 +16,7 @@ export function MapHome({
   places,
   explorer,
   stars,
+  hearts,
   notice,
 }: MapHomeProps) {
   return (
@@ -25,6 +26,7 @@ export function MapHome({
       places={places}
       explorer={explorer}
       stars={stars}
+      hearts={hearts}
       focusRegionId={null}
       backHref="/"
       notice={notice}
