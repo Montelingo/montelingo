@@ -20,6 +20,8 @@ class RegionState(ApiSchema):
 class LocationState(ApiSchema):
     id: Slug
     state: MapState
+    # 0 to 3: one for the place's lessons and one for each game (ADR 0009).
+    stars: int = Field(ge=0, le=3)
 
 
 # A chapter's lesson and games (ADR 0006). The server decides them; the
@@ -55,6 +57,8 @@ class ProgressCounts(ApiSchema):
     words_learned: int
     # One per `completed` place, the same rule as the Prizes screen.
     stickers: int
+    # The sum of every place's `stars` (ADR 0009).
+    stars: int
 
 
 class ProgressState(ApiSchema):

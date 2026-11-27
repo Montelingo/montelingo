@@ -33,8 +33,8 @@ class FakeDatabaseProgressService:
                 RegionState(id="north", state="locked"),
             ],
             locations=[
-                LocationState(id="budva", state="available"),
-                LocationState(id="kotor", state="locked"),
+                LocationState(id="budva", state="available", stars=1),
+                LocationState(id="kotor", state="locked", stars=0),
             ],
             chapters=[
                 ChapterState(
@@ -46,7 +46,7 @@ class FakeDatabaseProgressService:
                     ],
                 )
             ],
-            counts=ProgressCounts(words_learned=10, stickers=1),
+            counts=ProgressCounts(words_learned=10, stickers=1, stars=1),
         )
 
 
@@ -80,8 +80,8 @@ def test_get_progress_uses_current_learning_profile(
             {"id": "north", "state": "locked"},
         ]
         assert body["locations"] == [
-            {"id": "budva", "state": "available"},
-            {"id": "kotor", "state": "locked"},
+            {"id": "budva", "state": "available", "stars": 1},
+            {"id": "kotor", "state": "locked", "stars": 0},
         ]
         assert body["chapters"] == [
             {
@@ -93,7 +93,7 @@ def test_get_progress_uses_current_learning_profile(
                 ],
             }
         ]
-        assert body["counts"] == {"words_learned": 10, "stickers": 1}
+        assert body["counts"] == {"words_learned": 10, "stickers": 1, "stars": 1}
     finally:
         app.dependency_overrides.clear()
 

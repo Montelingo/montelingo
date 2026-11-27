@@ -243,9 +243,22 @@ def test_progress_state_sends_the_counts(app: FastAPI) -> None:
         "$ref": "#/components/schemas/ProgressCounts"
     }
     counts = components["ProgressCounts"]
-    assert set(counts["required"]) == {"words_learned", "stickers"}
+    assert set(counts["required"]) == {"words_learned", "stickers", "stars"}
     assert counts["properties"]["words_learned"]["type"] == "integer"
     assert counts["properties"]["stickers"]["type"] == "integer"
+    assert counts["properties"]["stars"]["type"] == "integer"
+
+
+def test_each_location_sends_its_stars(app: FastAPI) -> None:
+    location = app.openapi()["components"]["schemas"]["LocationState"]
+
+    assert set(location["required"]) == {"id", "state", "stars"}
+    assert location["properties"]["stars"] == {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3,
+        "title": "Stars",
+    }
 
 
 def test_chapter_states_are_the_adr_literals(app: FastAPI) -> None:

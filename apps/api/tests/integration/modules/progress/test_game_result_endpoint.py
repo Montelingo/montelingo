@@ -384,6 +384,32 @@ async def test_the_last_game_of_a_place_completes_it_and_opens_the_next(
     assert response.json()["error"]["code"] == "game_locked"
 
 
+async def test_a_place_fills_its_stars_one_step_at_a_time(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user, _profile, _budva = await seed_budva_lessons(db_session)
+    await sign_in(integration_client, user)
+
+    async def stars() -> tuple[dict[str, int], int]:
+        progress = (await integration_client.get("/api/v1/progress")).json()
+        by_place = {location["id"]: location["stars"] for location in progress["locations"]}
+        return by_place, progress["counts"]["stars"]
+
+    # Both lessons are seen: the first star.
+    assert await stars() == ({"budva": 1, "kotor": 0, "kolasin": 0}, 1)
+
+    # A game counts only once every chapter has it.
+    await record(integration_client, BEACH_MEMORY)
+    assert await stars() == ({"budva": 1, "kotor": 0, "kolasin": 0}, 1)
+    await record(integration_client, OLD_TOWN_MEMORY)
+    assert await stars() == ({"budva": 2, "kotor": 0, "kolasin": 0}, 2)
+
+    await record(integration_client, BEACH_MATCH)
+    await record(integration_client, OLD_TOWN_MATCH)
+    # Budva is completed, and Kotor is open but has nothing done yet.
+    assert await stars() == ({"budva": 3, "kotor": 0, "kolasin": 0}, 3)
+
+
 async def test_replaying_a_completed_place_keeps_its_completion(
     integration_client: AsyncClient, db_session: AsyncSession
 ) -> None:

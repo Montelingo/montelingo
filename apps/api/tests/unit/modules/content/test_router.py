@@ -88,11 +88,11 @@ def test_progress_returns_the_starting_state(
                     RegionState(id="north", state="locked"),
                 ],
                 locations=[
-                    LocationState(id="budva", state="available"),
-                    LocationState(id="kotor", state="locked"),
+                    LocationState(id="budva", state="available", stars=1),
+                    LocationState(id="kotor", state="locked", stars=0),
                 ],
                 chapters=[],
-                counts=ProgressCounts(words_learned=0, stickers=0),
+                counts=ProgressCounts(words_learned=0, stickers=0, stars=1),
             )
 
     client.app.dependency_overrides[get_progress_service] = lambda: FakeProgressService()
@@ -103,8 +103,8 @@ def test_progress_returns_the_starting_state(
         assert response.status_code == 200
         body = response.json()
 
-        assert {"id": "budva", "state": "available"} in body["locations"]
+        assert {"id": "budva", "state": "available", "stars": 1} in body["locations"]
         assert {"id": "coast", "state": "available"} in body["regions"]
-        assert body["counts"] == {"words_learned": 0, "stickers": 0}
+        assert body["counts"] == {"words_learned": 0, "stickers": 0, "stars": 1}
     finally:
         client.app.dependency_overrides.pop(get_progress_service, None)

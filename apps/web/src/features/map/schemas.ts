@@ -69,6 +69,11 @@ const stateEntrySchema = z.object({
   state: z.enum(["locked", "available", "in-progress", "completed"]),
 });
 
+// A place's state and its stars, 0 to 3 (ADR 0009). The server counts them.
+const locationStateSchema = stateEntrySchema.extend({
+  stars: countSchema.max(3),
+}) satisfies z.ZodType<Schemas["LocationState"]>;
+
 const gameStateSchema = z.object({
   id: z.enum(["memory", "match"]),
   state: z.enum(["locked", "available", "completed"]),
@@ -86,11 +91,12 @@ const chapterStateSchema = z.object({
 const progressCountsSchema = z.object({
   words_learned: countSchema,
   stickers: countSchema,
+  stars: countSchema,
 }) satisfies z.ZodType<Schemas["ProgressCounts"]>;
 
 export const progressSchema = z.object({
   regions: z.array(stateEntrySchema),
-  locations: z.array(stateEntrySchema),
+  locations: z.array(locationStateSchema),
   chapters: z.array(chapterStateSchema),
   counts: progressCountsSchema,
 }) satisfies z.ZodType<Schemas["ProgressState"]>;

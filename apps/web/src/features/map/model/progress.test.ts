@@ -206,9 +206,9 @@ describe("toProgress", () => {
     expect(
       toProgress({
         regions: [{ id: "coast", state: "available" }],
-        locations: [{ id: "budva", state: "in-progress" }],
+        locations: [{ id: "budva", state: "in-progress", stars: 1 }],
         chapters: [],
-        counts: { words_learned: 0, stickers: 0 },
+        counts: { words_learned: 0, stickers: 0, stars: 1 },
       }),
     ).toEqual({
       regions: [{ id: "coast", state: "available" }],
@@ -224,7 +224,7 @@ describe("toProgress", () => {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 40, stickers: 1 },
+        counts: { words_learned: 40, stickers: 1, stars: 3 },
       }).counts,
     ).toEqual({ wordsLearned: 40, stickers: 1 });
   });
@@ -244,7 +244,7 @@ describe("toProgress", () => {
         regions: [],
         locations: [],
         chapters: [chapter],
-        counts: { words_learned: 10, stickers: 0 },
+        counts: { words_learned: 10, stickers: 0, stars: 0 },
       }).chapters,
     ).toEqual([chapter]);
   });

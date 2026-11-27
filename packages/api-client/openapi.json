@@ -319,6 +319,12 @@
             "title": "Id",
             "type": "string"
           },
+          "stars": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Stars",
+            "type": "integer"
+          },
           "state": {
             "enum": [
               "locked",
@@ -332,7 +338,8 @@
         },
         "required": [
           "id",
-          "state"
+          "state",
+          "stars"
         ],
         "title": "LocationState",
         "type": "object"
@@ -667,6 +674,10 @@
       "ProgressCounts": {
         "description": "What the child has collected, for the Ja screen and the grown-ups area (#175).\n\nThe server counts them, so the frontend never does (ADR 0005).",
         "properties": {
+          "stars": {
+            "title": "Stars",
+            "type": "integer"
+          },
           "stickers": {
             "title": "Stickers",
             "type": "integer"
@@ -678,7 +689,8 @@
         },
         "required": [
           "words_learned",
-          "stickers"
+          "stickers",
+          "stars"
         ],
         "title": "ProgressCounts",
         "type": "object"

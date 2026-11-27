@@ -6,7 +6,7 @@
 
 ## Context
 
-Montelingo stores children's data under a grown-up's account: each player's name, age band and avatar (`learning_profiles`) and their full learning history (`location_progress`, `chapter_progress`, `game_results`). Today there is no record of consent, no way to delete an account or download its data, and nothing ever removes old data. GDPR requires all of these (Art. 6–8, 12–13, 15, 17, 20 and 5(1)(e)), and Montenegro's personal data protection law follows it closely. Epic #248 proposed answers. This ADR settles them, so the backend tickets (#250–#254) and frontend tickets (#255–#259) build the same thing. The policy's legal text is out of scope (Product, then a lawyer).
+Montelingo stores children's data under a grown-up's account: each player's name, age band and avatar (`learning_profiles`) and their full learning history (`location_progress`, `chapter_progress`, `game_results`, and from ADR 0009 `heart_events`). Today there is no record of consent, no way to delete an account or download its data, and nothing ever removes old data. GDPR requires all of these (Art. 6–8, 12–13, 15, 17, 20 and 5(1)(e)), and Montenegro's personal data protection law follows it closely. Epic #248 proposed answers. This ADR settles them, so the backend tickets (#250–#254) and frontend tickets (#255–#259) build the same thing. The policy's legal text is out of scope (Product, then a lawyer).
 
 Every table that holds a family's data already cascades from `users` (`ON DELETE CASCADE`), directly or through `learning_profiles`. Two facts from the code shape the decisions below:
 
@@ -51,7 +51,8 @@ Every table that holds a family's data already cascades from `users` (`ON DELETE
     { "id", "name", "age_band", "avatar", "created_at",
       "places":       [ { "location", "started_at", "completed_at" } ],
       "chapters":     [ { "chapter", "lesson_completed_at" } ],
-      "game_results": [ { "chapter", "game", "completed_at" } ] }
+      "game_results": [ { "chapter", "game", "completed_at" } ],
+      "hearts":       [ { "earned_at", "source", "chapter", "game" } ] }
   ]
 }
 ```

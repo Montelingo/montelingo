@@ -44,7 +44,7 @@ def chapters(
 
 def test_without_progress_nothing_is_counted() -> None:
     assert calculate_progress_counts(chapters(), NEW_ACCOUNT_STATES) == ProgressCounts(
-        words_learned=0, stickers=0
+        words_learned=0, stickers=0, stars=0
     )
 
 
@@ -54,7 +54,7 @@ def test_a_seen_lesson_counts_every_word_of_its_chapter() -> None:
         {**NEW_ACCOUNT_STATES, "budva": "in-progress"},
     )
 
-    assert counts == ProgressCounts(words_learned=10, stickers=0)
+    assert counts == ProgressCounts(words_learned=10, stickers=0, stars=0)
 
 
 def test_a_played_game_without_the_lesson_learns_no_words() -> None:
@@ -75,7 +75,7 @@ def test_a_completed_place_gives_one_sticker() -> None:
         {"budva": "completed", "kotor": "available", "kolasin": "locked"},
     )
 
-    assert counts == ProgressCounts(words_learned=18, stickers=1)
+    assert counts == ProgressCounts(words_learned=18, stickers=1, stars=3)
 
 
 def test_every_completed_place_gives_a_sticker() -> None:
@@ -84,4 +84,4 @@ def test_every_completed_place_gives_a_sticker() -> None:
         {"budva": "completed", "kotor": "completed", "kolasin": "in-progress"},
     )
 
-    assert counts == ProgressCounts(words_learned=0, stickers=2)
+    assert counts == ProgressCounts(words_learned=0, stickers=2, stars=6)
