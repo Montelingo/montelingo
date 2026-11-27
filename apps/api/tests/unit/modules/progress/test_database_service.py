@@ -211,7 +211,7 @@ async def test_new_account_has_nothing_counted() -> None:
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0}
+    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0, "stars": 0}
 
 
 async def test_counts_learned_words_and_completed_places() -> None:
@@ -239,7 +239,7 @@ async def test_counts_learned_words_and_completed_places() -> None:
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1}
+    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1, "stars": 3}
 
 
 def word(number: int, text: str) -> WordRead:

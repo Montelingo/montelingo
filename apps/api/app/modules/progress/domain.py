@@ -1,4 +1,4 @@
-"""Pure domain rules for map availability, chapter state, progress counts and the child profile."""
+"""Pure domain rules for the map, chapter state, stars, progress counts and the child profile."""
 
 from __future__ import annotations
 
@@ -170,30 +170,78 @@ def calculate_chapter_states(
     )
 
 
+# The most stars a place gives: one for its lessons and one for each game (ADR 0009).
+STARS_PER_PLACE = 1 + len(GAME_IDS)
+
+
+def calculate_location_stars(
+    state: MapState,
+    chapters: Iterable[ChapterProgressRecord],
+) -> int:
+    """A place's stars, 0 to `STARS_PER_PLACE`, without database access or side effects.
+
+    `chapters` are the place's chapters. One star when every chapter's lesson
+    is seen, and one for each game once it is completed in every chapter
+    (ADR 0009). A `completed` place always has every star, even if content
+    gained a chapter after it was completed. A `locked` place, and a place
+    without chapters, has none.
+    """
+
+    if state == "completed":
+        return STARS_PER_PLACE
+    place_chapters = list(chapters)
+    if state == "locked" or not place_chapters:
+        return 0
+
+    stars = int(all(chapter.lesson_completed_at is not None for chapter in place_chapters))
+    for game_id in GAME_IDS:
+        stars += all(game_id in chapter.completed_games for chapter in place_chapters)
+    return stars
+
+
+def calculate_stars(
+    chapters: Iterable[ChapterProgressRecord],
+    location_states: Mapping[str, MapState],
+) -> dict[str, int]:
+    """Every place's stars, keyed and ordered like `location_states`."""
+
+    by_place: dict[str, list[ChapterProgressRecord]] = {}
+    for chapter in chapters:
+        by_place.setdefault(chapter.location_slug, []).append(chapter)
+
+    return {
+        slug: calculate_location_stars(state, by_place.get(slug, ()))
+        for slug, state in location_states.items()
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class ProgressCounts:
-    """How many words the child has learned and how many stickers they have."""
+    """How many words the child has learned, and how many stickers and stars they have."""
 
     words_learned: int
     stickers: int
+    stars: int
 
 
 def calculate_progress_counts(
     chapters: Iterable[ChapterProgressRecord],
     location_states: Mapping[str, MapState],
 ) -> ProgressCounts:
-    """Count learned words and stickers without database access or side effects (#175).
+    """Count learned words, stickers and stars without database access or side effects (#175).
 
     A word counts as learned once its chapter's lesson is seen; words are not
     tracked one by one. A sticker is a `completed` place, the same rule as the
-    Prizes screen.
+    Prizes screen. Stars are every place's `calculate_location_stars`.
     """
 
+    chapters = list(chapters)
     return ProgressCounts(
         words_learned=sum(
             chapter.word_count for chapter in chapters if chapter.lesson_completed_at is not None
         ),
         stickers=sum(1 for state in location_states.values() if state == "completed"),
+        stars=sum(calculate_stars(chapters, location_states).values()),
     )
 
 

@@ -120,7 +120,7 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
 
 type ProgressBody = {
   regions: { id: string; state: string }[];
-  locations: { id: string; state: string }[];
+  locations: { id: string; state: string; stars: number }[];
   chapters: Schemas["ChapterState"][];
   counts: Schemas["ProgressCounts"];
 };
@@ -153,6 +153,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     locations.map(({ id }) => ({
       id,
       state: id === "budva" ? "available" : "locked",
+      stars: 0,
     })),
   ),
   // The server sends the chapters of every place that is not locked.
@@ -160,7 +161,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     apiChapterState("budva-beach", "todo", "locked", "locked"),
     apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
   ],
-  counts: { words_learned: 0, stickers: 0 },
+  counts: { words_learned: 0, stickers: 0, stars: 0 },
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -171,9 +172,9 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     { id: "north", state: "locked" },
   ],
   locations: [
-    { id: "budva", state: "completed" },
-    { id: "kotor", state: "locked" },
-    { id: "podgorica", state: "available" },
+    { id: "budva", state: "completed", stars: 3 },
+    { id: "kotor", state: "locked", stars: 0 },
+    { id: "podgorica", state: "available", stars: 0 },
   ],
   // Budva's chapters done; Podgorica's in every state a chapter can be in.
   chapters: [
@@ -184,8 +185,8 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     apiChapterState("podgorica-kitchen", "todo", "locked", "locked"),
     apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
   ],
-  // Four lessons seen and Budva's sticker.
-  counts: { words_learned: 40, stickers: 1 },
+  // Four lessons seen, and Budva's sticker and stars.
+  counts: { words_learned: 40, stickers: 1, stars: 3 },
 };
 
 /**
@@ -216,7 +217,7 @@ function progressResponse(progress: ProgressAnswer): Response {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 0, stickers: 0 },
+        counts: { words_learned: 0, stickers: 0, stars: 0 },
       });
     case "signed-out":
       return errorResponse(401, "authentication_error");

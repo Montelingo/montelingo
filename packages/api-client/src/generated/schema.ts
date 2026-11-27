@@ -456,6 +456,8 @@ export interface components {
         LocationState: {
             /** Id */
             id: string;
+            /** Stars */
+            stars: number;
             /**
              * State
              * @enum {string}
@@ -577,6 +579,8 @@ export interface components {
          *     The server counts them, so the frontend never does (ADR 0005).
          */
         ProgressCounts: {
+            /** Stars */
+            stars: number;
             /** Stickers */
             stickers: number;
             /** Words Learned */

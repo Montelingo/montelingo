@@ -17,6 +17,7 @@ from .domain import (
     calculate_learned_chapters,
     calculate_map_states,
     calculate_progress_counts,
+    calculate_stars,
     is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
@@ -51,16 +52,19 @@ class DatabaseProgressService:
         states = calculate_map_states(content, progress)
         chapter_states = calculate_chapter_states(chapters, states.locations)
         counts = calculate_progress_counts(chapters, states.locations)
+        stars = calculate_stars(chapters, states.locations)
 
         return ProgressState(
             regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
             locations=[
-                LocationState(id=slug, state=state) for slug, state in states.locations.items()
+                LocationState(id=slug, state=state, stars=stars[slug])
+                for slug, state in states.locations.items()
             ],
             chapters=[_chapter_state(chapter) for chapter in chapter_states],
             counts=ProgressCounts(
                 words_learned=counts.words_learned,
                 stickers=counts.stickers,
+                stars=counts.stars,
             ),
         )
 
