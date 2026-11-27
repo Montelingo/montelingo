@@ -120,7 +120,7 @@ const LOCATIONS: Record<string, Schemas["LocationDetail"]> = {
 
 type ProgressBody = {
   regions: { id: string; state: string }[];
-  locations: { id: string; state: string }[];
+  locations: { id: string; state: string; stars: number }[];
   chapters: Schemas["ChapterState"][];
   counts: Schemas["ProgressCounts"];
 };
@@ -153,6 +153,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     locations.map(({ id }) => ({
       id,
       state: id === "budva" ? "available" : "locked",
+      stars: 0,
     })),
   ),
   // The server sends the chapters of every place that is not locked.
@@ -160,7 +161,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     apiChapterState("budva-beach", "todo", "locked", "locked"),
     apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
   ],
-  counts: { words_learned: 0, stickers: 0 },
+  counts: { words_learned: 0, stickers: 0, stars: 0 },
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -171,9 +172,9 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     { id: "north", state: "locked" },
   ],
   locations: [
-    { id: "budva", state: "completed" },
-    { id: "kotor", state: "locked" },
-    { id: "podgorica", state: "available" },
+    { id: "budva", state: "completed", stars: 3 },
+    { id: "kotor", state: "locked", stars: 0 },
+    { id: "podgorica", state: "available", stars: 0 },
   ],
   // Budva's chapters done; Podgorica's in every state a chapter can be in.
   chapters: [
@@ -184,8 +185,8 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     apiChapterState("podgorica-kitchen", "todo", "locked", "locked"),
     apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
   ],
-  // Four lessons seen and Budva's sticker.
-  counts: { words_learned: 40, stickers: 1 },
+  // Four lessons seen, and Budva's sticker and stars.
+  counts: { words_learned: 40, stickers: 1, stars: 3 },
 };
 
 /**
@@ -216,8 +217,73 @@ function progressResponse(progress: ProgressAnswer): Response {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 0, stickers: 0 },
+        counts: { words_learned: 0, stickers: 0, stars: 0 },
       });
+    case "signed-out":
+      return errorResponse(401, "authentication_error");
+  }
+}
+
+// The words of a seen lesson's chapters, as GET /words lists them by place.
+function apiLearnedPlace(
+  id: string,
+  regionId: string,
+  name: string,
+  chapters: readonly Schemas["Chapter"][],
+): Schemas["LearnedPlace"] {
+  return {
+    id,
+    region_id: regionId,
+    name,
+    words: chapters.flatMap(({ words }) => words),
+  };
+}
+
+// What GET /words answers with each progress: a new account has no words yet
+// and Budva's to learn; with Podgorica open, Budva's two lessons and
+// Podgorica's first two, 40 words, as `counts.words_learned` says.
+function wordsResponse(progress: ProgressAnswer): Response {
+  switch (progress) {
+    case "new-account":
+      return jsonResponse(200, {
+        places: [],
+        next_place: {
+          id: "budva",
+          region_id: "coast",
+          name: "Budva",
+          word_count: 20,
+        },
+      });
+    case "podgorica-open":
+    case "podgorica-open-without-chapters":
+      return jsonResponse(200, {
+        places: [
+          apiLearnedPlace("budva", "coast", "Budva", [
+            apiChapter("budva-beach", "Na plaži", 1, 1, "pictures"),
+            apiChapter("budva-summer-clothes", "Ljetna odjeća", 2, 11),
+          ]),
+          apiLearnedPlace("podgorica", "central", "Podgorica", [
+            apiChapter("podgorica-home", "Kod kuće", 11, 101),
+            apiChapter(
+              "podgorica-vegetables",
+              "Povrće i ručak",
+              14,
+              131,
+              "pictures",
+            ),
+          ]),
+        ],
+        next_place: {
+          id: "podgorica",
+          region_id: "central",
+          name: "Podgorica",
+          word_count: 20,
+        },
+      });
+    case "failed":
+      return errorResponse(500, "internal_server_error");
+    case "empty":
+      return jsonResponse(200, { places: [], next_place: null });
     case "signed-out":
       return errorResponse(401, "authentication_error");
   }
@@ -245,10 +311,11 @@ const PLAYERS: Schemas["Player"][] = [
 ];
 
 /**
- * Makes `fetchMock` answer like the API: progress as `progress` says, the
- * child profile as `profile` says (or `401` when signed out), the account's
- * one player or two (`players`), the list of regions, and a region or place
- * by its exact id, as the API does, or `404` for one it does not have.
+ * Makes `fetchMock` answer like the API: progress and the learned words as
+ * `progress` says, the child profile as `profile` says (or `401` when signed
+ * out), the account's one player or two (`players`), the list of regions, and
+ * a region or place by its exact id, as the API does, or `404` for one it does
+ * not have.
  */
 export function serveApi(
   fetchMock: Mock<(request: Request) => Promise<Response>>,
@@ -291,6 +358,9 @@ export function serveApi(
     }
     if (pathname === "/api/v1/progress") {
       return Promise.resolve(progressResponse(progress));
+    }
+    if (pathname === "/api/v1/words") {
+      return Promise.resolve(wordsResponse(progress));
     }
     if (pathname === "/api/v1/regions") {
       return Promise.resolve(

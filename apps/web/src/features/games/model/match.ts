@@ -4,7 +4,7 @@
 // No timer, no score, no fail state: a wrong word is set aside and the child
 // picks again.
 
-import { type Random, shuffle } from "./random";
+import { type Random, shuffle } from "@/lib/random";
 
 /** How many words a round offers: the right one and two others. */
 export const OPTIONS = 3;
@@ -30,8 +30,17 @@ export type MatchRound = {
   options: readonly MatchOption[];
 };
 
+/** How a game is dealt. A chapter needs none of it. */
+export type MatchDeal = {
+  /**
+   * The most rounds to play, from words chosen at random. The words left out
+   * can still be offered as wrong ones.
+   */
+  rounds?: number;
+};
+
 export type MatchState = {
-  /** One round per word with a picture, in random order. */
+  /** One round per word with a picture, in random order, up to the cap. */
   rounds: readonly MatchRound[];
   /** The round on screen, from 0; `rounds.length` once every round is done. */
   current: number;
@@ -62,18 +71,25 @@ export function canDealMatchGame(words: readonly MatchWord[]): boolean {
 
 /**
  * Deal a new game: a round for every word with a picture of its own, in
- * random order, each with its word and two others from the chapter, in random
- * order. `null` when not even one round can be dealt.
+ * random order, each with its word and two others from `words`, in random
+ * order. With `rounds`, it stops once that many are dealt. `null` when not
+ * even one round can be dealt.
  */
 export function createMatchGame(
   words: readonly MatchWord[],
   random: Random,
+  { rounds: cap = Infinity }: MatchDeal = {},
 ): MatchState | null {
   const distinct = distinctWords(words);
   const pictures = wordsWithOwnPicture(distinct);
 
   const rounds: MatchRound[] = [];
   for (const word of shuffle(pictures, random)) {
+    // Stopping here, not slicing the shuffle first, keeps the cap at dealt
+    // rounds: a word with too few others to offer does not use up a round.
+    if (rounds.length >= cap) {
+      break;
+    }
     // Never a word that reads the same or shows the same picture: either
     // would be a second right answer.
     const others = distinct.filter(
@@ -145,7 +161,12 @@ function pick(state: MatchState, wordId: string): MatchState {
 }
 
 function sameText(a: string, b: string): boolean {
-  return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+  return textKey(a) === textKey(b);
+}
+
+/** A word's text as rounds compare it: two texts with one key read the same. */
+export function textKey(text: string): string {
+  return text.trim().toLocaleLowerCase();
 }
 
 /** Each word once, by id. */

@@ -41,6 +41,12 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
 
+      # A new date once a day reruns the image's apt-get upgrade, which the
+      # build cache would otherwise keep from the day it first ran.
+      - name: Pick the date for security updates
+        id: date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Build image
         uses: docker/build-push-action@v6
         with:
@@ -49,6 +55,7 @@ jobs:
           target: runtime
           push: false
           load: true
+          build-args: SECURITY_UPDATES_DATE=${{ steps.date.outputs.today }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=api
@@ -79,6 +86,8 @@ jobs:
           file: apps/api/Dockerfile
           target: runtime
           push: true
+          # The same date as the scanned build, so this one is it, from cache.
+          build-args: SECURITY_UPDATES_DATE=${{ steps.date.outputs.today }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=api

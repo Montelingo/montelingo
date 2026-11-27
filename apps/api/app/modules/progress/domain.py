@@ -1,4 +1,4 @@
-"""Pure domain rules for map availability, chapter state, progress counts and the child profile."""
+"""Pure domain rules for the map, chapter state, stars, progress counts and the child profile."""
 
 from __future__ import annotations
 
@@ -170,31 +170,148 @@ def calculate_chapter_states(
     )
 
 
+# The most stars a place gives: one for its lessons and one for each game (ADR 0009).
+STARS_PER_PLACE = 1 + len(GAME_IDS)
+
+
+def calculate_location_stars(
+    state: MapState,
+    chapters: Iterable[ChapterProgressRecord],
+) -> int:
+    """A place's stars, 0 to `STARS_PER_PLACE`, without database access or side effects.
+
+    `chapters` are the place's chapters. One star when every chapter's lesson
+    is seen, and one for each game once it is completed in every chapter
+    (ADR 0009). A `completed` place always has every star, even if content
+    gained a chapter after it was completed. A `locked` place, and a place
+    without chapters, has none.
+    """
+
+    if state == "completed":
+        return STARS_PER_PLACE
+    place_chapters = list(chapters)
+    if state == "locked" or not place_chapters:
+        return 0
+
+    stars = int(all(chapter.lesson_completed_at is not None for chapter in place_chapters))
+    for game_id in GAME_IDS:
+        stars += all(game_id in chapter.completed_games for chapter in place_chapters)
+    return stars
+
+
+def calculate_stars(
+    chapters: Iterable[ChapterProgressRecord],
+    location_states: Mapping[str, MapState],
+) -> dict[str, int]:
+    """Every place's stars, keyed and ordered like `location_states`."""
+
+    by_place: dict[str, list[ChapterProgressRecord]] = {}
+    for chapter in chapters:
+        by_place.setdefault(chapter.location_slug, []).append(chapter)
+
+    return {
+        slug: calculate_location_stars(state, by_place.get(slug, ()))
+        for slug, state in location_states.items()
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class ProgressCounts:
-    """How many words the child has learned and how many stickers they have."""
+    """How many words the child has learned, and how many stickers and stars they have."""
 
     words_learned: int
     stickers: int
+    stars: int
 
 
 def calculate_progress_counts(
     chapters: Iterable[ChapterProgressRecord],
     location_states: Mapping[str, MapState],
 ) -> ProgressCounts:
-    """Count learned words and stickers without database access or side effects (#175).
+    """Count learned words, stickers and stars without database access or side effects (#175).
 
     A word counts as learned once its chapter's lesson is seen; words are not
     tracked one by one. A sticker is a `completed` place, the same rule as the
-    Prizes screen.
+    Prizes screen. Stars are every place's `calculate_location_stars`.
     """
 
+    chapters = list(chapters)
     return ProgressCounts(
         words_learned=sum(
             chapter.word_count for chapter in chapters if chapter.lesson_completed_at is not None
         ),
         stickers=sum(1 for state in location_states.values() if state == "completed"),
+        stars=sum(calculate_stars(chapters, location_states).values()),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class LearnedPlace:
+    """A place with at least one seen lesson, and those lessons' chapters in map order."""
+
+    location_slug: str
+    chapter_slugs: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class NextPlace:
+    """The place where the child can learn more words, and how many are waiting there."""
+
+    location_slug: str
+    word_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class LearnedChapters:
+    """Which chapters' words the child has learned, by place, and where to learn more."""
+
+    places: tuple[LearnedPlace, ...]
+    next_place: NextPlace | None
+
+
+def calculate_learned_chapters(
+    content: Content,
+    chapters: Iterable[ChapterProgressRecord],
+    location_states: Mapping[str, MapState],
+) -> LearnedChapters:
+    """Group the learned chapters by place, without database access or side effects (#232).
+
+    The rule is the one `calculate_progress_counts` uses for `words_learned`: a
+    chapter's words are learned once its lesson is seen. Places keep content
+    order, and chapters keep the order of `chapters`, which is map order.
+
+    The next place is the first one in content order that is not `locked` and
+    still has a lesson with words to see. Its `word_count` is the words of those lessons.
+    """
+
+    by_place: dict[str, list[ChapterProgressRecord]] = {}
+    for chapter in chapters:
+        by_place.setdefault(chapter.location_slug, []).append(chapter)
+
+    places: list[LearnedPlace] = []
+    next_place: NextPlace | None = None
+    for location in content.locations:
+        place_chapters = by_place.get(location.slug, [])
+        seen = tuple(
+            chapter.chapter_slug
+            for chapter in place_chapters
+            if chapter.lesson_completed_at is not None
+        )
+        if seen:
+            places.append(LearnedPlace(location_slug=location.slug, chapter_slugs=seen))
+
+        # Lessons without words yet teach nothing, so they don't make a place next.
+        waiting = sum(
+            chapter.word_count for chapter in place_chapters if chapter.lesson_completed_at is None
+        )
+        if (
+            next_place is None
+            and waiting > 0
+            and location_states.get(location.slug, "locked") != "locked"
+        ):
+            next_place = NextPlace(location_slug=location.slug, word_count=waiting)
+
+    return LearnedChapters(places=tuple(places), next_place=next_place)
 
 
 def is_location_completed(

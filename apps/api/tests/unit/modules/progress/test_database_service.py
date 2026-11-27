@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 
-from app.modules.content.domain import Content, Location, Region
+from app.modules.content.domain import Content, Location, Region, WordRead
 from app.modules.progress.domain import ChapterProgressRecord, LocationProgressRecord
 from app.modules.progress.service import DatabaseProgressService
 
@@ -18,10 +19,13 @@ class FakeProgressRepository:
         content: Content,
         progress: list[LocationProgressRecord],
         chapters: list[ChapterProgressRecord] | None = None,
+        words: dict[str, tuple[WordRead, ...]] | None = None,
     ) -> None:
         self.content = content
         self.progress = progress
         self.chapters = chapters or []
+        self.words = words or {}
+        self.received_word_chapters: list[str] | None = None
         self.received_profile_id: UUID | None = None
         self.received_chapters_profile_id: UUID | None = None
 
@@ -38,6 +42,10 @@ class FakeProgressRepository:
     ) -> list[ChapterProgressRecord]:
         self.received_chapters_profile_id = learning_profile_id
         return self.chapters
+
+    async def read_words(self, chapter_slugs: Iterable[str]) -> dict[str, tuple[WordRead, ...]]:
+        self.received_word_chapters = list(chapter_slugs)
+        return {slug: self.words[slug] for slug in self.received_word_chapters}
 
 
 def example_content() -> Content:
@@ -203,7 +211,7 @@ async def test_new_account_has_nothing_counted() -> None:
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0}
+    assert result.counts.model_dump() == {"words_learned": 0, "stickers": 0, "stars": 0}
 
 
 async def test_counts_learned_words_and_completed_places() -> None:
@@ -231,4 +239,67 @@ async def test_counts_learned_words_and_completed_places() -> None:
 
     result = await DatabaseProgressService(repository).get_state(uuid4())
 
-    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1}
+    assert result.counts.model_dump() == {"words_learned": 17, "stickers": 1, "stars": 3}
+
+
+def word(number: int, text: str) -> WordRead:
+    return WordRead(id=uuid4(), number=number, text=text, note=None)
+
+
+async def test_learned_words_follow_map_order_and_name_the_next_place() -> None:
+    # Budva is done, which opened Kotor, where nothing is seen yet.
+    repository = FakeProgressRepository(
+        example_content(),
+        [LocationProgressRecord(location_slug="budva", started_at=NOW, completed_at=NOW)],
+        [
+            ChapterProgressRecord(
+                chapter_slug="budva-beach",
+                location_slug="budva",
+                lesson_completed_at=NOW,
+                word_count=2,
+            ),
+            ChapterProgressRecord(
+                chapter_slug="budva-old-town",
+                location_slug="budva",
+                lesson_completed_at=NOW,
+                word_count=1,
+            ),
+            ChapterProgressRecord(chapter_slug="kotor-walls", location_slug="kotor", word_count=4),
+        ],
+        {
+            "budva-beach": (word(1, "more"), word(2, "pijesak")),
+            "budva-old-town": (word(21, "crkva"),),
+        },
+    )
+    profile_id = uuid4()
+
+    learned = await DatabaseProgressService(repository).get_learned_words(profile_id)
+
+    assert repository.received_profile_id == profile_id
+    assert repository.received_word_chapters == ["budva-beach", "budva-old-town"]
+    [budva] = learned.places
+    assert (budva.id, budva.region_id, budva.name) == ("budva", "coast", "Budva")
+    # Chapter by chapter, each in recording order.
+    assert [item.text for item in budva.words] == ["more", "pijesak", "crkva"]
+    assert learned.next_place is not None
+    assert learned.next_place.model_dump() == {
+        "id": "kotor",
+        "region_id": "coast",
+        "name": "Kotor",
+        "word_count": 4,
+    }
+
+
+async def test_without_a_seen_lesson_no_words_are_read() -> None:
+    repository = FakeProgressRepository(
+        example_content(),
+        [],
+        [ChapterProgressRecord(chapter_slug="budva-beach", location_slug="budva", word_count=2)],
+    )
+
+    learned = await DatabaseProgressService(repository).get_learned_words(uuid4())
+
+    assert learned.places == []
+    assert repository.received_word_chapters == []
+    assert learned.next_place is not None
+    assert learned.next_place.id == "budva"

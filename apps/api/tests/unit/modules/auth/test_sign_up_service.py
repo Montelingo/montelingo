@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -67,6 +68,16 @@ def make_sign_up_service(
         learning_profile_repository=profile_repository,
     )
     return service, password_hasher
+
+
+@pytest.mark.asyncio
+async def test_sign_up_hashes_off_the_event_loop() -> None:
+    service, hasher = make_sign_up_service(FakeUsersService())
+
+    await service.sign_up(email="user@example.com", password="password123")
+
+    assert hasher.threads
+    assert threading.get_ident() not in hasher.threads
 
 
 @pytest.mark.asyncio

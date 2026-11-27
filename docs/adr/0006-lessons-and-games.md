@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-15
 - Amended: 2026-11-21 (#139: completing a place and what opens next)
+- Amended: 2026-11-27 (#270, ADR 0009: a replay may add a heart; stars are no longer deferred)
 
 ## Context
 
@@ -16,7 +17,7 @@ Word images exist for Budva (#127). Audio does not exist yet, so nothing in this
 - **The lesson follows the Doman method.** It shows the chapter's ten pictures one at a time, with nothing written on them. An option (**Slike / Riječi**) switches the lesson to the ten words alone, in large letters. A picture and its word are never on one card and are never shown one after the other, so the child learns to read the written word rather than guess it from the picture. There is no timer and no sound: the grown-up reads the words aloud until audio arrives. The lesson counts as seen when the child reaches the last card in either mode. It can be watched again at any time.
 - **Two games, the same for every chapter.** `memory`: cards face down, find the pairs of the same picture. `match`: one picture and three written words, tap the word that goes with it. Game ids are a fixed set in code, not content. Neither game has a timer, a score or a fail state: a wrong pick is simply tried again.
 - **The lesson unlocks the games, and the server decides.** As ADR 0005 does for places, one pure domain function, `calculate_chapter_state`, computes a chapter's state, and the frontend never computes a lock. A chapter's `lesson` is `todo` or `done`. Each game is `locked` until the lesson is `done`, then `available`, then `completed` once it has been played to the end. Both games open together.
-- **Results are recorded once.** Finishing the lesson or a game is recorded the first time only. Repeating it is allowed and answers `200`, but changes nothing. There is no score to keep, so a replay has nothing to add.
+- **Results are recorded once.** Finishing the lesson or a game is recorded the first time only. Repeating it is allowed and answers `200`, but changes no state. There is no score to keep. Amended by ADR 0009: a replay may add a heart, up to a daily cap, and changes nothing else.
 - **Doing anything in a place starts it.** The first lesson or game recorded in a place also creates its `location_progress` row (`started_at`), so the map shows the place as `in-progress`.
 - **Finishing every chapter completes a place, and that opens the next place.** Amended by #139. A place is completed when every one of its chapters has its lesson seen and every game completed. Because the games need the lesson, the last thing done in a place is always a game: recording it sets `location_progress.completed_at` in the same transaction, once. `calculate_map_states` then makes the next place in content order `available`: the next place in the region, and after a region's last place, the first place of the next region, and that region opens with it. Only that one place opens. A place with no chapters is never completed. Replaying a game in a completed place changes nothing, and a completed place stays open. Replaying a game in a place whose games are all done but that is not marked completed (one finished before #139, or after content changed) marks it then.
 - **Two new tables, in one migration.** `chapter_progress` has one row per started chapter, keyed by (learning profile, chapter), with `lesson_completed_at`. `game_results` has one row per finished game, unique on (learning profile, chapter, game), with a check constraint on the game id and `completed_at`. Both cascade on delete, like `location_progress`. One migration creates both, on top of #117's, so parallel tickets never create competing Alembic heads.
@@ -47,7 +48,7 @@ ProgressState = { regions: RegionState[], locations: LocationState[], chapters: 
 
 ## Deferred
 
-Feathers and rewards. Audio and the word card's sound button. A "learned" mark per word. Scores, stars and difficulty. Choosing content or games by age band. More game types. Each gets its own ticket or ADR when it is built.
+Feathers and rewards. Audio and the word card's sound button. A "learned" mark per word. Scores and difficulty (stars and hearts: ADR 0009). Choosing content or games by age band. More game types. Each gets its own ticket or ADR when it is built.
 
 ## Consequences
 

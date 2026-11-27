@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -89,10 +90,11 @@ def make_service(
     repository: FakeResetRepository,
     clock: MutableClock,
     email_sender: InMemoryEmailSender | FailingEmailSender | None = None,
+    hasher: FakeHasher | None = None,
 ) -> AuthService:
     return AuthService(
         repository=repository,  # type: ignore[arg-type]
-        password_hasher=FakeHasher(),
+        password_hasher=hasher or FakeHasher(),
         token=SecureToken,
         clock=clock,
         transaction_manager=FakeTransactions(),  # type: ignore[arg-type]
@@ -153,6 +155,19 @@ async def test_confirm_sets_password_and_revokes_every_session() -> None:
 
     assert repository.password_updates == [(user.id, "new-hash", NOW)]
     assert repository.sessions == {b"c": other_user_id}
+
+
+async def test_confirm_hashes_the_new_password_off_the_event_loop() -> None:
+    user = make_user()
+    hasher = FakeHasher()
+    service = make_service(FakeResetRepository(user), MutableClock(NOW), hasher=hasher)
+    issued = await service.request_password_reset(user.email)
+    assert issued is not None
+
+    await service.confirm_password_reset(token=issued.token, new_password="new-password")
+
+    assert hasher.threads
+    assert threading.get_ident() not in hasher.threads
 
 
 async def test_used_token_is_rejected() -> None:

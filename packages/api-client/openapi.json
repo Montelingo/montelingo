@@ -202,6 +202,68 @@
         "title": "GameState",
         "type": "object"
       },
+      "LearnedPlace": {
+        "description": "A place where the child has seen at least one lesson, with those lessons' words.",
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Region Id",
+            "type": "string"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/Word"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "region_id",
+          "name",
+          "words"
+        ],
+        "title": "LearnedPlace",
+        "type": "object"
+      },
+      "LearnedWords": {
+        "description": "Every word the child has learned, by place, for the Rije\u010di tab (#232).\n\nA word is learned once its chapter's lesson is seen, the same rule as\n`ProgressCounts.words_learned`, so the words listed add up to that count.",
+        "properties": {
+          "next_place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextPlace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/LearnedPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          }
+        },
+        "required": [
+          "places",
+          "next_place"
+        ],
+        "title": "LearnedWords",
+        "type": "object"
+      },
       "LiveHealth": {
         "properties": {
           "status": {
@@ -257,6 +319,12 @@
             "title": "Id",
             "type": "string"
           },
+          "stars": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Stars",
+            "type": "integer"
+          },
           "state": {
             "enum": [
               "locked",
@@ -270,7 +338,8 @@
         },
         "required": [
           "id",
-          "state"
+          "state",
+          "stars"
         ],
         "title": "LocationState",
         "type": "object"
@@ -310,6 +379,38 @@
           "word_count"
         ],
         "title": "LocationSummary",
+        "type": "object"
+      },
+      "NextPlace": {
+        "description": "The first open place with a lesson still to see: \"Posjeti Kotor i sakupi jo\u0161 4 rije\u010di\".",
+        "properties": {
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Region Id",
+            "type": "string"
+          },
+          "word_count": {
+            "minimum": 1.0,
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "region_id",
+          "name",
+          "word_count"
+        ],
+        "title": "NextPlace",
         "type": "object"
       },
       "PageInfo": {
@@ -573,6 +674,10 @@
       "ProgressCounts": {
         "description": "What the child has collected, for the Ja screen and the grown-ups area (#175).\n\nThe server counts them, so the frontend never does (ADR 0005).",
         "properties": {
+          "stars": {
+            "title": "Stars",
+            "type": "integer"
+          },
           "stickers": {
             "title": "Stickers",
             "type": "integer"
@@ -584,7 +689,8 @@
         },
         "required": [
           "words_learned",
-          "stickers"
+          "stickers",
+          "stars"
         ],
         "title": "ProgressCounts",
         "type": "object"
@@ -1894,6 +2000,48 @@
         "summary": "Get Region",
         "tags": [
           "content"
+        ]
+      }
+    },
+    "/api/v1/words": {
+      "get": {
+        "description": "The child's learned words by place, for the Rije\u010di tab (#232).",
+        "operationId": "progress_list_words",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearnedWords"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "List Learned Words",
+        "tags": [
+          "progress"
         ]
       }
     }

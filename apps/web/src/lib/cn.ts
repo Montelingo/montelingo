@@ -24,7 +24,7 @@ const twMerge = extendTailwindMerge({
     classGroups: {
       animate: [{ animate: ["wiggle", "locked-flash"] }],
       aspect: [{ aspect: ["tile"] }],
-      "max-w": [{ "max-w": ["learner"] }],
+      "max-w": [{ "max-w": ["learner", "tab"] }],
       shadow: [{ shadow: ["raised-4", "raised-6"] }],
     },
   },

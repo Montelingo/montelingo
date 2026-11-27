@@ -26,7 +26,9 @@ type MapSidePanelProps = {
 
 // The tablet and desktop side panel (Figma "Side panel", TM1): the explorer,
 // every region with its progress or what opens it, and the next stop. Until
-// the profile is set up, the explorer is the fox and a title.
+// the profile is set up, the explorer is the fox and a title. On a screen up
+// to 768px tall (a laptop, a tablet on its side) its gaps and padding shrink,
+// so it fits beside the map without scrolling.
 export function MapSidePanel({
   regions,
   currentRegionId,
@@ -36,13 +38,13 @@ export function MapSidePanel({
   return (
     <aside
       aria-label="Regije"
-      className="pointer-events-auto flex w-[22.5rem] flex-col gap-3.5 rounded-kid-xl border-3 border-kid-ink bg-kid-cream p-5 shadow-raised-6"
+      className="pointer-events-auto flex w-side-panel flex-col gap-3.5 rounded-kid-xl border-3 border-kid-ink bg-kid-cream p-5 shadow-raised-6 compact:gap-2.5 compact:p-4"
     >
       <ExplorerBadge explorer={explorer} />
       <h2 className="text-2xl font-semibold leading-tight text-kid-ink">
         Regije
       </h2>
-      <ul className="flex flex-col gap-3.5">
+      <ul className="flex flex-col gap-3.5 compact:gap-2.5">
         {regions.map((region) => (
           <li key={region.id}>
             <RegionCard
@@ -128,7 +130,7 @@ function RegionCard({ region, isCurrent }: RegionCardProps) {
     </>
   );
   const cardClass = cn(
-    "flex w-full items-center gap-3 rounded-kid px-3.5 py-3",
+    "flex w-full items-center gap-3 rounded-kid px-3.5 py-3 compact:py-2",
     isOpen
       ? "border-3 border-kid-ink text-kid-ink"
       : "border-2 border-kid-line bg-kid-fog text-kid-muted",

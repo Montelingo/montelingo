@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
 // Its URL carries a password-reset token (`?token=`).
@@ -12,9 +13,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // @app/api-client ships TypeScript source, so Next.js must compile it.
   transpilePackages: ["@app/api-client"],
-  // `pnpm lint:web` owns linting in CI; Next's build-time lint duplicates it and
-  // cannot detect plugins registered only for **/*.{ts,tsx} in eslint.config.mjs.
-  eslint: { ignoreDuringBuilds: true },
   // Headers apply before any of the page is parsed. Next.js renders the page's
   // own <meta name="referrer"> after the stylesheet and scripts in <head>,
   // which the browser may already be requesting with the full URL as Referer.
@@ -47,4 +45,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Compiles imported .mdx files at build time (the privacy policy, #255), so
+// their text is part of the bundle and needs no file read in the standalone
+// server.
+const withMDX = createMDX();
+
+export default withMDX(nextConfig);

@@ -13,10 +13,12 @@ import { type MeData, toMeData } from "../model/me";
 import {
   ME_PATH,
   PRIZES_PATH,
+  WORDS_PATH,
   chapterPath,
   gamePath,
   lessonPath,
   locationPath,
+  practicePath,
   regionPath,
 } from "../model/paths";
 import { type PrizesData, toPrizesData } from "../model/prizes";
@@ -33,8 +35,10 @@ import {
   toRegionScreen,
 } from "../model/screens";
 import type { GameId, ProgressResult } from "../model/progress";
+import { type PracticeData, toWordsData, type WordsData } from "../model/words";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
+import { getLearnedWords } from "./words-api";
 
 // What the map's routes load: content and progress in parallel, joined into
 // what a screen draws. Content failures reach the error boundary and unknown
@@ -112,6 +116,37 @@ export async function loadMe(): Promise<MeData> {
     getPlayers(),
   ]);
   return toMeData(progress, profile, players);
+}
+
+/**
+ * The Riječi tab: the child's learned words by place, and their buddy for the
+ * empty state. Redirects to sign in when the session has ended; a words
+ * failure still renders, with a retry, and a profile failure only means the
+ * placeholder buddy.
+ */
+export async function loadWords(): Promise<WordsData> {
+  const [words, profile] = await signedIn(WORDS_PATH, [
+    getLearnedWords(),
+    getProfile(),
+  ]);
+  return toWordsData(words, profile);
+}
+
+/**
+ * A practice game's words (#235): every learned place, for the game to deal
+ * from, and the learner's name. Redirects to sign in, then back to the game,
+ * when the session has ended. Practice records nothing, so it needs no
+ * progress.
+ */
+export async function loadPractice(gameId: GameId): Promise<PracticeData> {
+  const [words, profile] = await signedIn(practicePath(gameId), [
+    getLearnedWords(),
+    getProfile(),
+  ]);
+  return {
+    places: words.status === "ready" ? words.words.places : null,
+    learnerName: profile?.name ?? null,
+  };
 }
 
 /**

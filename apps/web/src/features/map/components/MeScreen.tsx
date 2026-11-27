@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { GrownUpsGateButton } from "@/features/grown-ups";
 import { avatarSrc, PLAYERS_PATH } from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -51,13 +52,21 @@ const STICKERS: Tile = {
   chipClass: "bg-kid-pink",
 };
 
+// A wide row with the ink edge: Switch player's link, or the grown-ups gate's
+// button.
+const ROW_CLASS = cn(
+  "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-kid-ink shadow-raised-4",
+  FOCUS_RING,
+);
+
 // The Ja tab, /play/me (Figma 27:61076, screen 1 of #174): the child's buddy
 // in the big gold ring, their name and title, three count tiles, Switch
 // player when the account has another child (#184), and the way to the
-// grown-ups area. A centred column from tablet width, the full width
-// less a 16px gutter on a phone, scrolling on its own above the bottom nav,
-// which is docked or floating as on the map. `data-map-screen` tells
-// LearnerShell to drop its own Back and Home bar, as on the Prizes screen.
+// grown-ups area, through its gate (#177), which opens over this screen. A
+// centred column from tablet width, the full width less a 16px gutter on a
+// phone, scrolling on its own above the bottom nav, which is docked or
+// floating as on the map. `data-map-screen` tells LearnerShell to drop its own
+// Back and Home bar, as on the Prizes screen.
 export function MeScreen({
   explorer,
   counts,
@@ -74,7 +83,7 @@ export function MeScreen({
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pb-8 pt-safe-t sm:px-gutter">
+        <div className="mx-auto flex w-full max-w-tab flex-col gap-6 px-4 pb-8 pt-safe-t sm:px-gutter">
           <header className="flex flex-col items-center gap-1 pt-6 text-center">
             {/* 122 + 2 × 8 + 2 × 3 = 144px, the skeleton's size-36. */}
             <div className="mb-3 rounded-full border-3 border-kid-ink bg-kid-yellow p-2 shadow-raised-6">
@@ -109,19 +118,24 @@ export function MeScreen({
           </ul>
           {/* Only with someone to switch to; no grown-ups gate, as in Figma. */}
           {canSwitchPlayer ? (
-            <MeRow
-              href={PLAYERS_PATH}
-              icon="switch"
-              chipClass="border-kid-ink bg-kid-sea-soft"
-              label="Promijeni igrača"
-            />
+            <Link href={PLAYERS_PATH} className={ROW_CLASS}>
+              <MeRowContent
+                icon="switch"
+                chipClass="border-kid-ink bg-kid-sea-soft"
+                label="Promijeni igrača"
+              />
+            </Link>
           ) : null}
-          <MeRow
+          <GrownUpsGateButton
             href={GROWN_UPS_PATH}
-            icon="lock"
-            chipClass="border-kid-line bg-kid-fog"
-            label="Za roditelje"
-          />
+            className={cn(ROW_CLASS, "text-left")}
+          >
+            <MeRowContent
+              icon="lock"
+              chipClass="border-kid-line bg-kid-fog"
+              label="Za roditelje"
+            />
+          </GrownUpsGateButton>
         </div>
       </div>
       <div className="flex flex-col lg:items-center lg:pb-5">
@@ -131,25 +145,17 @@ export function MeScreen({
   );
 }
 
-type MeRowProps = {
-  href: string;
+type MeRowContentProps = {
   icon: ChromeIconName;
   /** The icon chip's edge and fill, written out. */
   chipClass: string;
   label: string;
 };
 
-// A wide row with the ink edge: the icon on its round chip, the label and a
-// chevron, all one link.
-function MeRow({ href, icon, chipClass, label }: MeRowProps) {
+// A row's inside: the icon on its round chip, the label and a chevron.
+function MeRowContent({ icon, chipClass, label }: MeRowContentProps) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-kid-ink shadow-raised-4",
-        FOCUS_RING,
-      )}
-    >
+    <>
       <span
         className={cn(
           "flex size-12 shrink-0 items-center justify-center rounded-full border-2",
@@ -167,7 +173,7 @@ function MeRow({ href, icon, chipClass, label }: MeRowProps) {
         strokeWidth={2.5}
         className="size-7 shrink-0"
       />
-    </Link>
+    </>
   );
 }
 

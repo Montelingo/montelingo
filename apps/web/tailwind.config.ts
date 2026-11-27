@@ -164,6 +164,8 @@ const config: Config = {
       width: {
         // The bottom nav, floating from 1024px wide.
         "bottom-nav": "32.5rem",
+        // The map screen's side panel, from 1024px wide.
+        "side-panel": "22.5rem",
       },
       // Tailwind 3.4 derives these from `spacing` too; listed so the touch
       // sizes do not depend on that.
@@ -180,8 +182,13 @@ const config: Config = {
       },
       maxWidth: {
         learner: "72rem",
-        // The Prizes screen's centred column.
-        prizes: "44rem",
+        // The centred column of the bottom nav's tabs (Prizes, Words, Me).
+        // Wide enough for a region of 11 stickers on one line on the Prizes
+        // screen: 11 × 96 (w-24) + 10 × 8 (gap-x-2) = 1136px, plus the card's
+        // 2 × 20 padding and 2 × 3 border = 1182px, plus the 2 × 24 gutter =
+        // 1230px ≤ 1248px. On a narrower screen the row wraps (a tablet on
+        // its side, 1133px, fits 10).
+        tab: "78rem",
       },
       borderRadius: {
         tile: "1.25rem",
@@ -229,6 +236,13 @@ const config: Config = {
         // - landscape: 1085 px; 6 columns need 6·160 + 5·16 = 1040 ✓
         //   (7 would need 1216, more than max-w-learner's 1152 too)
         words: "repeat(auto-fill, minmax(min(100%, 10rem), 1fr))",
+        // A line of at most 10, each at least `--row-min` wide, as many as
+        // fit below that: a region's stickers on the Prizes tab (6rem,
+        // gap-x-2). The max() makes a column at least a tenth of the row less
+        // its 9 gaps, so an 11th never fits; on a narrower row the minimum
+        // wins and fewer fit. The row sets `--row-min` and `--row-gap`.
+        "row-of-10":
+          "repeat(auto-fill, minmax(max(var(--row-min), (100% - 9 * var(--row-gap)) / 10), 1fr))",
         // The map screen (MapScreen): the map's frame, and the side panel from
         // 1024px wide.
         "map-screen": "minmax(0, 1fr) auto",
@@ -244,6 +258,10 @@ const config: Config = {
         // level card leaves out its picture and the map leaves out the next
         // stop card, so the map and the card still fit without scrolling.
         short: { raw: "(max-height: 32rem)" },
+        // A screen not tall enough for the map's side panel at full size (a
+        // 720px laptop, a tablet on its side, 744px): the panel tightens its
+        // gaps and padding so it fits without scrolling.
+        compact: { raw: "(max-height: 48rem)" },
       },
       keyframes: {
         // NavigationProgress's bar: a third of the screen's width, sliding

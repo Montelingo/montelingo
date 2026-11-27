@@ -15,6 +15,7 @@ import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
+import type { Random } from "@/lib/random";
 import { useIsHydrated } from "@/lib/use-is-hydrated";
 import { SETTLE_DELAY_MS } from "@/lib/use-settled";
 
@@ -28,10 +29,14 @@ import {
   type MatchState,
   type MatchWord,
 } from "../model/match";
-import type { Random } from "../model/random";
 import { useFocusOnNewButtons } from "../hooks/use-focus-on-new-buttons";
 import { useGameVisit } from "../hooks/use-game-visit";
-import { BravoScreen, type GameReward, wordsLearnedText } from "./BravoScreen";
+import {
+  BACK_TO_PLACE,
+  BravoScreen,
+  type GameReward,
+  wordsLearnedText,
+} from "./BravoScreen";
 
 export type MatchGameProps = {
   /**
@@ -39,8 +44,18 @@ export type MatchGameProps = {
    * ponovo", so a new chapter needs a new `key`.
    */
   words: readonly MatchWord[];
-  /** The place's screen, where "Nazad na mjesto" leads from "Bravo!". */
+  /**
+   * Where the way back leads from "Bravo!": the place's screen, or for
+   * practice, Riječi.
+   */
   placeHref: string;
+  /** The way back's label: "Nazad na mjesto" unless given. */
+  backLabel?: string;
+  /**
+   * Whether finishing teaches new words, as a chapter's game does. Practice
+   * plays words the child already knows, so its "Bravo!" only praises.
+   */
+  teachesWords?: boolean;
   /**
    * Called once, when the last round is solved: the game then counts as
    * played (ADR 0006). Playing again does not call it a second time.
@@ -58,6 +73,11 @@ export type MatchGameProps = {
    * retry: the route's, since the game does no fetching.
    */
   saveNotice?: ReactNode;
+  /**
+   * How many rounds to play, at most, with words chosen at random; the rest
+   * can still be wrong words. Without it, a round per word with a picture.
+   */
+  rounds?: number;
   /** Shuffles the deal. Tests pass their own, so a deal repeats. */
   random?: Random;
 };
@@ -91,7 +111,10 @@ export { SETTLE_DELAY_MS };
 export function MatchGame({
   words,
   placeHref,
+  backLabel = BACK_TO_PLACE,
+  teachesWords = true,
   onCompleted,
+  rounds: roundCap,
   learnerName,
   reward,
   saveNotice,
@@ -113,9 +136,12 @@ export function MatchGame({
     return (
       <BravoScreen
         message={
-          isReplay ? "Sve riječi su pronađene!" : wordsLearnedText(rounds)
+          isReplay || !teachesWords
+            ? "Sve riječi su pronađene!"
+            : wordsLearnedText(rounds)
         }
         placeHref={placeHref}
+        backLabel={backLabel}
         learnerName={learnerName}
         reward={isReplay ? null : (reward ?? null)}
         saveNotice={saveNotice}
@@ -135,6 +161,7 @@ export function MatchGame({
     <Rounds
       key={game}
       words={words}
+      cap={roundCap}
       random={random}
       shouldFocusFirstOnMount={isReplay}
       onComplete={handleComplete}
@@ -144,6 +171,7 @@ export function MatchGame({
 
 type RoundsProps = {
   words: readonly MatchWord[];
+  cap: number | undefined;
   random: Random;
   /** After "Igraj ponovo" the focus was on a button that is gone. */
   shouldFocusFirstOnMount: boolean;
@@ -154,6 +182,7 @@ type RoundsProps = {
 // One game: its rounds, dealt once, when it mounts.
 function Rounds({
   words,
+  cap,
   random,
   shouldFocusFirstOnMount,
   onComplete,
@@ -161,7 +190,7 @@ function Rounds({
   const [state, dispatch] = useReducer(
     matchReducer,
     undefined,
-    () => createMatchGame(words, random) ?? NO_GAME,
+    () => createMatchGame(words, random, { rounds: cap }) ?? NO_GAME,
   );
   const round = currentRound(state);
   const isGameComplete = isComplete(state);

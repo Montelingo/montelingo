@@ -29,8 +29,9 @@ type MapScreenProps = MapData & {
 };
 
 // The frame MapHome and RegionScreen share (Figma "TM1" and "M1"): the top
-// bar, the side panel on the right from 1024px wide (scrolling on its own on
-// a short window), and the bottom nav (with the next stop above it, below
+// bar, the side panel on the right from 1024px wide (on a window too short
+// for it, scrolling on its own by wheel or touch, with no scrollbar drawn over
+// the map), and the bottom nav (with the next stop above it, below
 // 1024px and on a screen tall enough), around the map's frame: the space
 // they leave free, where the map fits the country or region whole. The rest
 // of the map's art spills past the frame under them, to the screen's edges,
@@ -65,7 +66,7 @@ export function MapScreen({
       </h1>
       <MapTopBar backHref={backHref} region={region} stars={0} hearts={0} />
       <MapFrame>{children}</MapFrame>
-      <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 pr-safe-r pt-4 lg:block">
+      <div className="pointer-events-none relative z-20 row-start-2 hidden min-h-0 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-safe-r pt-4 lg:col-start-2 lg:block">
         <MapSidePanel
           regions={regions}
           currentRegionId={region?.id ?? null}
@@ -95,6 +96,16 @@ export function MapScreen({
 // The space the chrome leaves free, where the map fits the country or region
 // whole. It comes after the top bar in the reading order, and the map's art
 // spills past it under all of the chrome to the screen's edges.
+//
+// From 1024px wide it spans the screen, under the side panel too, so the map
+// can centre itself on the screen, in line with the bottom nav, rather than
+// in the space left of the panel. `--map-panel-room` is how much of the
+// frame's right side the panel's column takes, which the map keeps clear of
+// (MontenegroMap); the frame is a size container, for the map's `cq` units.
 function MapFrame({ children }: { children: ReactNode }) {
-  return <div className="relative row-start-2 m-3">{children}</div>;
+  return (
+    <div className="relative row-start-2 m-3 lg:col-span-full lg:[--map-panel-room:calc(theme(width.side-panel)_+_theme(padding.safe-r))] lg:[container-type:size]">
+      {children}
+    </div>
+  );
 }

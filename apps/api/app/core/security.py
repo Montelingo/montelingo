@@ -1,6 +1,9 @@
+import asyncio
 import hashlib
 import hmac
 import secrets
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Protocol
 
@@ -44,6 +47,20 @@ class Argon2PasswordHasher:
 
 
 DUMMY_PASSWORD_HASH = Argon2PasswordHasher().hash("montelingo_dummy_password")
+
+# Argon2 takes real CPU time and 64 MiB of memory per hash. Hashing on the event
+# loop stalls every other request, so it runs on these threads; argon2-cffi
+# releases the GIL while it hashes. Two of them bound the memory a burst of
+# sign-ins can take.
+HASH_THREADS = 2
+_hash_executor = ThreadPoolExecutor(max_workers=HASH_THREADS, thread_name_prefix="argon2")
+
+
+async def in_hash_thread[*Args, Result](
+    function: Callable[[*Args], Result], *args: *Args
+) -> Result:
+    """Runs a password hasher's `hash` or `verify` off the event loop."""
+    return await asyncio.get_running_loop().run_in_executor(_hash_executor, function, *args)
 
 
 class SecureToken:

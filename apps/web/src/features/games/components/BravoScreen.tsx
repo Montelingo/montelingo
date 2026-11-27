@@ -20,10 +20,16 @@ export type GameReward = {
   stars: number;
 };
 
+/** The way back from "Bravo!" to a chapter's place. */
+export const BACK_TO_PLACE = "Nazad na mjesto";
+
 export type BravoScreenProps = {
   /** What the child did: the words learned, or on a replay, plain praise. */
   message: string;
+  /** Where the way back leads: the place's screen, or for practice, Riječi. */
   placeHref: string;
+  /** The way back's label. */
+  backLabel: string;
   learnerName: string | undefined;
   reward: GameReward | null;
   /** Shown under the praise when the result did not save, with its retry. */
@@ -40,6 +46,7 @@ export type BravoScreenProps = {
 export function BravoScreen({
   message,
   placeHref,
+  backLabel,
   learnerName,
   reward,
   saveNotice,
@@ -88,7 +95,7 @@ export function BravoScreen({
             }}
             className={cn(BIG_BUTTON, "bg-kid-yellow")}
           >
-            Nazad na mjesto
+            {backLabel}
           </Link>
           <button
             type="button"

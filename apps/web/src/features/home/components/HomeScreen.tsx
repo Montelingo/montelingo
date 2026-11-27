@@ -9,6 +9,7 @@ import {
   SIGN_IN_PATH,
   SIGN_UP_PATH,
 } from "@/features/auth/edge";
+import { PRIVACY_PATH } from "@/features/privacy/edge";
 import {
   avatarSrc,
   type Explorer,
@@ -31,7 +32,8 @@ type HomeScreenProps = {
 // a visitor, with sign-up and sign-in, or for a signed-in family the child and
 // the way back to the map, with the grown-up's account and signing out. Back
 // on the map leads here, so a signed-in family is never sent on to /play. The
-// welcome frame around it is the (welcome) layout's.
+// welcome frame around it is the (welcome) layout's. Its footer links to the
+// privacy policy (#255), for families to read before they sign up.
 export function HomeScreen({ view, signOut }: HomeScreenProps) {
   return (
     // The heading sits about a quarter down, as in Figma, and the buttons at
@@ -42,6 +44,11 @@ export function HomeScreen({ view, signOut }: HomeScreenProps) {
       ) : (
         <SignedIn explorer={view.explorer} signOut={signOut} />
       )}
+      <footer className="flex justify-center">
+        <Link href={PRIVACY_PATH} className={SMALL_LINK}>
+          Politika privatnosti
+        </Link>
+      </footer>
     </div>
   );
 }

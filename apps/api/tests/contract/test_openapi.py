@@ -33,6 +33,7 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/regions/{region_id}",
         "/api/v1/locations/{location_id}",
         "/api/v1/progress",
+        "/api/v1/words",
         "/api/v1/chapters/{chapter_id}/lesson",
         "/api/v1/chapters/{chapter_id}/games/{game_id}/result",
         "/api/v1/profile",
@@ -116,6 +117,7 @@ MAP_CONTRACT = [
         {"401", "404", "422"},
     ),
     ("/api/v1/progress", "progress_get", "ProgressState", {"401", "500"}),
+    ("/api/v1/words", "progress_list_words", "LearnedWords", {"401", "500"}),
 ]
 
 
@@ -241,9 +243,22 @@ def test_progress_state_sends_the_counts(app: FastAPI) -> None:
         "$ref": "#/components/schemas/ProgressCounts"
     }
     counts = components["ProgressCounts"]
-    assert set(counts["required"]) == {"words_learned", "stickers"}
+    assert set(counts["required"]) == {"words_learned", "stickers", "stars"}
     assert counts["properties"]["words_learned"]["type"] == "integer"
     assert counts["properties"]["stickers"]["type"] == "integer"
+    assert counts["properties"]["stars"]["type"] == "integer"
+
+
+def test_each_location_sends_its_stars(app: FastAPI) -> None:
+    location = app.openapi()["components"]["schemas"]["LocationState"]
+
+    assert set(location["required"]) == {"id", "state", "stars"}
+    assert location["properties"]["stars"] == {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3,
+        "title": "Stars",
+    }
 
 
 def test_chapter_states_are_the_adr_literals(app: FastAPI) -> None:

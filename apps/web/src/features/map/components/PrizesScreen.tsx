@@ -44,7 +44,7 @@ export function PrizesScreen({
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-prizes flex-col gap-4 px-4 pb-8 pt-safe-t sm:px-gutter">
+        <div className="mx-auto flex w-full max-w-tab flex-col gap-4 px-4 pb-8 pt-safe-t sm:px-gutter">
           <header className="flex items-center justify-between gap-3 pt-4">
             <h1 className="text-4xl font-bold leading-tight text-kid-ink">
               Moje nagrade
@@ -78,7 +78,7 @@ type OpenRegionProps = {
 };
 
 // A white card with the raised ink edge: the name, stars out of the most it
-// can give, and a sticker per place in a row that wraps.
+// can give, and a sticker per place, at most 10 to a line.
 function OpenRegion({ region, stars }: OpenRegionProps) {
   const titleId = useId();
   return (
@@ -105,7 +105,7 @@ function OpenRegion({ region, stars }: OpenRegionProps) {
           </span>
         </div>
       </div>
-      <ul className="flex flex-wrap gap-x-2 gap-y-3">
+      <ul className="grid grid-cols-row-of-10 gap-x-2 gap-y-3 [--row-gap:theme(spacing.2)] [--row-min:6rem]">
         {region.stickers.map((sticker) => (
           <StickerItem key={sticker.id} sticker={sticker} />
         ))}
@@ -120,7 +120,7 @@ function StickerItem({ sticker }: { sticker: Sticker }) {
   return (
     <li
       data-earned={sticker.isEarned}
-      className="flex w-24 flex-col items-center gap-1.5 text-center"
+      className="flex w-24 flex-col items-center gap-1.5 justify-self-center text-center"
     >
       <div className="relative size-20">
         <div

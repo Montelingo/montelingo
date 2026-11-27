@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.core.errors import ApiError, ErrorCode
 from app.db.transaction import TransactionManager
+from app.modules.content.schemas import Word
 
 from .domain import (
     ChapterProgressRecord,
@@ -13,8 +14,10 @@ from .domain import (
     InvalidChildProfile,
     calculate_chapter_state,
     calculate_chapter_states,
+    calculate_learned_chapters,
     calculate_map_states,
     calculate_progress_counts,
+    calculate_stars,
     is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
@@ -26,7 +29,10 @@ from .schemas import (
     ChapterState,
     GameId,
     GameState,
+    LearnedPlace,
+    LearnedWords,
     LocationState,
+    NextPlace,
     Profile,
     ProgressCounts,
     ProgressState,
@@ -46,17 +52,59 @@ class DatabaseProgressService:
         states = calculate_map_states(content, progress)
         chapter_states = calculate_chapter_states(chapters, states.locations)
         counts = calculate_progress_counts(chapters, states.locations)
+        stars = calculate_stars(chapters, states.locations)
 
         return ProgressState(
             regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
             locations=[
-                LocationState(id=slug, state=state) for slug, state in states.locations.items()
+                LocationState(id=slug, state=state, stars=stars[slug])
+                for slug, state in states.locations.items()
             ],
             chapters=[_chapter_state(chapter) for chapter in chapter_states],
             counts=ProgressCounts(
                 words_learned=counts.words_learned,
                 stickers=counts.stickers,
+                stars=counts.stars,
             ),
+        )
+
+    async def get_learned_words(self, learning_profile_id: UUID) -> LearnedWords:
+        """Every word the child has learned, by place, and the place to learn more (#232)."""
+
+        content, progress = await self.repository.read_map(learning_profile_id)
+        chapters = await self.repository.read_chapters(learning_profile_id)
+        states = calculate_map_states(content, progress)
+        learned = calculate_learned_chapters(content, chapters, states.locations)
+        words = await self.repository.read_words(
+            slug for place in learned.places for slug in place.chapter_slugs
+        )
+        locations = {location.slug: location for location in content.locations}
+
+        next_place = None
+        if learned.next_place is not None:
+            location = locations[learned.next_place.location_slug]
+            next_place = NextPlace(
+                id=location.slug,
+                region_id=location.region_slug,
+                name=location.name,
+                word_count=learned.next_place.word_count,
+            )
+
+        return LearnedWords(
+            places=[
+                LearnedPlace(
+                    id=place.location_slug,
+                    region_id=locations[place.location_slug].region_slug,
+                    name=locations[place.location_slug].name,
+                    words=[
+                        Word.from_read(word)
+                        for slug in place.chapter_slugs
+                        for word in words.get(slug, ())
+                    ],
+                )
+                for place in learned.places
+            ],
+            next_place=next_place,
         )
 
 

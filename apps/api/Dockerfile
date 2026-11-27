@@ -5,7 +5,10 @@ ENV PYTHONUNBUFFERED=1 \
     UV_CACHE_DIR=/tmp/.cache/uv \
     UV_NO_SYNC=1
 
-
+# CI passes the day's date, so the upgrade below runs again each day instead
+# of coming from the build cache with packages that have since had security
+# fixes. A changed ARG reruns every RUN after it.
+ARG SECURITY_UPDATES_DATE=unset
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 

@@ -6,7 +6,7 @@ import {
   REQUESTED_PATH_HEADER,
 } from "@/features/auth/edge";
 
-import { config, middleware } from "./middleware";
+import { config, proxy } from "./proxy";
 
 function request(
   path: string,
@@ -29,9 +29,9 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("middleware", () => {
+describe("proxy", () => {
   it("redirects a protected page without a session cookie to sign in", () => {
-    const response = middleware(request("/account?tab=email"));
+    const response = proxy(request("/account?tab=email"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -40,7 +40,7 @@ describe("middleware", () => {
   });
 
   it("redirects the learner area without a session cookie to sign in", () => {
-    const response = middleware(request("/play/kotor?x=1"));
+    const response = proxy(request("/play/kotor?x=1"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -50,7 +50,7 @@ describe("middleware", () => {
   });
 
   it("ignores other cookies", () => {
-    const response = middleware(request("/account", "theme=dark"));
+    const response = proxy(request("/account", "theme=dark"));
 
     expect(response.headers.get("location")).toBe(
       "http://web.test/sign-in?next=%2Faccount",
@@ -58,7 +58,7 @@ describe("middleware", () => {
   });
 
   it("lets a protected page with a session cookie through", () => {
-    const response = middleware(
+    const response = proxy(
       request("/account", "theme=dark; montelingo_session=opaque-token"),
     );
 
@@ -67,7 +67,7 @@ describe("middleware", () => {
   });
 
   it("hands the requested path and query string to the render", () => {
-    const response = middleware(
+    const response = proxy(
       request("/play/kotor?x=1", "montelingo_session=opaque-token"),
     );
 
@@ -79,7 +79,7 @@ describe("middleware", () => {
   });
 
   it("replaces a requested path the client sent", () => {
-    const response = middleware(
+    const response = proxy(
       request("/play", "montelingo_session=opaque-token", {
         [REQUESTED_PATH_HEADER]: "https://evil.com",
       }),
@@ -89,7 +89,7 @@ describe("middleware", () => {
   });
 
   it("keeps the other request headers", () => {
-    const response = middleware(
+    const response = proxy(
       request("/account", "montelingo_session=opaque-token", {
         "accept-language": "sr-ME",
       }),
@@ -107,19 +107,17 @@ describe("middleware", () => {
     vi.stubEnv("MONTELINGO_SESSION_COOKIE_NAME", "ml_sid");
 
     expect(
-      middleware(request("/account", "ml_sid=opaque-token")).headers.get(
-        "location",
-      ),
+      proxy(request("/account", "ml_sid=opaque-token")).headers.get("location"),
     ).toBeNull();
     expect(
-      middleware(
-        request("/account", "montelingo_session=opaque-token"),
-      ).headers.get("location"),
+      proxy(request("/account", "montelingo_session=opaque-token")).headers.get(
+        "location",
+      ),
     ).toBe("http://web.test/sign-in?next=%2Faccount");
   });
 
   it("lets a public page through without a session cookie", () => {
-    const response = middleware(request("/playground"));
+    const response = proxy(request("/playground"));
 
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("x-middleware-next")).toBe("1");

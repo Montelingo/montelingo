@@ -12,7 +12,7 @@ from app.modules.content.schemas import Slug
 from .dependencies import get_learning_profile
 from .models import LearningProfile
 from .repository import SqlAlchemyChildProfileRepository, SqlAlchemyProgressRepository
-from .schemas import ChapterState, Profile, ProfileUpdate, ProgressState
+from .schemas import ChapterState, LearnedWords, Profile, ProfileUpdate, ProgressState
 from .service import (
     ChildProfileService,
     DatabaseProgressService,
@@ -20,7 +20,7 @@ from .service import (
     LessonProgressService,
 )
 
-# The module owns three top-level resources, /progress, /chapters and /profile,
+# The module owns four top-level resources, /progress, /words, /chapters and /profile,
 # so its routes carry their paths and tags.
 router = APIRouter()
 
@@ -71,6 +71,21 @@ async def get_progress(
     learning_profile: LearningProfile = Depends(get_learning_profile),
 ) -> ProgressState:
     return await service.get_state(learning_profile.id)
+
+
+@router.get(
+    "/words",
+    operation_id="progress_list_words",
+    tags=["progress"],
+    response_model=LearnedWords,
+    responses=error_responses(401, 500),
+)
+async def list_learned_words(
+    service: DatabaseProgressService = Depends(get_progress_service),
+    learning_profile: LearningProfile = Depends(get_learning_profile),
+) -> LearnedWords:
+    """The child's learned words by place, for the Riječi tab (#232)."""
+    return await service.get_learned_words(learning_profile.id)
 
 
 # Recording a lesson or a game writes progress, so it needs a session and, like

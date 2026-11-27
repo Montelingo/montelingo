@@ -40,7 +40,7 @@ vi.mock("react", async (importOriginal) => ({
 
 vi.mock("@/lib/api", () => ({ getApiClient: getApiClientMock }));
 
-const NO_COUNTS = { words_learned: 0, stickers: 0 };
+const NO_COUNTS = { words_learned: 0, stickers: 0, stars: 0 };
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -93,8 +93,8 @@ describe("fetchProgress", () => {
       jsonResponse(200, {
         regions: [{ id: "coast", state: "available" }],
         locations: [
-          { id: "budva", state: "available" },
-          { id: "kotor", state: "locked" },
+          { id: "budva", state: "available", stars: 0 },
+          { id: "kotor", state: "locked", stars: 0 },
         ],
         chapters: [
           {
@@ -106,7 +106,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
-        counts: { words_learned: 10, stickers: 0 },
+        counts: { words_learned: 10, stickers: 0, stars: 0 },
       }),
     );
 
@@ -207,7 +207,7 @@ describe("fetchProgress", () => {
     fetchMock.mockResolvedValue(
       jsonResponse(200, {
         regions: [],
-        locations: [{ id: "budva", state: "unlocked" }],
+        locations: [{ id: "budva", state: "unlocked", stars: 0 }],
         chapters: [],
         counts: NO_COUNTS,
       }),
@@ -220,7 +220,7 @@ describe("fetchProgress", () => {
     fetchMock.mockResolvedValue(
       jsonResponse(200, {
         regions: [],
-        locations: [{ id: "budva", state: "active" }],
+        locations: [{ id: "budva", state: "active", stars: 0 }],
         chapters: [],
         counts: NO_COUNTS,
       }),
@@ -270,7 +270,7 @@ describe("fetchProgress", () => {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: -1, stickers: 0 },
+        counts: { words_learned: -1, stickers: 0, stars: 0 },
       }),
     );
 

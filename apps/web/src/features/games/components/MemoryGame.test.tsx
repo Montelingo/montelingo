@@ -322,6 +322,25 @@ describe("MemoryGame", () => {
     expect(screen.getByText("Svi parovi su pronađeni!")).toBeVisible();
   });
 
+  it("leads back where it is told, with its own label", () => {
+    renderGame({ placeHref: "/play/words", backLabel: "Nazad na riječi" });
+
+    playToBravo();
+
+    expect(
+      screen.getByRole("link", { name: "Nazad na riječi" }),
+    ).toHaveAttribute("href", "/play/words");
+  });
+
+  it("only praises a game that teaches no new words, such as practice", () => {
+    renderGame({ teachesWords: false });
+
+    playToBravo();
+
+    expect(screen.queryByText(/novih riječi/)).not.toBeInTheDocument();
+    expect(screen.getByText("Svi parovi su pronađeni!")).toBeVisible();
+  });
+
   it("shows no sticker otherwise", () => {
     renderGame();
 

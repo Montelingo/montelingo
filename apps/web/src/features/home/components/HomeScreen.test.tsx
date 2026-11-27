@@ -79,6 +79,19 @@ describe("HomeScreen, signed out", () => {
   });
 });
 
+describe("HomeScreen, either way", () => {
+  it.each([
+    { status: "visitor", canSignOut: false },
+    { status: "family", explorer: MIA },
+  ] as const)("links to the privacy policy in its footer ($status)", (view) => {
+    render(<HomeScreen signOut={SIGN_OUT} view={view} />);
+
+    expect(
+      screen.getByRole("link", { name: "Politika privatnosti" }),
+    ).toHaveAttribute("href", "/privatnost");
+  });
+});
+
 describe("HomeScreen, signed in", () => {
   it("shows the child and leads back to the map", () => {
     render(

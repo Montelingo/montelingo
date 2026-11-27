@@ -41,9 +41,18 @@ const LESSON: Activity = {
   fill: "bg-kid-yellow",
 };
 
+/** Each game's icon and fill, on a chapter's card and on Riječi's Vježbaj. */
+export const GAME_ART: Record<
+  GameId,
+  Pick<Activity, "ActivityIcon" | "fill">
+> = {
+  memory: { ActivityIcon: Squares2X2Icon, fill: "bg-kid-sea" },
+  match: { ActivityIcon: PuzzlePieceIcon, fill: "bg-kid-land" },
+};
+
 const GAMES: Record<GameId, Activity> = {
-  memory: { title: "Memory", ActivityIcon: Squares2X2Icon, fill: "bg-kid-sea" },
-  match: { title: "Match", ActivityIcon: PuzzlePieceIcon, fill: "bg-kid-land" },
+  memory: { title: "Memory", ...GAME_ART.memory },
+  match: { title: "Match", ...GAME_ART.match },
 };
 
 // A game in the server's state. Each game state is drawn as the tile state of
