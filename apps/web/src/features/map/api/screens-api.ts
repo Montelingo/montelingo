@@ -8,9 +8,11 @@ import { getPlayers, getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
+import { type GrownUpsData, toGrownUpsData } from "../model/grown-ups";
 import { type MapData, type RegionMapData, toMapData } from "../model/map-view";
 import { type MeData, toMeData } from "../model/me";
 import {
+  GROWN_UPS_PATH,
   ME_PATH,
   PRIZES_PATH,
   WORDS_PATH,
@@ -116,6 +118,25 @@ export async function loadMe(): Promise<MeData> {
     getPlayers(),
   ]);
   return toMeData(progress, profile, players);
+}
+
+/**
+ * The grown-ups area's progress card: every region with its completed places,
+ * the counts, and the child. Redirects to sign in, then back here, when the
+ * session has ended; a progress or profile failure still renders, with a
+ * retry.
+ */
+export async function loadGrownUps(): Promise<GrownUpsData> {
+  const [regions, progress, profile] = await signedIn(GROWN_UPS_PATH, [
+    listRegions(),
+    getProgress(),
+    getProfile(),
+  ]);
+  const details = await signedIn(
+    GROWN_UPS_PATH,
+    regions.map(({ id }) => getRegion(id)),
+  );
+  return toGrownUpsData(regions, details, progress, profile);
 }
 
 /**
