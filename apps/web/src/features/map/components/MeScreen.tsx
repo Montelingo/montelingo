@@ -73,7 +73,7 @@ export function MeScreen({
       )}
     >
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 pb-8 pt-safe-t sm:px-gutter">
+        <div className="mx-auto flex w-full max-w-tab flex-col gap-6 px-4 pb-8 pt-safe-t sm:px-gutter">
           <header className="flex flex-col items-center gap-1 pt-6 text-center">
             {/* 122 + 2 × 8 + 2 × 3 = 144px, the skeleton's size-36. */}
             <div className="mb-3 rounded-full border-3 border-kid-ink bg-kid-yellow p-2 shadow-raised-6">

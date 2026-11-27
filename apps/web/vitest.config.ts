@@ -1,8 +1,11 @@
 import { fileURLToPath } from "node:url";
 
+import mdx from "@mdx-js/rollup";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Compiles .mdx imports (the privacy policy) the way @next/mdx does in Next.js.
+  plugins: [mdx()],
   // tsconfig keeps `jsx: preserve` for Next.js, so tell esbuild to use the React 17+ JSX runtime.
   esbuild: {
     jsx: "automatic",

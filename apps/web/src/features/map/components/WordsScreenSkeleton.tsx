@@ -12,13 +12,13 @@ export function WordsScreenSkeleton() {
           aria-hidden="true"
           className="fixed inset-0 animate-pulse bg-kid-cream"
         >
-          <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-safe-t sm:px-gutter">
+          <div className="mx-auto flex w-full max-w-tab flex-col gap-6 px-4 pt-safe-t sm:px-gutter">
             <div className="flex items-center justify-between pt-6">
               <div className="h-10 w-48 rounded-kid-sm bg-kid-line" />
               <div className="h-11 w-20 rounded-badge bg-white" />
             </div>
             <div className="h-8 w-36 rounded-kid-sm bg-kid-line/60" />
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-3 sm:grid-cols-5 lg:grid-cols-10">
               {Array.from({ length: 4 }, (_, index) => (
                 <div key={index} className="h-28 rounded-kid bg-white" />
               ))}
