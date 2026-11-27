@@ -313,7 +313,11 @@ export function seedRegionDetails(): RegionDetail[] {
 }
 
 /** A child who has collected nothing yet. */
-export const NO_COUNTS: ProgressCounts = { wordsLearned: 0, stickers: 0 };
+export const NO_COUNTS: ProgressCounts = {
+  wordsLearned: 0,
+  stickers: 0,
+  stars: 0,
+};
 
 /** Everything open: every region and place `available`, as a preview might. */
 export function allOpenProgress(): ProgressResult {
@@ -322,7 +326,11 @@ export function allOpenProgress(): ProgressResult {
     progress: {
       regions: SEED_REGIONS.map(({ id }) => ({ id, state: "available" })),
       locations: SEED_REGIONS.flatMap(({ locations }) =>
-        locations.map(([id]) => ({ id, state: "available" as const })),
+        locations.map(([id]) => ({
+          id,
+          state: "available" as const,
+          stars: 0,
+        })),
       ),
       chapters: [],
       counts: NO_COUNTS,
@@ -372,6 +380,7 @@ export function newAccountProgress(): ProgressResult {
         locations.map(([id]) => ({
           id,
           state: id === "budva" ? "available" : "locked",
+          stars: 0,
         })),
       ),
       chapters: [

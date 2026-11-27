@@ -1,13 +1,15 @@
 import type { Region, RegionDetail } from "./content";
-import { joinProgress, type ProgressResult } from "./progress";
+import {
+  joinProgress,
+  type ProgressResult,
+  STARS_PER_PLACE,
+  starsByPlace,
+} from "./progress";
 import { needsProgressRetry } from "./screens";
 
 // The Prizes tab ("My prizes" in Figma): one sticker per place, grouped by
-// region. A sticker is earned when its place is completed; stars come from
-// the backend later, so the screen takes them as props (#163).
-
-/** The most stars a place can give. */
-export const STARS_PER_PLACE = 3;
+// region. A sticker is earned when its place is completed. Stars are the
+// server's (ADR 0009): a region's are its places' added up.
 
 // A sticker's art in public/learner, by place id, as the designers export
 // it. A place without art yet gets a placeholder circle.
@@ -27,6 +29,8 @@ export type PrizeRegion =
       kind: "open";
       id: string;
       name: string;
+      /** Its places' stars added up, or `null` when progress failed. */
+      stars: number | null;
       /** STARS_PER_PLACE for each of its places. */
       maxStars: number;
       stickers: Sticker[];
@@ -41,6 +45,8 @@ export type PrizeRegion =
 
 export type PrizesData = {
   regions: PrizeRegion[];
+  /** Every place's stars, or `null` when progress failed: then not known. */
+  stars: number | null;
   /** Whether a region or place has no state from the server yet. */
   needsProgressRetry: boolean;
 };
@@ -63,6 +69,7 @@ export function toPrizesData(
     },
     progress,
   );
+  const stars = starsByPlace(progress);
   // A locked region shows no stickers, so its places' states do not matter.
   const lockedIds = new Set(
     joined.regions
@@ -70,6 +77,7 @@ export function toPrizesData(
       .map(({ id }) => id),
   );
   return {
+    stars: progress.status === "ready" ? progress.progress.counts.stars : null,
     needsProgressRetry: needsProgressRetry([
       ...joined.regions,
       ...joined.locations.filter(({ regionId }) => !lockedIds.has(regionId)),
@@ -95,6 +103,11 @@ export function toPrizesData(
         kind: "open",
         id: region.id,
         name: region.name,
+        stars:
+          stars === null
+            ? null
+            : // A place without an entry asks for a retry; until then it adds 0.
+              stickers.reduce((sum, { id }) => sum + (stars.get(id) ?? 0), 0),
         maxStars: stickers.length * STARS_PER_PLACE,
         stickers,
       };

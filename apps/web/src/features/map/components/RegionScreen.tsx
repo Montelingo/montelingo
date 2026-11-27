@@ -18,6 +18,7 @@ export function RegionScreen({
   regions,
   places,
   explorer,
+  stars,
   notice,
 }: RegionScreenProps) {
   const regionPlaces = places.filter(({ regionId }) => regionId === region.id);
@@ -27,6 +28,7 @@ export function RegionScreen({
       regions={regions}
       places={places}
       explorer={explorer}
+      stars={stars}
       focusRegionId={region.id}
       backHref={PLAY_PATH}
       notice={notice}

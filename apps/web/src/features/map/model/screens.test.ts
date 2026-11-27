@@ -100,9 +100,9 @@ describe("toRegionScreen", () => {
       progress: {
         regions: [{ id: "coast", state: "in-progress" }],
         locations: [
-          { id: "budva", state: "completed" },
-          { id: "kotor", state: "in-progress" },
-          { id: "tivat", state: "available" },
+          { id: "budva", state: "completed", stars: 0 },
+          { id: "kotor", state: "in-progress", stars: 0 },
+          { id: "tivat", state: "available", stars: 0 },
         ],
         chapters: [],
         counts: NO_COUNTS,

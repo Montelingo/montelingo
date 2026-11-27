@@ -12,6 +12,7 @@ import {
   joinProgress,
   pickNextPlace,
   type ProgressResult,
+  starsByPlace,
   type WithState,
 } from "./progress";
 
@@ -23,6 +24,11 @@ export type MapPlace = MapLocationLink & {
   readonly regionId: string;
   /** The place's number in its region, from 1, in content order. */
   readonly order: number;
+  /**
+   * Its stars, 0 to 3, or `null` when they are not known: progress failed,
+   * or has no entry for the place (ADR 0009).
+   */
+  readonly stars: number | null;
 };
 
 export type MapRegion = MapRegionLink & {
@@ -36,6 +42,8 @@ export type MapData = {
   places: MapPlace[];
   /** The child the side panel shows, or `null` for the placeholder explorer. */
   explorer: Explorer | null;
+  /** Every place's stars, or `null` when progress failed: then not known. */
+  stars: number | null;
 };
 
 /** A region's map screen: the zoomed region, and the whole map. */
@@ -61,9 +69,11 @@ export function toMapData(
     ({ id }) => id in MAP_GEOMETRY.locations,
   );
   const nextPlace = pickNextPlace(places);
+  const stars = starsByPlace(progress);
   const orders = new Map<string, number>();
   return {
     explorer,
+    stars: progress.status === "ready" ? progress.progress.counts.stars : null,
     regions: joined.regions.map(({ id, name, state, locations }) => ({
       id,
       name,
@@ -83,6 +93,7 @@ export function toMapData(
         state,
         regionId,
         order,
+        stars: stars?.get(id) ?? null,
         href: locationPath(regionId, id),
         isNext: id === nextPlace?.id,
       };

@@ -12,12 +12,12 @@ vi.mock("next/navigation", () => ({
 
 const MIA: MeData = {
   explorer: { name: "Mia", avatar: "owl", title: "Istraživač · 5–6 godina" },
-  counts: { wordsLearned: 40, stickers: 3 },
+  counts: { wordsLearned: 40, stickers: 3, stars: 7 },
   needsRetry: false,
 };
 
-function renderMe(me: Partial<MeData> = {}, stars = 7) {
-  return render(<MeScreen {...MIA} {...me} stars={stars} />);
+function renderMe(me: Partial<MeData> = {}) {
+  return render(<MeScreen {...MIA} {...me} />);
 }
 
 describe("MeScreen", () => {
@@ -79,7 +79,7 @@ describe("MeScreen", () => {
   });
 
   it("shows a new child's counts as 0", () => {
-    renderMe({ counts: { wordsLearned: 0, stickers: 0 } }, 0);
+    renderMe({ counts: { wordsLearned: 0, stickers: 0, stars: 0 } });
 
     for (const name of ["Zvjezdice: 0", "Riječi: 0", "Naljepnice: 0"]) {
       expect(screen.getByRole("group", { name })).toBeInTheDocument();

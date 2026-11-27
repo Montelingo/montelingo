@@ -27,7 +27,7 @@ function openPlace(
     status: "ready",
     progress: {
       regions: [{ id: regionId, state: "in-progress" }],
-      locations: [{ id: location.id, state: "available" }],
+      locations: [{ id: location.id, state: "available", stars: 0 }],
       chapters,
       counts: NO_COUNTS,
     },

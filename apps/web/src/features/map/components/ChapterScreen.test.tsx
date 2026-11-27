@@ -28,7 +28,7 @@ function openChapter(
     status: "ready",
     progress: {
       regions: [{ id: regionId, state: "in-progress" }],
-      locations: [{ id: location.id, state: "available" }],
+      locations: [{ id: location.id, state: "available", stars: 0 }],
       chapters: location.chapters.map(({ id }) => makeChapterState(id)),
       counts: NO_COUNTS,
     },

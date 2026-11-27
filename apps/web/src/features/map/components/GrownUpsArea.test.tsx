@@ -15,7 +15,7 @@ const MIA: GrownUpsData = {
     { id: "coast", name: "Obala", completed: 2, total: 6 },
     { id: "central", name: "Centralna Crna Gora", completed: 0, total: 5 },
   ],
-  counts: { wordsLearned: 8, stickers: 2 },
+  counts: { wordsLearned: 8, stickers: 2, stars: 0 },
   needsRetry: false,
 };
 
