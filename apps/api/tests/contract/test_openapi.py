@@ -36,6 +36,7 @@ def test_production_router_has_no_demo_routes(app: FastAPI) -> None:
         "/api/v1/words",
         "/api/v1/chapters/{chapter_id}/lesson",
         "/api/v1/chapters/{chapter_id}/games/{game_id}/result",
+        "/api/v1/practice/{game_id}/result",
         "/api/v1/profile",
         "/api/v1/players",
         "/api/v1/players/{player_id}/select",
@@ -222,6 +223,25 @@ def test_chapter_contract_is_frozen(
     assert set(operation["responses"]) == {"200", "401", "403", "404", "409", "422", "500"}
     schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
     assert schema == {"$ref": "#/components/schemas/ChapterResult"}
+
+
+def test_practice_contract_is_frozen(app: FastAPI) -> None:
+    # ADR 0009: a practice game records a heart, nothing else. Like the chapter
+    # routes: a session, a trusted Origin, a slug parameter, and no body.
+    path_item = app.openapi()["paths"]["/api/v1/practice/{game_id}/result"]
+    operation = path_item["post"]
+
+    assert set(path_item) == {"post"}
+    assert operation["operationId"] == "progress_complete_practice"
+    assert operation["tags"] == ["progress"]
+    assert "requestBody" not in operation
+    assert {parameter["name"] for parameter in operation["parameters"]} == {"game_id"}
+    assert set(operation["responses"]) == {"200", "401", "403", "404", "409", "422", "500"}
+    schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema == {"$ref": "#/components/schemas/PracticeResult"}
+    result = app.openapi()["components"]["schemas"]["PracticeResult"]
+    assert result["required"] == ["heart_earned"]
+    assert result["properties"]["heart_earned"]["type"] == "boolean"
 
 
 def test_a_result_is_the_chapter_and_whether_it_gave_a_heart(app: FastAPI) -> None:

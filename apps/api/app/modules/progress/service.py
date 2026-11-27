@@ -39,6 +39,7 @@ from .schemas import (
     LearnedWords,
     LocationState,
     NextPlace,
+    PracticeResult,
     Profile,
     ProgressCounts,
     ProgressState,
@@ -270,6 +271,44 @@ class GameProgressService:
 
         # The first time gives a star, not a heart.
         return _chapter_result(_calculate(_find_chapter(recorded, chapter_slug)), False)
+
+
+class PracticeProgressService:
+    """Record a finished practice game from the Riječi tab, as a heart (ADR 0009).
+
+    Practice has no chapter, so it changes no lock, sticker, star or count:
+    it only adds a heart, under the same daily cap as replays.
+    """
+
+    def __init__(
+        self,
+        repository: ProgressRepository,
+        transaction_manager: TransactionManager,
+        clock: Clock = _utc_now,
+    ) -> None:
+        self.repository = repository
+        self.transaction_manager = transaction_manager
+        self.clock = clock
+
+    async def complete_practice(self, learning_profile_id: UUID, game_slug: str) -> PracticeResult:
+        game = _find_game(game_slug)
+        chapters = await self.repository.read_chapters(learning_profile_id)
+        # The same rule as `words_learned`: practice deals from learned words.
+        if not any(
+            chapter.lesson_completed_at is not None and chapter.word_count > 0
+            for chapter in chapters
+        ):
+            raise ApiError(
+                ErrorCode.NO_LEARNED_WORDS,
+                "There are no learned words to practise yet.",
+                status_code=409,
+            )
+
+        async with self.transaction_manager.transaction():
+            heart_earned = await _earn_heart(
+                self.repository, learning_profile_id, self.clock(), "practice", game=game
+            )
+        return PracticeResult(heart_earned=heart_earned)
 
 
 def _find_chapter(
