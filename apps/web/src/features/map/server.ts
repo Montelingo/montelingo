@@ -9,6 +9,7 @@ export {
   assertLocationOpen,
   loadChapterScreen,
   loadGameScreen,
+  loadGrownUps,
   loadLessonScreen,
   loadMap,
   loadMe,
