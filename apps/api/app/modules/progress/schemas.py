@@ -57,6 +57,16 @@ class ChapterResult(ChapterState):
     heart_earned: bool
 
 
+class PracticeResult(ApiSchema):
+    """What recording a practice game answers: whether it gave a heart (ADR 0009).
+
+    Practice changes no lock, sticker, star or count of words. Past the daily
+    cap `heart_earned` is false.
+    """
+
+    heart_earned: bool
+
+
 # What a heart was earned for (ADR 0009).
 HeartSource = Literal["lesson", "game", "practice"]
 HEART_SOURCES: tuple[HeartSource, ...] = get_args(HeartSource)

@@ -606,6 +606,20 @@
         "title": "Player",
         "type": "object"
       },
+      "PracticeResult": {
+        "description": "What recording a practice game answers: whether it gave a heart (ADR 0009).\n\nPractice changes no lock, sticker, star or count of words. Past the daily\ncap `heart_earned` is false.",
+        "properties": {
+          "heart_earned": {
+            "title": "Heart Earned",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "heart_earned"
+        ],
+        "title": "PracticeResult",
+        "type": "object"
+      },
       "Profile": {
         "description": "The current account's child profile. Fields stay null until it is set up.",
         "properties": {
@@ -1797,6 +1811,100 @@
         "summary": "Select Player",
         "tags": [
           "players"
+        ]
+      }
+    },
+    "/api/v1/practice/{game_id}/result": {
+      "post": {
+        "description": "A practice game from the Rije\u010di tab, played to the end (ADR 0009).",
+        "operationId": "progress_complete_practice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "title": "Game Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PracticeResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Complete Practice",
+        "tags": [
+          "progress"
         ]
       }
     },
