@@ -161,7 +161,7 @@ const NEW_ACCOUNT_PROGRESS: ProgressBody = {
     apiChapterState("budva-beach", "todo", "locked", "locked"),
     apiChapterState("budva-summer-clothes", "todo", "locked", "locked"),
   ],
-  counts: { words_learned: 0, stickers: 0, stars: 0 },
+  counts: { words_learned: 0, stickers: 0, stars: 0, hearts: 0 },
 };
 
 // The coast done and the centre open, with Podgorica open and Kotor locked.
@@ -186,7 +186,7 @@ const PODGORICA_OPEN_PROGRESS: ProgressBody = {
     apiChapterState("podgorica-kindergarten", "todo", "locked", "locked"),
   ],
   // Four lessons seen, and Budva's sticker and stars.
-  counts: { words_learned: 40, stickers: 1, stars: 3 },
+  counts: { words_learned: 40, stickers: 1, stars: 3, hearts: 0 },
 };
 
 /**
@@ -217,7 +217,7 @@ function progressResponse(progress: ProgressAnswer): Response {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: 0, stickers: 0, stars: 0 },
+        counts: { words_learned: 0, stickers: 0, stars: 0, hearts: 0 },
       });
     case "signed-out":
       return errorResponse(401, "authentication_error");

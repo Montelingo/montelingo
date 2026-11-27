@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.core.errors import ApiError, ErrorCode
@@ -18,6 +20,8 @@ from .domain import (
     calculate_map_states,
     calculate_progress_counts,
     calculate_stars,
+    has_room_for_heart,
+    heart_day_start,
     is_location_completed,
 )
 from .domain import ChapterState as ChapterStateRecord
@@ -26,9 +30,11 @@ from .schemas import (
     GAME_IDS,
     AgeBand,
     Avatar,
+    ChapterResult,
     ChapterState,
     GameId,
     GameState,
+    HeartSource,
     LearnedPlace,
     LearnedWords,
     LocationState,
@@ -53,6 +59,7 @@ class DatabaseProgressService:
         chapter_states = calculate_chapter_states(chapters, states.locations)
         counts = calculate_progress_counts(chapters, states.locations)
         stars = calculate_stars(chapters, states.locations)
+        hearts = await self.repository.count_hearts(learning_profile_id)
 
         return ProgressState(
             regions=[RegionState(id=slug, state=state) for slug, state in states.regions.items()],
@@ -65,6 +72,7 @@ class DatabaseProgressService:
                 words_learned=counts.words_learned,
                 stickers=counts.stickers,
                 stars=counts.stars,
+                hearts=hearts,
             ),
         )
 
@@ -108,18 +116,53 @@ class DatabaseProgressService:
         )
 
 
+# The time now, aware. Services take it so tests can cross a day.
+Clock = Callable[[], datetime]
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+async def _earn_heart(
+    repository: ProgressRepository,
+    learning_profile_id: UUID,
+    now: datetime,
+    source: HeartSource,
+    *,
+    chapter_slug: str | None = None,
+    game: GameId | None = None,
+) -> bool:
+    """Add a heart unless the player has reached today's cap (ADR 0009).
+
+    Must be called in a transaction. The player stays locked until it ends,
+    so two replays at once cannot both pass the cap.
+    """
+
+    await repository.lock_hearts(learning_profile_id)
+    today = await repository.count_hearts(learning_profile_id, since=heart_day_start(now))
+    if not has_room_for_heart(today):
+        return False
+    await repository.add_heart(
+        learning_profile_id, earned_at=now, source=source, chapter_slug=chapter_slug, game=game
+    )
+    return True
+
+
 class LessonProgressService:
-    """Record a seen lesson once, for the current account's learning profile."""
+    """Record a seen lesson once, and a heart when it is seen again (ADR 0009)."""
 
     def __init__(
         self,
         repository: ProgressRepository,
         transaction_manager: TransactionManager,
+        clock: Clock = _utc_now,
     ) -> None:
         self.repository = repository
         self.transaction_manager = transaction_manager
+        self.clock = clock
 
-    async def complete_lesson(self, learning_profile_id: UUID, chapter_slug: str) -> ChapterState:
+    async def complete_lesson(self, learning_profile_id: UUID, chapter_slug: str) -> ChapterResult:
         content, location_progress = await self.repository.read_map(learning_profile_id)
         chapters = await self.repository.read_chapters(learning_profile_id)
         chapter = _find_chapter(chapters, chapter_slug)
@@ -132,33 +175,46 @@ class LessonProgressService:
                 status_code=409,
             )
 
+        # Seeing a lesson again is practice; the first time gives a star instead.
+        is_replay = chapter.lesson_completed_at is not None
+        heart_earned = False
         async with self.transaction_manager.transaction():
             await self.repository.record_lesson(
                 learning_profile_id, chapter_slug, chapter.location_slug
             )
+            if is_replay:
+                heart_earned = await _earn_heart(
+                    self.repository,
+                    learning_profile_id,
+                    self.clock(),
+                    "lesson",
+                    chapter_slug=chapter_slug,
+                )
             # Read back what was stored, so a concurrent call answers the same state.
             recorded = await self.repository.read_chapters(learning_profile_id)
 
-        return _chapter_state(_calculate(_find_chapter(recorded, chapter_slug)))
+        return _chapter_result(_calculate(_find_chapter(recorded, chapter_slug)), heart_earned)
 
 
 class GameProgressService:
-    """Record a finished game once, for the current account's learning profile."""
+    """Record a finished game once, and a heart when it is played again (ADR 0009)."""
 
     def __init__(
         self,
         repository: ProgressRepository,
         transaction_manager: TransactionManager,
+        clock: Clock = _utc_now,
     ) -> None:
         self.repository = repository
         self.transaction_manager = transaction_manager
+        self.clock = clock
 
     async def complete_game(
         self,
         learning_profile_id: UUID,
         chapter_slug: str,
         game_slug: str,
-    ) -> ChapterState:
+    ) -> ChapterResult:
         content, location_progress = await self.repository.read_map(learning_profile_id)
         chapters = await self.repository.read_chapters(learning_profile_id)
         chapter = _find_chapter(chapters, chapter_slug)
@@ -181,17 +237,26 @@ class GameProgressService:
                 status_code=409,
             )
         if game_state == "completed":
-            # Recorded once (ADR 0006): a replay answers 200 and records nothing.
-            # It does complete a place whose games are all done but that isn't
-            # marked, like one finished before #139 or before content changed.
-            if location_states[chapter.location_slug] != "completed" and is_location_completed(
-                chapter.location_slug, chapters
-            ):
-                async with self.transaction_manager.transaction():
+            # Recorded once (ADR 0006): a replay changes no state, but may give
+            # a heart (ADR 0009). It does complete a place whose games are all
+            # done but that isn't marked, like one finished before #139 or
+            # before content changed.
+            async with self.transaction_manager.transaction():
+                if location_states[chapter.location_slug] != "completed" and is_location_completed(
+                    chapter.location_slug, chapters
+                ):
                     await self.repository.complete_location(
                         learning_profile_id, chapter.location_slug
                     )
-            return _chapter_state(state)
+                heart_earned = await _earn_heart(
+                    self.repository,
+                    learning_profile_id,
+                    self.clock(),
+                    "game",
+                    chapter_slug=chapter_slug,
+                    game=game,
+                )
+            return _chapter_result(state, heart_earned)
 
         async with self.transaction_manager.transaction():
             # `record_game` locks the place's progress row, so the read below
@@ -203,7 +268,8 @@ class GameProgressService:
             if is_location_completed(chapter.location_slug, recorded):
                 await self.repository.complete_location(learning_profile_id, chapter.location_slug)
 
-        return _chapter_state(_calculate(_find_chapter(recorded, chapter_slug)))
+        # The first time gives a star, not a heart.
+        return _chapter_result(_calculate(_find_chapter(recorded, chapter_slug)), False)
 
 
 def _find_chapter(
@@ -237,6 +303,15 @@ def _chapter_state(chapter: ChapterStateRecord) -> ChapterState:
         id=chapter.id,
         lesson=chapter.lesson,
         games=[GameState(id=game.id, state=game.state) for game in chapter.games],
+    )
+
+
+def _chapter_result(chapter: ChapterStateRecord, heart_earned: bool) -> ChapterResult:
+    return ChapterResult(
+        id=chapter.id,
+        lesson=chapter.lesson,
+        games=[GameState(id=game.id, state=game.state) for game in chapter.games],
+        heart_earned=heart_earned,
     )
 
 

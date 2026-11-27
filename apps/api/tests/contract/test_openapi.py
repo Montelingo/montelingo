@@ -221,7 +221,14 @@ def test_chapter_contract_is_frozen(
     assert {parameter["name"] for parameter in operation["parameters"]} == parameters
     assert set(operation["responses"]) == {"200", "401", "403", "404", "409", "422", "500"}
     schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
-    assert schema == {"$ref": "#/components/schemas/ChapterState"}
+    assert schema == {"$ref": "#/components/schemas/ChapterResult"}
+
+
+def test_a_result_is_the_chapter_and_whether_it_gave_a_heart(app: FastAPI) -> None:
+    result = app.openapi()["components"]["schemas"]["ChapterResult"]
+
+    assert set(result["required"]) == {"id", "lesson", "games", "heart_earned"}
+    assert result["properties"]["heart_earned"]["type"] == "boolean"
 
 
 def test_progress_state_lists_chapters(app: FastAPI) -> None:
@@ -243,10 +250,11 @@ def test_progress_state_sends_the_counts(app: FastAPI) -> None:
         "$ref": "#/components/schemas/ProgressCounts"
     }
     counts = components["ProgressCounts"]
-    assert set(counts["required"]) == {"words_learned", "stickers", "stars"}
+    assert set(counts["required"]) == {"words_learned", "stickers", "stars", "hearts"}
     assert counts["properties"]["words_learned"]["type"] == "integer"
     assert counts["properties"]["stickers"]["type"] == "integer"
     assert counts["properties"]["stars"]["type"] == "integer"
+    assert counts["properties"]["hearts"]["type"] == "integer"
 
 
 def test_each_location_sends_its_stars(app: FastAPI) -> None:

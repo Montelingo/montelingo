@@ -460,6 +460,7 @@ async def test_complete_lesson_records_completion_and_starts_location(
             {"id": "memory", "state": "available"},
             {"id": "match", "state": "available"},
         ],
+        "heart_earned": False,
     }
     row = await db_session.get(ChapterProgress, (profile.id, beach.id))
     assert row is not None and row.lesson_completed_at is not None
@@ -490,7 +491,8 @@ async def test_complete_lesson_is_idempotent_and_keeps_first_timestamp(
 
     second = await integration_client.post(path, headers={"Origin": ORIGIN})
     assert second.status_code == 200, second.text
-    assert second.json() == first.json()
+    # The same state; only the replay's heart is new (ADR 0009).
+    assert second.json() == {**first.json(), "heart_earned": True}
     db_session.expire_all()
     await db_session.refresh(profile)
     await db_session.refresh(beach)

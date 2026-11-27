@@ -92,6 +92,7 @@ const progressCountsSchema = z.object({
   words_learned: countSchema,
   stickers: countSchema,
   stars: countSchema,
+  hearts: countSchema,
 }) satisfies z.ZodType<Schemas["ProgressCounts"]>;
 
 export const progressSchema = z.object({

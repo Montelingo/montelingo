@@ -35,6 +35,43 @@
         "title": "Chapter",
         "type": "object"
       },
+      "ChapterResult": {
+        "description": "What recording a lesson or a game answers: the chapter, and whether it gave a heart.\n\nA heart comes from a replay, up to a daily cap (ADR 0009). Past the cap,\nor the first time, `heart_earned` is false and nothing else changes.",
+        "properties": {
+          "games": {
+            "items": {
+              "$ref": "#/components/schemas/GameState"
+            },
+            "title": "Games",
+            "type": "array"
+          },
+          "heart_earned": {
+            "title": "Heart Earned",
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lesson": {
+            "enum": [
+              "todo",
+              "done"
+            ],
+            "title": "Lesson",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lesson",
+          "games",
+          "heart_earned"
+        ],
+        "title": "ChapterResult",
+        "type": "object"
+      },
       "ChapterState": {
         "description": "A chapter's lesson and its games, always listed `memory`, then `match`.",
         "properties": {
@@ -674,6 +711,10 @@
       "ProgressCounts": {
         "description": "What the child has collected, for the Ja screen and the grown-ups area (#175).\n\nThe server counts them, so the frontend never does (ADR 0005).",
         "properties": {
+          "hearts": {
+            "title": "Hearts",
+            "type": "integer"
+          },
           "stars": {
             "title": "Stars",
             "type": "integer"
@@ -690,7 +731,8 @@
         "required": [
           "words_learned",
           "stickers",
-          "stars"
+          "stars",
+          "hearts"
         ],
         "title": "ProgressCounts",
         "type": "object"
@@ -1270,7 +1312,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChapterState"
+                  "$ref": "#/components/schemas/ChapterResult"
                 }
               }
             },
@@ -1363,7 +1405,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChapterState"
+                  "$ref": "#/components/schemas/ChapterResult"
                 }
               }
             },

@@ -108,6 +108,7 @@ async def test_records_the_game_and_returns_the_chapter_state(
 
     body = await record(integration_client, BEACH_MEMORY)
 
+    # The first time gives a star, not a heart (ADR 0009).
     assert body == {
         "id": "budva-beach",
         "lesson": "done",
@@ -115,12 +116,13 @@ async def test_records_the_game_and_returns_the_chapter_state(
             {"id": "memory", "state": "completed"},
             {"id": "match", "state": "available"},
         ],
+        "heart_earned": False,
     }
     results = await game_results(db_session, profile)
     assert [(row.chapter_id, row.game) for row in results] == [(beach.id, "memory")]
 
     progress = (await integration_client.get("/api/v1/progress")).json()
-    assert progress["chapters"][0] == body
+    assert {**progress["chapters"][0], "heart_earned": False} == body
 
 
 async def test_each_game_is_recorded_separately(
@@ -160,7 +162,8 @@ async def test_recording_again_answers_200_and_changes_nothing(
 
     second = await record(integration_client, BEACH_MEMORY)
 
-    assert second == first
+    # The same state; only the replay's heart is new (ADR 0009).
+    assert second == {**first, "heart_earned": True}
     [second_result] = await game_results(db_session, profile)
     await db_session.refresh(second_result)
     assert second_result.id == first_result.id

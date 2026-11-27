@@ -18,7 +18,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-from .schemas import AGE_BANDS, AVATARS, GAME_IDS, NAME_MAX_LENGTH, GameId
+from .schemas import (
+    AGE_BANDS,
+    AVATARS,
+    GAME_IDS,
+    HEART_SOURCES,
+    NAME_MAX_LENGTH,
+    GameId,
+    HeartSource,
+)
 
 
 def _one_of(values: tuple[str, ...]) -> str:
@@ -157,3 +165,49 @@ class GameResult(Base):
     completed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class HeartEvent(Base):
+    """One heart a player earned by coming back to words they learned (ADR 0009).
+
+    Never updated. The player's hearts are a count of these rows.
+    """
+
+    __tablename__ = "heart_events"
+    __table_args__ = (
+        CheckConstraint(f"source IN ({_one_of(HEART_SOURCES)})", name="ck_heart_events_source"),
+        CheckConstraint(f"game IN ({_one_of(GAME_IDS)})", name="ck_heart_events_game"),
+        # A lesson has a chapter and no game, a game both, practice only a game.
+        CheckConstraint(
+            "(source = 'lesson' AND chapter_id IS NOT NULL AND game IS NULL)"
+            " OR (source = 'game' AND chapter_id IS NOT NULL AND game IS NOT NULL)"
+            " OR (source = 'practice' AND chapter_id IS NULL AND game IS NOT NULL)",
+            name="ck_heart_events_source_columns",
+        ),
+        # The total and the day's count both read by player and time.
+        Index("ix_heart_events_learning_profile_id_earned_at", "learning_profile_id", "earned_at"),
+        Index("ix_heart_events_chapter_id", "chapter_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    learning_profile_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "learning_profiles.id",
+            name="fk_heart_events_learning_profile_id_learning_profiles",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[HeartSource] = mapped_column(Text, nullable=False)
+    # Like `game_results`, a heart goes with its chapter if content removes it.
+    chapter_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey(
+            "chapters.id",
+            name="fk_heart_events_chapter_id_chapters",
+            ondelete="CASCADE",
+        ),
+    )
+    game: Mapped[GameId | None] = mapped_column(Text)

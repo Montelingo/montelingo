@@ -40,7 +40,7 @@ vi.mock("react", async (importOriginal) => ({
 
 vi.mock("@/lib/api", () => ({ getApiClient: getApiClientMock }));
 
-const NO_COUNTS = { words_learned: 0, stickers: 0, stars: 0 };
+const NO_COUNTS = { words_learned: 0, stickers: 0, stars: 0, hearts: 0 };
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -106,7 +106,7 @@ describe("fetchProgress", () => {
             ],
           },
         ],
-        counts: { words_learned: 10, stickers: 0, stars: 1 },
+        counts: { words_learned: 10, stickers: 0, stars: 1, hearts: 0 },
       }),
     );
 
@@ -270,7 +270,7 @@ describe("fetchProgress", () => {
         regions: [],
         locations: [],
         chapters: [],
-        counts: { words_learned: -1, stickers: 0, stars: 0 },
+        counts: { words_learned: -1, stickers: 0, stars: 0, hearts: 0 },
       }),
     );
 
