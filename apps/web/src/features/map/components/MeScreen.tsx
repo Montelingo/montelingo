@@ -1,9 +1,10 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import Link from "next/link";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
 import { GrownUpsGateButton } from "@/features/grown-ups";
-import { avatarSrc } from "@/features/profile/edge";
+import { avatarSrc, PLAYERS_PATH } from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
 
@@ -54,14 +55,27 @@ const STICKERS: Tile = {
   chipClass: "bg-kid-pink",
 };
 
+// A wide row with the ink edge: Switch player's link, or the grown-ups gate's
+// button.
+const ROW_CLASS = cn(
+  "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-kid-ink shadow-raised-4",
+  FOCUS_RING,
+);
+
 // The Ja tab, /play/me (Figma 27:61076, screen 1 of #174): the child's buddy
-// in the big gold ring, their name and title, four count tiles, and the way
-// to the grown-ups area, through its gate (#177), which opens over this
-// screen. A centred column from tablet width, the full width less a 16px
-// gutter on a phone, scrolling on its own above the bottom nav, which is
-// docked or floating as on the map. `data-map-screen` tells LearnerShell to
-// drop its own Back and Home bar, as on the Prizes screen.
-export function MeScreen({ explorer, counts, needsRetry }: MeData) {
+// in the big gold ring, their name and title, four count tiles, Switch player
+// when the account has another child (#184), and the way to the grown-ups
+// area, through its gate (#177), which opens over this screen. A centred
+// column from tablet width, the full width less a 16px gutter on a phone,
+// scrolling on its own above the bottom nav, which is docked or floating as on
+// the map. `data-map-screen` tells LearnerShell to drop its own Back and Home
+// bar, as on the Prizes screen.
+export function MeScreen({
+  explorer,
+  counts,
+  needsRetry,
+  canSwitchPlayer,
+}: MeData) {
   return (
     <div
       data-map-screen
@@ -105,24 +119,24 @@ export function MeScreen({ explorer, counts, needsRetry }: MeData) {
             <CountTile tile={WORDS} value={counts?.wordsLearned ?? null} />
             <CountTile tile={STICKERS} value={counts?.stickers ?? null} />
           </ul>
+          {/* Only with someone to switch to; no grown-ups gate, as in Figma. */}
+          {canSwitchPlayer ? (
+            <Link href={PLAYERS_PATH} className={ROW_CLASS}>
+              <MeRowContent
+                icon="switch"
+                chipClass="border-kid-ink bg-kid-sea-soft"
+                label="Promijeni igrača"
+              />
+            </Link>
+          ) : null}
           <GrownUpsGateButton
             href={GROWN_UPS_PATH}
-            className={cn(
-              "flex min-h-touch-lg items-center gap-4 rounded-kid-xl border-3 border-kid-ink bg-white px-5 py-4 text-left text-kid-ink shadow-raised-4",
-              FOCUS_RING,
-            )}
+            className={cn(ROW_CLASS, "text-left")}
           >
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 border-kid-line bg-kid-fog">
-              <ChromeIcon name="lock" size={26} />
-            </span>
-            <span className="flex-1 text-2xl font-semibold leading-tight">
-              Za roditelje
-            </span>
-            {/* The kit's icons are drawn with a 2.5 stroke at 24px. */}
-            <ChevronRightIcon
-              aria-hidden="true"
-              strokeWidth={2.5}
-              className="size-7 shrink-0"
+            <MeRowContent
+              icon="lock"
+              chipClass="border-kid-line bg-kid-fog"
+              label="Za roditelje"
             />
           </GrownUpsGateButton>
         </div>
@@ -131,6 +145,38 @@ export function MeScreen({ explorer, counts, needsRetry }: MeData) {
         <MapBottomNav current="me" />
       </div>
     </div>
+  );
+}
+
+type MeRowContentProps = {
+  icon: ChromeIconName;
+  /** The icon chip's edge and fill, written out. */
+  chipClass: string;
+  label: string;
+};
+
+// A row's inside: the icon on its round chip, the label and a chevron.
+function MeRowContent({ icon, chipClass, label }: MeRowContentProps) {
+  return (
+    <>
+      <span
+        className={cn(
+          "flex size-12 shrink-0 items-center justify-center rounded-full border-2",
+          chipClass,
+        )}
+      >
+        <ChromeIcon name={icon} size={26} />
+      </span>
+      <span className="flex-1 text-2xl font-semibold leading-tight">
+        {label}
+      </span>
+      {/* The kit's icons are drawn with a 2.5 stroke at 24px. */}
+      <ChevronRightIcon
+        aria-hidden="true"
+        strokeWidth={2.5}
+        className="size-7 shrink-0"
+      />
+    </>
   );
 }
 

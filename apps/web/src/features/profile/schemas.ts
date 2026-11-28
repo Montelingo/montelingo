@@ -12,3 +12,9 @@ export const profileSchema = z.object({
   avatar: z.enum(["fox", "bear", "bunny", "frog", "owl", "cat"]).nullable(),
   is_complete: z.boolean(),
 }) satisfies z.ZodType<Schemas["Profile"]>;
+
+// Runtime check for GET /players (ADR 0007): the profile, with the player's
+// id, which the picker sends back to choose them.
+export const playersSchema = z.array(
+  profileSchema.extend({ id: z.uuid(), is_active: z.boolean() }),
+) satisfies z.ZodType<Schemas["Player"][]>;

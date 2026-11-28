@@ -14,6 +14,7 @@ const MIA: MeData = {
   explorer: { name: "Mia", avatar: "owl", title: "Istraživač · 5–6 godina" },
   counts: { wordsLearned: 40, stickers: 3, stars: 7, hearts: 2 },
   needsRetry: false,
+  canSwitchPlayer: false,
 };
 
 function renderMe(me: Partial<MeData> = {}) {
@@ -110,10 +111,22 @@ describe("MeScreen", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not offer to switch player", () => {
+  it("does not offer to switch player with no one to switch to", () => {
     renderMe();
 
     expect(screen.queryByText(/Promijeni igrača/)).not.toBeInTheDocument();
+  });
+
+  it("links Switch player to the picker, above the grown-ups row", () => {
+    renderMe({ canSwitchPlayer: true });
+
+    const switchPlayer = screen.getByRole("link", { name: "Promijeni igrača" });
+    expect(switchPlayer).toHaveAttribute("href", "/play/me/players");
+    expect(
+      switchPlayer.compareDocumentPosition(
+        screen.getByRole("button", { name: "Za roditelje" }),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("offers a retry, and never a wrong 0, when progress failed", () => {
@@ -142,6 +155,12 @@ describe("MeScreen", () => {
 
   it("has no accessibility violations", async () => {
     const { container } = renderMe();
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("has no accessibility violations with Switch player", async () => {
+    const { container } = renderMe({ canSwitchPlayer: true });
 
     expect(await axe(container)).toHaveNoViolations();
   });

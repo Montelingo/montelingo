@@ -123,6 +123,37 @@ describe("MePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Switch player only when the account has two players", async () => {
+    await renderPage();
+    expect(screen.queryByRole("link", { name: "Promijeni igrača" })).toBeNull();
+
+    serveApi(fetchMock, "new-account", "set-up", 2);
+    await renderPage();
+    expect(
+      screen.getByRole("link", { name: "Promijeni igrača" }),
+    ).toHaveAttribute("href", "/play/me/players");
+  });
+
+  it("still shows the screen, without Switch player, when the players fail", async () => {
+    serveApi(fetchMock, "new-account", "set-up", 2);
+    const api = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((request) =>
+      new URL(request.url).pathname === "/api/v1/players" || api === undefined
+        ? Promise.resolve(errorResponse(500, "internal_server_error"))
+        : api(request),
+    );
+
+    await renderPage();
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Mia" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Promijeni igrača" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("sends a learner whose session ended mid-visit to sign in, back to Ja", async () => {
     serveApi(fetchMock, "signed-out");
 

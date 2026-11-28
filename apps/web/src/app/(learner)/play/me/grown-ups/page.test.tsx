@@ -1,5 +1,5 @@
 import { type ApiClient, createApiClient } from "@app/api-client";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type * as Navigation from "next/navigation";
 import {
   afterEach,
@@ -16,7 +16,7 @@ import { getCurrentUser } from "@/features/auth/server";
 import type * as grownUps from "@/features/grown-ups";
 import { GrownUpsGate } from "@/features/grown-ups";
 
-import { serveApi } from "../../test-api";
+import { errorResponse, serveApi } from "../../test-api";
 import GrownUpsPage, { metadata } from "./page";
 
 // The real loader runs, over a fake API.
@@ -122,6 +122,52 @@ describe("GrownUpsPage", () => {
     expect(
       screen.getByRole("link", { name: "Politika privatnosti" }),
     ).toHaveAttribute("href", "/privatnost");
+  });
+
+  it("shows the players, with Dodaj, between the progress and the account", async () => {
+    serveApi(fetchMock, "new-account", "set-up", 2);
+
+    await renderArea();
+
+    const players = screen.getByRole("region", { name: "Igrači" });
+    expect(
+      within(players)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Mia", "Istraživač", "Dodaj"]);
+    expect(
+      within(players).getByRole("button", { name: "Dodaj igrača" }),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("region")
+        .map(
+          (region) =>
+            region.querySelector("h2")?.textContent ??
+            region.getAttribute("aria-label"),
+        ),
+    ).toEqual(["Napredak: Mia", "Igrači", "Nalog"]);
+  });
+
+  it("still shows the area, without the Players card, when the players fail", async () => {
+    const api = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((request) =>
+      new URL(request.url).pathname === "/api/v1/players" || api === undefined
+        ? Promise.resolve(errorResponse(500, "internal_server_error"))
+        : api(request),
+    );
+
+    await renderArea();
+
+    expect(
+      screen.getByRole("region", { name: "Napredak: Mia" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Igrači" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
   });
 
   it("still shows the area when progress fails, with a retry", async () => {

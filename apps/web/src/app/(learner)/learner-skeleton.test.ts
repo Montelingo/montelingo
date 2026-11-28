@@ -8,6 +8,8 @@ describe("learnerSkeletonFor", () => {
     ["/play/", "map"],
     ["/play/coast", "region"],
     ["/play/coast/kotor", "location"],
+    ["/play/me/players", "players"],
+    ["/play/me/players/", "players"],
     ["/play/welcome", "page"],
     ["/play/coast/kotor/extra", "page"],
     ["/account", "page"],

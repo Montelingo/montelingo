@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Profile } from "@/features/profile/edge";
+import type { Player, Profile } from "@/features/profile/edge";
 
 import { seedRegionDetails, seedRegions } from "../test-fixtures";
 import { countsText, toGrownUpsData } from "./grown-ups";
@@ -32,6 +32,8 @@ const COAST_STARTED: ProgressResult = {
   },
 };
 
+const PLAYERS: Player[] = [{ ...MIA, id: "player-mia", isActive: true }];
+
 describe("toGrownUpsData", () => {
   it("gives every region, in content order, its completed places out of all", () => {
     const data = toGrownUpsData(
@@ -39,6 +41,7 @@ describe("toGrownUpsData", () => {
       seedRegionDetails(),
       COAST_STARTED,
       MIA,
+      PLAYERS,
     );
 
     expect(data.regions).toEqual([
@@ -54,6 +57,7 @@ describe("toGrownUpsData", () => {
       hearts: 0,
     });
     expect(data.needsRetry).toBe(false);
+    expect(data.players).toEqual(PLAYERS);
   });
 
   it("has no completed places or counts, and offers a retry, when progress failed", () => {
@@ -62,6 +66,7 @@ describe("toGrownUpsData", () => {
       seedRegionDetails(),
       { status: "error" },
       MIA,
+      PLAYERS,
     );
 
     expect(data.regions.map(({ completed }) => completed)).toEqual([
@@ -80,11 +85,25 @@ describe("toGrownUpsData", () => {
       seedRegionDetails(),
       COAST_STARTED,
       null,
+      PLAYERS,
     );
 
     expect(data.explorer).toEqual({ name: "Istraživač", avatar: "fox" });
     expect(data.regions[0]?.completed).toBe(2);
     expect(data.needsRetry).toBe(true);
+  });
+
+  it("passes the players on, and leaves them out without a retry when they failed", () => {
+    const data = toGrownUpsData(
+      seedRegions(),
+      seedRegionDetails(),
+      COAST_STARTED,
+      MIA,
+      null,
+    );
+
+    expect(data.players).toBeNull();
+    expect(data.needsRetry).toBe(false);
   });
 });
 

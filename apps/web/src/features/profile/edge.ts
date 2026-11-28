@@ -14,4 +14,5 @@ export {
   type Profile,
   toExplorer,
 } from "./model/profile";
+export { canSwitchPlayer, type Player, PLAYERS_PATH } from "./model/players";
 export { needsSetup, PROFILE_SETUP_PATH } from "./model/setup";

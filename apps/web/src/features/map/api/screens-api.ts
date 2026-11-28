@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PLAY_PATH } from "@/features/auth/edge";
 import { type Profile, toExplorer } from "@/features/profile/edge";
-import { getProfile } from "@/features/profile/server";
+import { getPlayers, getProfile } from "@/features/profile/server";
 
 import { redirectOnSignedOut } from "../errors";
 import type { LocationDetail, Region, RegionDetail } from "../model/content";
@@ -106,35 +106,38 @@ export async function loadPrizes(): Promise<PrizesData> {
 }
 
 /**
- * The Ja tab: the child and their counts. Redirects to sign in when the
- * session has ended; a progress or profile failure still renders, with a
- * retry.
+ * The Ja tab: the child, their counts, and whether there is another player
+ * to switch to. Redirects to sign in when the session has ended; a progress
+ * or profile failure still renders, with a retry, and a players failure
+ * without Switch player.
  */
 export async function loadMe(): Promise<MeData> {
-  const [progress, profile] = await signedIn(ME_PATH, [
+  const [progress, profile, players] = await signedIn(ME_PATH, [
     getProgress(),
     getProfile(),
+    getPlayers(),
   ]);
-  return toMeData(progress, profile);
+  return toMeData(progress, profile, players);
 }
 
 /**
  * The grown-ups area's progress card: every region with its completed places,
- * the counts, and the child. Redirects to sign in, then back here, when the
- * session has ended; a progress or profile failure still renders, with a
- * retry.
+ * the counts, and the child; and the account's players. Redirects to sign in,
+ * then back here, when the session has ended; a progress or profile failure
+ * still renders, with a retry, and a players failure without the Players card.
  */
 export async function loadGrownUps(): Promise<GrownUpsData> {
-  const [regions, progress, profile] = await signedIn(GROWN_UPS_PATH, [
+  const [regions, progress, profile, players] = await signedIn(GROWN_UPS_PATH, [
     listRegions(),
     getProgress(),
     getProfile(),
+    getPlayers(),
   ]);
   const details = await signedIn(
     GROWN_UPS_PATH,
     regions.map(({ id }) => getRegion(id)),
   );
-  return toGrownUpsData(regions, details, progress, profile);
+  return toGrownUpsData(regions, details, progress, profile, players);
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   MapHomeSkeleton,
   RegionScreenSkeleton,
 } from "@/features/map";
+import { PlayersScreenSkeleton } from "@/features/profile";
 
 import { learnerSkeletonFor } from "./learner-skeleton";
 
@@ -24,6 +25,8 @@ export default function LearnerLoading() {
       return <RegionScreenSkeleton />;
     case "location":
       return <LocationScreenSkeleton />;
+    case "players":
+      return <PlayersScreenSkeleton />;
     case "page":
       return <LearnerPageSkeleton />;
   }
