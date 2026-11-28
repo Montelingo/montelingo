@@ -8,7 +8,7 @@ from pydantic.types import StringConstraints
 from app.schemas.common import ApiSchema, UUIDString
 
 from .domain import WordRead
-from .media import word_image_url
+from .media import word_image_url, word_image_url_512
 
 # Content is identified by its slug, which the API exposes as `id` (ADR 0005).
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9-]*$")]
@@ -39,8 +39,12 @@ class Word(ApiSchema):
     number: int = Field(ge=1, description="Recording number (1-300), also the audio file name.")
     text: str
     note: str | None
-    # Always null in phase 1. Media storage arrives in phase 2 (ADR 0005).
-    image_url: str | None
+    image_url: str | None = Field(
+        description="The 1024 px picture, for the lesson's big card. Null when the word has none."
+    )
+    image_url_512: str | None = Field(
+        description="The 512 px picture, for the boards and word cards. Null when image_url is."
+    )
     audio_url: str | None
 
     @classmethod
@@ -53,6 +57,7 @@ class Word(ApiSchema):
             text=word.text,
             note=word.note,
             image_url=word_image_url(word.number),
+            image_url_512=word_image_url_512(word.number),
             audio_url=None,
         )
 

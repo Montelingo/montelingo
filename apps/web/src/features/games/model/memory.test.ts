@@ -15,7 +15,8 @@ import {
 import { seeded } from "./test-random";
 
 function word(n: number, imageUrl: string | null = `/w/${n}.webp`): MemoryWord {
-  return { id: `word-${n}`, text: `word ${n}`, imageUrl };
+  const imageUrl512 = imageUrl?.replace(".webp", "-512.webp") ?? null;
+  return { id: `word-${n}`, text: `word ${n}`, imageUrl, imageUrl512 };
 }
 
 const TEN_WORDS = Array.from({ length: 10 }, (_, i) => word(i + 1));
@@ -60,6 +61,7 @@ describe("createMemoryGame", () => {
     for (const card of game.cards) {
       counts.set(card.wordId, (counts.get(card.wordId) ?? 0) + 1);
       expect(card.imageUrl).toBe(`/w/${card.wordId.slice(5)}.webp`);
+      expect(card.imageUrl512).toBe(`/w/${card.wordId.slice(5)}-512.webp`);
     }
     expect(counts.size).toBe(PAIRS);
     expect([...counts.values()].every((count) => count === 2)).toBe(true);

@@ -3,7 +3,8 @@
 Word images are static files in the web app, `apps/web/public/media/words/`,
 named by the word's recording number (word 1 is `0001.webp`), so the URL is
 same-origin and stable across environments. Only the words listed here have
-an image; every other word keeps `image_url: null` and the web's placeholder.
+an image; every other word keeps `image_url: null` (and `image_url_512: null`)
+and the web's placeholder.
 Add a word's number here when its image file is added.
 
 The URL carries a version, `?v=<hash>`: the first 8 hex characters of the
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 WORD_IMAGES: frozenset[int] = frozenset(
     [
@@ -62,9 +64,24 @@ MEDIA_HASHES: ImageHashes = json.loads(MEDIA_HASHES_PATH.read_text(encoding="utf
 
 
 def word_image_url(number: int) -> str | None:
-    """The image URL for a word's recording number, or None if it has none."""
+    """The 1024 px image URL for a word's recording number, or None if it has none."""
 
+    return _image_url(number, "1024")
+
+
+def word_image_url_512(number: int) -> str | None:
+    """The 512 px image URL for a word's recording number, or None if it has none.
+
+    For the boards and word cards, where a picture is about 250 CSS px wide
+    (docs/architecture/word-images.md, section 4).
+    """
+
+    return _image_url(number, "512")
+
+
+def _image_url(number: int, variant: Literal["1024", "512"]) -> str | None:
     if number not in WORD_IMAGES:
         return None
     name = f"{number:04}"
-    return f"/media/words/{name}.webp?v={MEDIA_HASHES[name]['1024']}"
+    suffix = "" if variant == "1024" else "-512"
+    return f"/media/words/{name}{suffix}.webp?v={MEDIA_HASHES[name][variant]}"

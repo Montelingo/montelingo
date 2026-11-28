@@ -47,6 +47,7 @@ const wordSchema = z.object({
   text: z.string(),
   note: z.string().nullable(),
   image_url: z.string().nullable(),
+  image_url_512: z.string().nullable(),
   audio_url: z.string().nullable(),
 }) satisfies z.ZodType<Schemas["Word"]>;
 

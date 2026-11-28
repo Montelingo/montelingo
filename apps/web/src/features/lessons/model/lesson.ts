@@ -9,6 +9,8 @@ export type LessonWord = {
   number: number;
   text: string;
   imageUrl: string | null;
+  /** The 512 px picture (#206); `null` when the API sent none. */
+  imageUrl512: string | null;
 };
 
 /** Pictures alone (the default), or words alone: never both on one card. */

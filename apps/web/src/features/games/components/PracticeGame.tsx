@@ -55,10 +55,11 @@ export function PracticeGame({
   const words =
     places === null
       ? null
-      : practiceWords(places).map(({ id, text, imageUrl }) => ({
+      : practiceWords(places).map(({ id, text, imageUrl, imageUrl512 }) => ({
           id,
           text,
           imageUrl,
+          imageUrl512,
         }));
 
   if (words === null || !PRACTICE_GAMES[gameId].canDeal(words)) {

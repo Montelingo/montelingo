@@ -152,8 +152,16 @@ def test_map_states_are_the_svg_map_contract_literals(app: FastAPI) -> None:
 def test_word_media_fields_are_required_and_nullable(app: FastAPI) -> None:
     word = app.openapi()["components"]["schemas"]["Word"]
 
-    assert set(word["required"]) == {"id", "number", "text", "note", "image_url", "audio_url"}
-    for field in ("image_url", "audio_url"):
+    assert set(word["required"]) == {
+        "id",
+        "number",
+        "text",
+        "note",
+        "image_url",
+        "image_url_512",
+        "audio_url",
+    }
+    for field in ("image_url", "image_url_512", "audio_url"):
         assert {"type": "null"} in word["properties"][field]["anyOf"]
 
 

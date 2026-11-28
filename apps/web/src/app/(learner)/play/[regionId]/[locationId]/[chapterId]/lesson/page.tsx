@@ -37,12 +37,15 @@ export default async function LessonPage(props: LessonPageProps) {
       <ChapterLesson
         key={chapter.id}
         chapterId={chapter.id}
-        words={chapter.words.map(({ id, number, text, imageUrl }) => ({
-          id,
-          number,
-          text,
-          imageUrl,
-        }))}
+        words={chapter.words.map(
+          ({ id, number, text, imageUrl, imageUrl512 }) => ({
+            id,
+            number,
+            text,
+            imageUrl,
+            imageUrl512,
+          }),
+        )}
         placeHref={placeHref}
       />
     </>

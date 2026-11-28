@@ -29,6 +29,7 @@ const WORDS: MatchWord[] = TEXTS.map((text, index) => ({
   id: `word-${index + 1}`,
   text,
   imageUrl: `/media/words/000${index + 1}.webp`,
+  imageUrl512: `/media/words/000${index + 1}-512.webp`,
 }));
 // Keeps every round in order, each with its word first (see MatchGame.test).
 const NO_SHUFFLE = () => 0.999;

@@ -9,7 +9,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.content.media import word_image_url
+from app.modules.content.media import word_image_url, word_image_url_512
 from app.modules.content.models import Chapter, Location, VocabularyItem
 from app.modules.progress.models import ChapterProgress, LocationProgress
 
@@ -105,6 +105,7 @@ async def test_a_seen_lesson_lists_its_words_in_recording_order(
         (2, "pijesak"),
     ]
     assert place["words"][0]["image_url"] == word_image_url(1)
+    assert place["words"][0]["image_url_512"] == word_image_url_512(1)
     assert place["words"][0]["audio_url"] is None
     # The rest of Budva: the old town's three words.
     assert data["next_place"] == {

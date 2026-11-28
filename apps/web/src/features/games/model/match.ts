@@ -14,6 +14,8 @@ export type MatchWord = {
   id: string;
   text: string;
   imageUrl: string | null;
+  /** The 512 px picture (#206); `null` when the API sent none. */
+  imageUrl512: string | null;
 };
 
 /** A word the child can tap. */
@@ -26,6 +28,7 @@ export type MatchRound = {
   /** The word whose picture the round shows. */
   wordId: string;
   imageUrl: string;
+  imageUrl512: string | null;
   /** `OPTIONS` words, the right one among them, in random order. */
   options: readonly MatchOption[];
 };
@@ -101,6 +104,7 @@ export function createMatchGame(
     rounds.push({
       wordId: word.id,
       imageUrl: word.imageUrl,
+      imageUrl512: word.imageUrl512,
       options: shuffle(options, random).map(({ id, text }) => ({
         wordId: id,
         text,

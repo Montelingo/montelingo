@@ -34,15 +34,20 @@ function jsonResponse(status: number, body: unknown): Response {
   });
 }
 
-type Word = { id: string; text: string; imageUrl: string | null };
+type Word = {
+  id: string;
+  text: string;
+  imageUrl: string | null;
+  imageUrl512: string | null;
+};
 
 function word(number: number, text: string, picture = true): Word {
+  const file = `/media/words/${String(number).padStart(4, "0")}`;
   return {
     id: `word-${number}`,
     text,
-    imageUrl: picture
-      ? `/media/words/${String(number).padStart(4, "0")}.webp`
-      : null,
+    imageUrl: picture ? `${file}.webp` : null,
+    imageUrl512: picture ? `${file}-512.webp` : null,
   };
 }
 

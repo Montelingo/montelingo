@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { WordImage, wordImageSrcSet } from "@/components/ui/WordImage";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -66,6 +67,9 @@ const NO_GAME: SpellState = {
 
 /** How long the spelled word shows before the next one, so the child reads it. */
 export const SOLVED_DELAY_MS = 1200;
+
+/** How wide a round's picture shows, as in the match game. */
+const PICTURE_SIZES = "(orientation: landscape) 60vh, 90vw";
 
 // Sastavi riječi (#297, ADR 0006): a learned word's picture, an empty slot per
 // letter, and the word's letters as shuffled tiles. The child taps them in
@@ -168,9 +172,17 @@ function Rounds({
   const tilesRef = useRef<HTMLDivElement>(null);
   useFocusOnNewButtons(tilesRef, state.current, shouldFocusFirstOnMount);
 
+  // Fetch the next picture while this one is on screen: the file it will use.
   const upcoming = state.rounds[state.current + 1];
   if (upcoming !== undefined) {
-    preload(upcoming.imageUrl, { as: "image" });
+    preload(upcoming.imageUrl, {
+      as: "image",
+      imageSrcSet: wordImageSrcSet({
+        src: upcoming.imageUrl,
+        src512: upcoming.imageUrl512,
+      }),
+      imageSizes: PICTURE_SIZES,
+    });
   }
 
   if (round === null) {
@@ -192,16 +204,16 @@ function Rounds({
 
       <div className="relative min-h-0 flex-1 rounded-kid-lg border-3 border-kid-line bg-white shadow-raised-line-4">
         <div role="img" aria-label={word} className="absolute inset-4">
-          {/* Word images are same-origin WebP files at their final size
-              (public/media/words), so next/image would add nothing. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
-          <img
+          {/* No letter on a placeholder: it would give the word away. */}
+          <WordImage
             key={round.wordId}
             src={round.imageUrl}
-            alt=""
-            draggable={false}
-            decoding="async"
+            src512={round.imageUrl512}
+            sizes={PICTURE_SIZES}
+            placeholderId={round.wordId}
+            withInitial={false}
             className="size-full object-contain"
+            placeholderClassName="rounded-kid"
           />
         </div>
       </div>

@@ -95,6 +95,10 @@ function apiChapter(
         pictures === "pictures"
           ? `/media/words/${String(first + index).padStart(4, "0")}.webp`
           : null,
+      image_url_512:
+        pictures === "pictures"
+          ? `/media/words/${String(first + index).padStart(4, "0")}-512.webp`
+          : null,
       audio_url: null,
     })),
   };

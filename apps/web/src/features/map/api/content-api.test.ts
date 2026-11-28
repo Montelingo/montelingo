@@ -85,6 +85,7 @@ function makeWord(overrides: Partial<Schemas["Word"]> = {}): Schemas["Word"] {
     text: "more",
     note: "the sea",
     image_url: null,
+    image_url_512: null,
     audio_url: null,
     ...overrides,
   };
@@ -291,6 +292,7 @@ describe("fetchLocation", () => {
               text: "more",
               note: "the sea",
               imageUrl: null,
+              imageUrl512: null,
               audioUrl: null,
             },
           ],

@@ -50,10 +50,10 @@ Use one script for all images, so every PR makes the files the same way. It goes
 
 The files are static and change rarely, so the browser should keep them and not ask again.
 
-- **Version in the URL:** the API builds `image_url` as `/media/words/0011.webp?v=<hash>`, where `<hash>` is the first 8 characters of the file's SHA-256. The hashes live in a generated file next to `WORD_IMAGES`, `apps/api/app/modules/content/media_hashes.json`, written by the conversion script (`scripts/word-images.sh --hashes` rewrites it alone). A test fails if a hash doesn't match its file, or a file has no hash (#205). When an image is redrawn, its hash changes, so the URL changes too.
+- **Version in the URL:** the API builds `image_url` as `/media/words/0011.webp?v=<hash>` (and `image_url_512` as `/media/words/0011-512.webp?v=<hash>`, with that file's own hash), where `<hash>` is the first 8 characters of the file's SHA-256. The hashes live in a generated file next to `WORD_IMAGES`, `apps/api/app/modules/content/media_hashes.json`, written by the conversion script (`scripts/word-images.sh --hashes` rewrites it alone). A test fails if a hash doesn't match its file, or a file has no hash (#205). When an image is redrawn, its hash changes, so the URL changes too.
 - **Cache forever:** in `next.config.ts` `headers()`, `/media/words/:path*` gets `Cache-Control: public, max-age=31536000, immutable`. That's safe because a changed file always gets a new URL.
 - **Caddy:** nothing to add. WebP is already compressed, so `encode` doesn't help, but it does no harm.
-- **Later:** moving to object storage or a CDN only changes the URL prefix in `word_image_url()`. The contract stays the same (ADR 0006). An offline service worker, if one comes, caches `/media/words/*` cache-first.
+- **Later:** moving to object storage or a CDN only changes the URL prefix in `word_image_url()` and `word_image_url_512()`. The contract stays the same (ADR 0006). An offline service worker, if one comes, caches `/media/words/*` cache-first.
 
 ## 4. In the app
 
@@ -74,19 +74,23 @@ The files are static and change rarely, so the browser should keep them and not 
 />
 ```
 
-The API sends both URLs (`image_url` and `image_url_512`, or one base URL that the client builds both from), so the client never guesses file names.
+The API sends both URLs, `image_url` and `image_url_512` (both `null` for a word without a picture), so the client never guesses file names (#206). Every screen renders them through one component, `WordImage` (`apps/web/src/components/ui/WordImage.tsx`), with its own `sizes`.
 
 **Each screen:**
 
-| Screen                  | Variant | Loading                                                                                                                                                      |
-| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Lesson card             | 1024    | First card: `fetchPriority="high"`, not lazy. Next card: `preload()` (already done). This is the one place where sharpness matters most.                     |
-| Memory and match boards | 512     | Before the board is playable, load **and decode** all of its pictures (`img.decode()`), so a card never flips to an empty face. Show the skeleton meanwhile. |
-| Place screen word card  | 512     | `loading="lazy"` (already done).                                                                                                                             |
+| Screen                    | Variant          | Loading                                                                                                                                                            |
+| ------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Lesson card               | 1024             | First card: `fetchPriority="high"`, not lazy. Next card: `preload()` with the same `srcSet`. This is the one place where sharpness matters most.                   |
+| Memory board              | 512              | Before the board is playable, load **and decode** all of its pictures (`img.decode()`), so a card never flips to an empty face. Show card-shaped blocks meanwhile. |
+| Match (one picture/round) | 1024 on a tablet | As the memory board: every round's picture is decoded before the first round, with the round's shape as blocks meanwhile.                                          |
+| Sastavi riječi            | 1024 on a tablet | Next round: `preload()` with the same `srcSet`, as the lesson.                                                                                                     |
+| Place screen word card    | 512              | `loading="lazy"`.                                                                                                                                                  |
+
+The column says which file the screen's `sizes` picks on a tablet at 2×; the browser makes the choice. The wait is `useWordPicturesReady` (`apps/web/src/components/ui/use-word-pictures-ready.ts`). It decodes off-screen `Image`s with the screen's own `srcSet` and `sizes`, so the cards find the same file in the cache. A picture that fails counts as ready (its card shows the placeholder), and after 8 seconds the game starts anyway, so a stalled connection never leaves a child on the skeleton.
 
 **Avoid layout shift:** every image sits in a box with a fixed aspect ratio (the cards already do this), plus `width`/`height` on the `<img>`.
 
-**When an image is missing** (`image_url` is `null`, or the file fails to load): show `PlaceholderArt`, as the place screen already does, and never a broken-image icon. An `onError` on the `<img>` switches to the placeholder.
+**When an image is missing** (`image_url` is `null`, or the file fails to load): show `PlaceholderArt`, as the place screen already does, and never a broken-image icon. An `onError` on the `<img>` switches to the placeholder, and so does a file that failed before the page hydrated (`complete` with no `naturalWidth`).
 
 **Accessibility:** the picture stays `alt=""` where the word is given by a wrapper's `aria-label` (as in `LessonCards`), so a screen reader doesn't read it twice.
 

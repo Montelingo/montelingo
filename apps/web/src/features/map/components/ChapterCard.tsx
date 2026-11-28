@@ -2,7 +2,7 @@ import { StarIcon } from "@heroicons/react/24/solid";
 import Link from "next/link";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
-import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
+import { WordImage } from "@/components/ui/WordImage";
 import { TileBadge } from "@/components/ui/TileBadge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -43,24 +43,24 @@ export function ChapterCard({ chapter, href }: ChapterCardProps) {
         aria-hidden="true"
         className="grid grid-cols-3 gap-2 border-b-3 border-kid-ink bg-kid-sea p-3"
       >
-        {words.slice(0, PREVIEW_COUNT).map(({ id, number, imageUrl }) => (
-          <div
-            key={id}
-            className="aspect-square overflow-hidden rounded-kid bg-white"
-          >
-            {imageUrl !== null ? (
-              // eslint-disable-next-line @next/next/no-img-element -- static WebP files at their final size, as in WordCard
-              <img
+        {words
+          .slice(0, PREVIEW_COUNT)
+          .map(({ id, number, imageUrl, imageUrl512 }) => (
+            <div
+              key={id}
+              className="aspect-square overflow-hidden rounded-kid bg-white"
+            >
+              {/* A third of a card at most half the column: the 512 px file. */}
+              <WordImage
                 src={imageUrl}
-                alt=""
-                decoding="async"
+                src512={imageUrl512}
+                sizes="10rem"
+                placeholderId={`word-${number}`}
+                withInitial={false}
                 className="block size-full object-contain"
               />
-            ) : (
-              <PlaceholderArt id={`word-${number}`} withInitial={false} />
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h2

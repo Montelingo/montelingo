@@ -1293,7 +1293,20 @@
                 "type": "null"
               }
             ],
+            "description": "The 1024 px picture, for the lesson's big card. Null when the word has none.",
             "title": "Image Url"
+          },
+          "image_url_512": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The 512 px picture, for the boards and word cards. Null when image_url is.",
+            "title": "Image Url 512"
           },
           "note": {
             "anyOf": [
@@ -1323,6 +1336,7 @@
           "text",
           "note",
           "image_url",
+          "image_url_512",
           "audio_url"
         ],
         "title": "Word",
