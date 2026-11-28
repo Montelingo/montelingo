@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
 }));
 
-const MIA: GrownUpsData = {
+const MIA: Omit<GrownUpsData, "players"> = {
   explorer: { name: "Mia", avatar: "owl" },
   regions: [
     { id: "coast", name: "Obala", completed: 2, total: 6 },
@@ -19,7 +19,7 @@ const MIA: GrownUpsData = {
   needsRetry: false,
 };
 
-function renderArea(data: Partial<GrownUpsData> = {}) {
+function renderArea(data: Partial<Omit<GrownUpsData, "players">> = {}) {
   return render(
     <GrownUpsArea
       {...MIA}
@@ -90,10 +90,27 @@ describe("GrownUpsArea", () => {
     ).toBeInTheDocument();
   });
 
-  it("has no Players or Settings cards in part A", () => {
+  it("has no Players card without one from the page, and no Settings card", () => {
     renderArea();
 
     expect(screen.getAllByRole("region")).toHaveLength(2);
+  });
+
+  it("puts the Players card between the progress and the account", () => {
+    render(
+      <GrownUpsArea
+        {...MIA}
+        email="sam@family.com"
+        playersCard={<section aria-label="Igrači" />}
+        signOut={null}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByRole("region")
+        .map((region) => region.getAttribute("aria-label")),
+    ).toEqual([null, "Igrači", "Nalog"]);
   });
 
   it("has no accessibility violations", async () => {

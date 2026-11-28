@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { canSwitchPlayer, type Player, playerLook, toPlayer } from "./players";
+import {
+  canAddPlayer,
+  canSwitchPlayer,
+  type Player,
+  playerLook,
+  toPlayer,
+} from "./players";
 
 const MIA: Player = {
   id: "player-mia",
@@ -33,6 +39,19 @@ describe("canSwitchPlayer", () => {
     expect(canSwitchPlayer([MIA, { ...MIA, id: "p2", isActive: false }])).toBe(
       true,
     );
+  });
+});
+
+describe("canAddPlayer", () => {
+  it("allows up to four players", () => {
+    const players = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        ...MIA,
+        id: `p${index}`,
+      }));
+    expect(canAddPlayer(players(1))).toBe(true);
+    expect(canAddPlayer(players(3))).toBe(true);
+    expect(canAddPlayer(players(4))).toBe(false);
   });
 });
 

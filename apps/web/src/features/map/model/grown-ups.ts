@@ -1,6 +1,7 @@
 import {
   type Explorer,
   PLACEHOLDER_EXPLORER,
+  type Player,
   type Profile,
   toExplorer,
 } from "@/features/profile/edge";
@@ -34,17 +35,24 @@ export type GrownUpsData = {
   counts: ProgressCounts | null;
   /** Whether progress or the profile failed, which offers a retry. */
   needsRetry: boolean;
+  /**
+   * The account's players for the Players card (#183), or `null` when they
+   * could not be read: the card is left out, with no retry, as on Ja.
+   */
+  players: readonly Player[] | null;
 };
 
 /**
- * Joins the regions, their places, progress and the profile (`null` when it
- * failed) for the grown-ups area. A place counts once it is `completed`.
+ * Joins the regions, their places, progress, the profile and the players
+ * (each `null` when it failed) for the grown-ups area. A place counts once it
+ * is `completed`.
  */
 export function toGrownUpsData(
   regions: readonly Region[],
   details: readonly RegionDetail[],
   progress: ProgressResult,
   profile: Profile | null,
+  players: readonly Player[] | null,
 ): GrownUpsData {
   const placesOf = new Map(details.map(({ id, locations }) => [id, locations]));
   const { locations } = joinProgress(
@@ -72,6 +80,7 @@ export function toGrownUpsData(
     }),
     counts: isReady ? progress.progress.counts : null,
     needsRetry: !isReady || profile === null,
+    players,
   };
 }
 

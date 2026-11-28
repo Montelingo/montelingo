@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
 
-import { ICON_BUTTON } from "@/components/ui/kid-styles";
+import { GROWN_UPS_CARD, ICON_BUTTON } from "@/components/ui/kid-styles";
 import { avatarSrc } from "@/features/profile/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -17,22 +17,24 @@ import { ME_PATH } from "../model/paths";
 import { ChromeIcon } from "./ChromeIcon";
 import { ProgressErrorNotice } from "./ProgressErrorNotice";
 
-type GrownUpsAreaProps = GrownUpsData & {
+type GrownUpsAreaProps = Omit<GrownUpsData, "players"> & {
   /** The account's email, from `auth/me`. */
   email: string;
+  /**
+   * Between progress and the account: the profile feature's Players card,
+   * from the page (features may not import another's components), or none.
+   */
+  playersCard?: ReactNode;
   /** Auth's sign-out control, from the page: features may not import it. */
   signOut: ReactNode;
   /** Under the cards: the link to the privacy policy. */
   children?: ReactNode;
 };
 
-const CARD =
-  "flex flex-col gap-2.5 rounded-kid-md border-3 border-kid-ink bg-white px-4 pb-4 pt-3.5";
-
 // The grown-ups area, /play/me/grown-ups (Figma "Me3 · Grown-ups area",
 // screen 3 of #174), behind the gate (#177): Back to Ja and the title, the
-// child's progress by region, and the account with "Odjavi se". Part A has no
-// Players or Settings cards and no "This week" line. A centred column as wide
+// child's progress by region, the Players card (#183), and the account with
+// "Odjavi se". There is no Settings card and no "This week" line yet. A centred column as wide
 // as Figma's tablet one (760px), the full width less a 16px gutter on a phone,
 // with no bottom nav. `data-map-screen` drops LearnerShell's Back and Home bar.
 export function GrownUpsArea({
@@ -41,6 +43,7 @@ export function GrownUpsArea({
   counts,
   needsRetry,
   email,
+  playersCard,
   signOut,
   children,
 }: GrownUpsAreaProps) {
@@ -65,7 +68,7 @@ export function GrownUpsArea({
         {needsRetry ? (
           <ProgressErrorNotice message="Your child’s progress didn’t load fully. Something went wrong on our side. Let’s try again." />
         ) : null}
-        <section aria-labelledby={progressId} className={CARD}>
+        <section aria-labelledby={progressId} className={GROWN_UPS_CARD}>
           <div className="flex items-center gap-2.5">
             <Image
               src={avatarSrc(explorer.avatar)}
@@ -94,7 +97,8 @@ export function GrownUpsArea({
             </p>
           ) : null}
         </section>
-        <section aria-label="Nalog" className={CARD}>
+        {playersCard}
+        <section aria-label="Nalog" className={GROWN_UPS_CARD}>
           <p className="flex items-center gap-2.5 text-xl font-medium text-kid-ink">
             <Image
               src="/learner/icon-mail.svg"

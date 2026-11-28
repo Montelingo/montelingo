@@ -122,21 +122,22 @@ export async function loadMe(): Promise<MeData> {
 
 /**
  * The grown-ups area's progress card: every region with its completed places,
- * the counts, and the child. Redirects to sign in, then back here, when the
- * session has ended; a progress or profile failure still renders, with a
- * retry.
+ * the counts, and the child; and the account's players. Redirects to sign in,
+ * then back here, when the session has ended; a progress or profile failure
+ * still renders, with a retry, and a players failure without the Players card.
  */
 export async function loadGrownUps(): Promise<GrownUpsData> {
-  const [regions, progress, profile] = await signedIn(GROWN_UPS_PATH, [
+  const [regions, progress, profile, players] = await signedIn(GROWN_UPS_PATH, [
     listRegions(),
     getProgress(),
     getProfile(),
+    getPlayers(),
   ]);
   const details = await signedIn(
     GROWN_UPS_PATH,
     regions.map(({ id }) => getRegion(id)),
   );
-  return toGrownUpsData(regions, details, progress, profile);
+  return toGrownUpsData(regions, details, progress, profile, players);
 }
 
 /**

@@ -13,6 +13,15 @@ export async function saveProfile(
   await unwrap(getBrowserApiClient().PUT("/api/v1/profile", { body: update }));
 }
 
+/**
+ * Adds an empty player and makes them this session's active one (ADR 0007),
+ * so the next PUT /profile sets them up. Rejects on any failure, `409` (four
+ * players already) included.
+ */
+export async function addPlayer(): Promise<void> {
+  await unwrap(getBrowserApiClient().POST("/api/v1/players"));
+}
+
 /** Makes the player this session's active one (ADR 0007). Rejects on any failure. */
 export async function selectPlayer(playerId: string): Promise<void> {
   await unwrap(
