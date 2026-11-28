@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useLayoutEffect, useRef } from "react";
 
 /**
  * Keeps the keyboard's place when a screen swaps its buttons for new ones:
@@ -10,6 +10,10 @@ import { type RefObject, useEffect, useRef } from "react";
  *
  * On mount only when `shouldFocusOnMount`: after "Igraj ponovo", whose button
  * has gone too, but not on a screen's first appearance.
+ *
+ * A layout effect, so the focus moves in the same commit as the new buttons:
+ * neither a screen reader nor a test ever finds it on the page between the
+ * two (#302).
  */
 export function useFocusOnNewButtons(
   container: RefObject<HTMLElement | null>,
@@ -17,7 +21,7 @@ export function useFocusOnNewButtons(
   shouldFocusOnMount: boolean,
 ): void {
   const hasMounted = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const isMount = !hasMounted.current;
     hasMounted.current = true;
     if (isMount && !shouldFocusOnMount) {
