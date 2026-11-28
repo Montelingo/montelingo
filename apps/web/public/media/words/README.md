@@ -47,6 +47,9 @@ It reads every `NNNN.png` in the folder, writes both variants here, updates `med
 | 201–210 | Na planini (Durmitor / Žabljak)        | #198     |
 | 211–220 | U šumi (Kolašin)                       | #199     |
 | 221–230 | Šumske životinje (Berane)              | #200     |
+| 231–240 | Na selu (Bijelo Polje)                 | #201     |
+| 241–250 | Seosko dvorište (Pljevlja)             | #202     |
 | 251–260 | Livada i mali stanovnici (Kolašin)     | #199     |
 | 261–270 | Vrijeme i priroda (Durmitor / Žabljak) | #198     |
 | 281–290 | Brojimo (Berane)                       | #200     |
+| 291–300 | Svakodnevne radnje (Bijelo Polje)      | #201     |

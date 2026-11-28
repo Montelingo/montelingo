@@ -81,15 +81,21 @@ Back to the chapter shows it completed, and the learner bar's Back link to
 Budva, which the router has cached since the lesson, shows "2 of 3 done": the
 place picks up the save without a reload (#225). The same account checks the Riječi tab
 (#236): before the lesson it shows the empty state, whose "Na mapu" leads to the
-map; after it, Budva's ten words, the same count as the Ja screen, and the hint
+map, and Sastavi riječi by its URL says there are no words to learn from yet
+(#299); after it, Budva's ten words, the same count as the Ja screen, and the hint
 that more words wait in Budva. Vježbaj → Memory then plays every pair to
 "Bravo!", which shows "+1 srce", and whose "Nazad na riječi" returns to Riječi.
 Its one write is `POST /api/v1/practice/memory/result`, and `GET /progress` is
 unchanged but for one more heart: practice records only a heart (#276).
+Vježbaj → Sastavi riječi (#299) then spells its 5 words from the pictures'
+names, the first after a wrong tile that shakes back and fills no slot, to
+"Bravo!" with "+1 srce". Its one write is `POST /api/v1/practice/spell/result`,
+`GET /progress` changes only by that heart, and the top bar's "Srca" goes from 1
+to 2.
 Last, through the API on the same account (#277): a new account starts with no
 stars or hearts; with Na plaži done Budva still has 0 stars, and Ljeto i
 odjeća's lesson, Memory and Spoji take it to 1, 2 and 3 (`counts.stars` 3,
-Budva's sticker), none of them earning a heart. A replay then earns one, three
+Budva's sticker), none of them earning a heart. A replay then earns one, two
 more reach the cap of 5 a day, and past it a replay and a lesson seen again
 still answer `200` with `heart_earned: false`, and `GET /progress` does not
 change.
