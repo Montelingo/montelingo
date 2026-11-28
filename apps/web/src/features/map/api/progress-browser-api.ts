@@ -2,7 +2,7 @@ import { unwrap } from "@app/api-client";
 
 import { getBrowserApiClient } from "@/lib/browser-api";
 
-import type { GameId } from "../model/progress";
+import type { GameId, PracticeGameId } from "../model/progress";
 
 // Recording runs in the browser, through the same-origin proxy, so the API
 // sees the real Origin (CSRF check, ADR 0004) and the session cookie, like the
@@ -27,7 +27,9 @@ export async function completeLesson(chapterId: string): Promise<Recorded> {
  * Records a practice game from the Riječi tab, played to the end (ADR 0009).
  * Every one is recorded, and may earn a heart. Rejects on any failure.
  */
-export async function completePractice(gameId: GameId): Promise<Recorded> {
+export async function completePractice(
+  gameId: PracticeGameId,
+): Promise<Recorded> {
   const result = await unwrap(
     getBrowserApiClient().POST("/api/v1/practice/{game_id}/result", {
       params: { path: { game_id: gameId } },

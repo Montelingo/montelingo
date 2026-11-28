@@ -19,7 +19,7 @@ export {
   practiceWords,
 } from "./model/practice";
 export { SpellGame, type SpellGameProps } from "./components/SpellGame";
-export { canDealSpellGame, type SpellWord } from "./model/spell";
+export { canDealSpellGame, spellLetters, type SpellWord } from "./model/spell";
 export {
   PracticeGame,
   type PracticeGameProps,

@@ -65,6 +65,7 @@ export {
   type Progress,
   type GameId,
   type GameState,
+  type PracticeGameId,
   type ProgressResult,
   type WithState,
 } from "./model/progress";

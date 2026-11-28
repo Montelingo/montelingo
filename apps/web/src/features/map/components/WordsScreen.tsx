@@ -1,3 +1,4 @@
+import { LanguageIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import Link from "next/link";
 import { useId } from "react";
@@ -10,7 +11,7 @@ import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG } from "../model/content";
 import { practicePath } from "../model/paths";
-import type { GameId } from "../model/progress";
+import type { PracticeGameId } from "../model/progress";
 import { type WordsData, wordCount } from "../model/words";
 import { ChromeIcon } from "./ChromeIcon";
 import { GAME_ART } from "./GamesArea";
@@ -92,12 +93,20 @@ export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
   );
 }
 
-// The practice games' Memory and Spoji riječi, in the chapter's games' icons,
-// dealt from every learned word. Shown whenever there are words, even too few
-// to deal a game: the game's page then says why.
-const PRACTICE: readonly { id: GameId; label: string }[] = [
+// The practice games: Memory and Spoji riječi in the chapter's games' icons,
+// and Vješalo, which only practice has (#294), across the row. Dealt from
+// every learned word. Shown whenever there are words, even too few to deal a
+// game: the game's page then says why.
+// The chapter games' art, and Vješalo's own.
+const PRACTICE_ART = {
+  ...GAME_ART,
+  spell: { ActivityIcon: LanguageIcon, fill: "bg-kid-pink" },
+} as const;
+
+const PRACTICE: readonly { id: PracticeGameId; label: string }[] = [
   { id: "memory", label: "Memory" },
   { id: "match", label: "Spoji riječi" },
+  { id: "spell", label: "Vješalo" },
 ];
 
 function Practice() {
@@ -113,12 +122,17 @@ function Practice() {
       </h2>
       <div className="grid grid-cols-2 gap-3">
         {PRACTICE.map(({ id, label }) => {
-          const { ActivityIcon, fill } = GAME_ART[id];
+          const { ActivityIcon, fill } = PRACTICE_ART[id];
           return (
             <Link
               key={id}
               href={practicePath(id)}
-              className={cn(BIG_BUTTON, "gap-2 px-3 text-xl", fill)}
+              className={cn(
+                BIG_BUTTON,
+                "gap-2 px-3 text-xl",
+                fill,
+                id === "spell" && "col-span-2",
+              )}
             >
               <ActivityIcon aria-hidden="true" className="size-7 shrink-0" />
               {label}

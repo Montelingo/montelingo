@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import type { GameId } from "./progress";
+import type { GameId, PracticeGameId } from "./progress";
 import {
   gamePath,
   lessonPath,
@@ -82,8 +82,14 @@ const PRACTICE_ROUTES = join(
   "../../../app/(learner)/play/words/(practice)",
 );
 
+// Every practice game id: the chapter games, and Vješalo (#294).
+const EVERY_PRACTICE_GAME: Record<PracticeGameId, true> = {
+  ...EVERY_GAME,
+  spell: true,
+};
+
 describe("every practice game's screen", () => {
-  it.each(Object.keys(EVERY_GAME) as GameId[])(
+  it.each(Object.keys(EVERY_PRACTICE_GAME) as PracticeGameId[])(
     "has a page for %s at practicePath's route",
     (gameId) => {
       expect(existsSync(join(PRACTICE_ROUTES, gameId, "page.tsx"))).toBe(true);

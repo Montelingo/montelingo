@@ -36,7 +36,7 @@ import {
   toLocationScreen,
   toRegionScreen,
 } from "../model/screens";
-import type { GameId, ProgressResult } from "../model/progress";
+import type { GameId, PracticeGameId, ProgressResult } from "../model/progress";
 import { type PracticeData, toWordsData, type WordsData } from "../model/words";
 import { getLocation, getRegion, listRegions } from "./content-api";
 import { getProgress } from "./progress-api";
@@ -160,7 +160,9 @@ export async function loadWords(): Promise<WordsData> {
  * when the session has ended. Practice records nothing, so it needs no
  * progress.
  */
-export async function loadPractice(gameId: GameId): Promise<PracticeData> {
+export async function loadPractice(
+  gameId: PracticeGameId,
+): Promise<PracticeData> {
   const [words, profile] = await signedIn(practicePath(gameId), [
     getLearnedWords(),
     getProfile(),
