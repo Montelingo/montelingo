@@ -58,8 +58,6 @@ export type MatchAction =
   /** Move on from a solved round. The screen sends it shortly after a pick. */
   | { type: "next" };
 
-type PictureWord = MatchWord & { imageUrl: string };
-
 /**
  * Whether `words` deal a game: at least one has a picture, and the chapter
  * has `OPTIONS` words that read differently, so every round has its three.
@@ -183,9 +181,12 @@ function distinctWords(words: readonly MatchWord[]): MatchWord[] {
 
 /**
  * The words a round can show: each has a picture, and a picture two words
- * share is shown for neither, since both words would be right.
+ * share is shown for neither, since both words would be right. Vješalo
+ * deals by the same rule.
  */
-function wordsWithOwnPicture(words: readonly MatchWord[]): PictureWord[] {
+export function wordsWithOwnPicture<W extends MatchWord>(
+  words: readonly W[],
+): (W & { imageUrl: string })[] {
   const uses = new Map<string, number>();
   for (const { imageUrl } of words) {
     if (imageUrl) {
@@ -193,7 +194,7 @@ function wordsWithOwnPicture(words: readonly MatchWord[]): PictureWord[] {
     }
   }
   return words.filter(
-    (word): word is PictureWord =>
+    (word): word is W & { imageUrl: string } =>
       Boolean(word.imageUrl) && uses.get(word.imageUrl as string) === 1,
   );
 }
