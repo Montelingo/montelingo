@@ -18,6 +18,7 @@ from app.modules.auth.rate_limit import (
 from app.modules.auth.service import ResolvedSession
 from app.modules.users.repository import SqlAlchemyUserRepository
 
+from .export import AccountExportService, SqlAlchemyAccountExportRepository
 from .repository import SqlAlchemyAccountDeletionRepository
 from .service import AccountService
 
@@ -44,3 +45,10 @@ def rate_limit_account_password(
     limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> AccountPasswordRateLimit:
     return account_password_rate_limit(session.user.email, settings, limiter)
+
+
+def get_account_export_service(
+    session: AsyncSession = Depends(get_db_session),
+    clock: SystemClock = Depends(get_clock),
+) -> AccountExportService:
+    return AccountExportService(SqlAlchemyAccountExportRepository(session), clock)
