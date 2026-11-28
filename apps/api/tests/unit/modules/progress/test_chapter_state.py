@@ -13,7 +13,7 @@ from app.modules.progress.domain import (
     calculate_chapter_state,
     calculate_chapter_states,
 )
-from app.modules.progress.schemas import GAME_IDS, GameId, MapState
+from app.modules.progress.schemas import GAME_IDS, PRACTICE_GAME_IDS, GameId, MapState
 
 NOW = datetime(2026, 11, 15, tzinfo=UTC)
 
@@ -87,6 +87,12 @@ def test_games_are_always_listed_memory_then_match(
 
     assert [game.id for game in state.games] == ["memory", "match"]
     assert GAME_IDS == ("memory", "match")
+
+
+def test_practice_plays_every_chapter_game_and_spell() -> None:
+    # `spell` is practice only (#294): no chapter lists it.
+    assert PRACTICE_GAME_IDS == ("memory", "match", "spell")
+    assert set(GAME_IDS) < set(PRACTICE_GAME_IDS)
 
 
 def test_the_chapter_keeps_its_slug() -> None:

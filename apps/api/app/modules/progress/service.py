@@ -28,6 +28,7 @@ from .domain import ChapterState as ChapterStateRecord
 from .repository import ChildProfileRepository, ProgressRepository
 from .schemas import (
     GAME_IDS,
+    PRACTICE_GAME_IDS,
     AgeBand,
     Avatar,
     ChapterResult,
@@ -39,6 +40,7 @@ from .schemas import (
     LearnedWords,
     LocationState,
     NextPlace,
+    PracticeGameId,
     PracticeResult,
     Profile,
     ProgressCounts,
@@ -132,7 +134,7 @@ async def _earn_heart(
     source: HeartSource,
     *,
     chapter_slug: str | None = None,
-    game: GameId | None = None,
+    game: PracticeGameId | None = None,
 ) -> bool:
     """Add a heart unless the player has reached today's cap (ADR 0009).
 
@@ -291,7 +293,7 @@ class PracticeProgressService:
         self.clock = clock
 
     async def complete_practice(self, learning_profile_id: UUID, game_slug: str) -> PracticeResult:
-        game = _find_game(game_slug)
+        game = _find_practice_game(game_slug)
         chapters = await self.repository.read_chapters(learning_profile_id)
         # The same rule as `words_learned`: practice deals from learned words.
         if not any(
@@ -321,9 +323,18 @@ def _find_chapter(
 
 
 def _find_game(game_slug: str) -> GameId:
+    return _find_one_of(GAME_IDS, game_slug)
+
+
+def _find_practice_game(game_slug: str) -> PracticeGameId:
+    # `spell` is practice only (#294): a chapter result for it is a 404.
+    return _find_one_of(PRACTICE_GAME_IDS, game_slug)
+
+
+def _find_one_of[G: str](game_ids: tuple[G, ...], game_slug: str) -> G:
     # Game ids are a fixed set in code, not content, but an unknown one is a 404
     # like an unknown chapter (ADR 0006).
-    game = next((game_id for game_id in GAME_IDS if game_id == game_slug), None)
+    game = next((game_id for game_id in game_ids if game_id == game_slug), None)
     if game is None:
         raise ApiError(ErrorCode.CONTENT_NOT_FOUND, "Game not found.", status_code=404)
     return game
