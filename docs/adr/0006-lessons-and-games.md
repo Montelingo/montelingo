@@ -4,6 +4,7 @@
 - Date: 2026-11-15
 - Amended: 2026-11-21 (#139: completing a place and what opens next)
 - Amended: 2026-11-27 (#270, ADR 0009: a replay may add a heart; stars are no longer deferred)
+- Amended: 2026-11-28 (#294: Složi riječ, a practice-only game)
 
 ## Context
 
@@ -16,6 +17,8 @@ Word images exist for Budva (#127). Audio does not exist yet, so nothing in this
 - **The chapter is the unit.** A chapter (one word group of 10 words) has one lesson and its games. A place with two chapters has two lessons, and each chapter's games are practised and unlocked separately.
 - **The lesson follows the Doman method.** It shows the chapter's ten pictures one at a time, with nothing written on them. An option (**Slike / Riječi**) switches the lesson to the ten words alone, in large letters. A picture and its word are never on one card and are never shown one after the other, so the child learns to read the written word rather than guess it from the picture. There is no timer and no sound: the grown-up reads the words aloud until audio arrives. The lesson counts as seen when the child reaches the last card in either mode. It can be watched again at any time.
 - **Two games, the same for every chapter.** `memory`: cards face down, find the pairs of the same picture. `match`: one picture and three written words, tap the word that goes with it. Game ids are a fixed set in code, not content. Neither game has a timer, a score or a fail state: a wrong pick is simply tried again.
+- **A game may be practice only.** Amended by #294. `spell` (**Složi riječ**) is played only from the Riječi tab (#237), with the words the child has learned, and no chapter has it. It changes no lesson, game state, lock, place or sticker, so a place is still completed by `memory` and `match` alone, and "two games, the same for every chapter" still holds. Most children of this age cannot spell yet: a game every chapter needed would hold back the ones who read whole words, which is what the Doman lesson teaches. As practice, it is there for the ones who are ready.
+- **Složi riječ shows a picture and builds its word.** One round is a word's picture, one empty slot per letter, and one tile per letter of that word, shuffled. The child taps the tiles in order. Letters are Montenegrin letters, not characters: `lj`, `nj` and `dž` are one tile each, so "konj" has three. Only the word's own letters are offered, with no extra ones: the task is the order, not finding letters among distractors. A wrong tile bounces back and stays tappable, so there is no fail state, as in the other games. A game is `SPELL_ROUNDS = 5` words from the learned ones with a picture of their own, no space and at most 8 letters, chosen at random and played shortest first. The five are steps of one game, not levels saved between visits: nothing is stored until the game is finished, and nothing locks.
 - **The lesson unlocks the games, and the server decides.** As ADR 0005 does for places, one pure domain function, `calculate_chapter_state`, computes a chapter's state, and the frontend never computes a lock. A chapter's `lesson` is `todo` or `done`. Each game is `locked` until the lesson is `done`, then `available`, then `completed` once it has been played to the end. Both games open together.
 - **Results are recorded once.** Finishing the lesson or a game is recorded the first time only. Repeating it is allowed and answers `200`, but changes no state. There is no score to keep. Amended by ADR 0009: a replay may add a heart, up to a daily cap, and changes nothing else.
 - **Doing anything in a place starts it.** The first lesson or game recorded in a place also creates its `location_progress` row (`started_at`), so the map shows the place as `in-progress`.
@@ -48,8 +51,8 @@ ProgressState = { regions: RegionState[], locations: LocationState[], chapters: 
 
 ## Deferred
 
-Feathers and rewards. Audio and the word card's sound button. A "learned" mark per word. Scores and difficulty (stars and hearts: ADR 0009). Choosing content or games by age band. More game types. Each gets its own ticket or ADR when it is built.
+Feathers and rewards. Audio and the word card's sound button. A "learned" mark per word. Scores and difficulty (stars and hearts: ADR 0009). Choosing content or games by age band. More chapter game types. Each gets its own ticket or ADR when it is built.
 
 ## Consequences
 
-Backend tickets (#122–#126) and frontend tickets (#129–#137) build against this contract in parallel. The frontend builds the lesson and games against fixtures and wires them to the API last (#136). Because the server owns every lock, a child cannot reach a game by URL before seeing the lesson. Adding a game later means a new game id in code, the check constraint and the domain function. Adding images means adding files and their numbers to `WORD_IMAGES`, with no migration.
+Backend tickets (#122–#126) and frontend tickets (#129–#137) build against this contract in parallel. The frontend builds the lesson and games against fixtures and wires them to the API last (#136). Because the server owns every lock, a child cannot reach a game by URL before seeing the lesson. Adding a chapter game later means a new game id in code, the check constraint and the domain function. Adding a practice-only game means a new practice game id and the `heart_events` check constraint only (#294), and changes no chapter, star or place. Adding images means adding files and their numbers to `WORD_IMAGES`, with no migration.

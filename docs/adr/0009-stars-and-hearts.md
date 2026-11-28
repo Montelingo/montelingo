@@ -3,6 +3,7 @@
 - Status: Proposed (Accepted once Product confirms the daily cap below)
 - Date: 2026-11-27
 - Daily cap confirmed by: _pending (Product)_
+- Amended: 2026-11-28 (#294: Složi riječ, a practice-only game id)
 
 ## Context
 
@@ -29,24 +30,26 @@ The map's top bar, the level card, the Ja tab and the Prizes tab all show stars,
 
 One row per heart, in `heart_events`:
 
-| Column                | Type           | Notes                                                                 |
-| --------------------- | -------------- | --------------------------------------------------------------------- |
-| `id`                  | uuid           | primary key                                                           |
-| `learning_profile_id` | uuid           | FK to `learning_profiles`, `ON DELETE CASCADE`                        |
-| `earned_at`           | timestamptz    | the server's clock                                                    |
-| `source`              | text           | check: `lesson`, `game` or `practice`                                 |
-| `chapter_id`          | uuid, nullable | FK to `chapters`, like `game_results`. Set for `lesson` and `game`.   |
-| `game`                | text, nullable | the same check as `game_results.game`. Set for `game` and `practice`. |
+| Column                | Type           | Notes                                                               |
+| --------------------- | -------------- | ------------------------------------------------------------------- |
+| `id`                  | uuid           | primary key                                                         |
+| `learning_profile_id` | uuid           | FK to `learning_profiles`, `ON DELETE CASCADE`                      |
+| `earned_at`           | timestamptz    | the server's clock                                                  |
+| `source`              | text           | check: `lesson`, `game` or `practice`                               |
+| `chapter_id`          | uuid, nullable | FK to `chapters`, like `game_results`. Set for `lesson` and `game`. |
+| `game`                | text, nullable | check: a practice game id (#294). Set for `game` and `practice`.    |
 
 - A check ties `source` to its columns: `lesson` has a chapter and no game, `game` has both, `practice` has a game and no chapter.
 - An index on (`learning_profile_id`, `earned_at`) serves both the total and the day's count.
 - A row per heart, rather than a counter, keeps the day's cap a plain count and gives the data export something to show.
 - Rows are never updated, and are deleted only by the cascade.
+- Amended by #294: `game` allows the practice game ids, `memory`, `match` and `spell`, so it is no longer the same check as `game_results.game`, which keeps the chapter games `memory` and `match`. A `game` row still only holds a chapter game: the result route answers `404 content_not_found` for `spell`.
 
 ### Replays and practice now record something
 
 - **ADR 0006 is amended.** "Results are recorded once" still holds for state: a replay changes no lesson, game, lock, place or sticker. But it may now add a heart.
 - **Practice gets a route.** `POST /api/v1/practice/{game_id}/result` records a finished practice game. It needs at least one learned word, since practice cannot be dealt without one. This amends #237's "Not recorded" row for hearts only: practice still changes no lock, sticker, star or count of words.
+- **Practice has its own game ids.** Amended by #294. `{game_id}` is a `PracticeGameId`: the chapter games `memory` and `match`, and the practice-only `spell` (**Složi riječ**, ADR 0006). One finished Složi riječ game, five words, is one practice heart under the same daily cap, like a finished Memory or Spoji game. `spell` is not in `GAME_IDS`, which lists the chapter games and from which the stars are counted (`STARS_PER_PLACE = 1 + len(GAME_IDS)`), so a place still gives 3 stars.
 
 ### Per player
 
@@ -83,6 +86,7 @@ PracticeResult = { heart_earned: boolean }
 - #271 adds `calculate_location_stars`, `LocationState.stars` and `counts.stars`. No migration.
 - #272 adds `heart_events`, `HEARTS_PER_DAY`, `ChapterResult` and `counts.hearts`, and the data export (#252) lists the player's hearts as `"hearts": [ { "earned_at", "source", "chapter", "game" } ]`, with the chapter as its slug.
 - #273 adds the practice route.
+- #295 adds `PracticeGameId` and lets the `heart_events.game` check allow `spell`, in one migration. `game_results` and `GAME_IDS` are unchanged.
 - #274–#276 show them. The web reads stars and hearts and never computes them (ADR 0005). It shows "+1 srce" on the Bravo screen only when `heart_earned` is `true`.
 - ADR 0006 is amended, and its **Deferred** list drops stars. ADR 0008's data table lists `heart_events`.
 - A child who plays a lot on one day and stops at 5 hearts sees no difference in the game, only in the counter. We accept that the cap is invisible.
