@@ -56,6 +56,15 @@ async def test_an_unknown_game_is_rejected(db_session: AsyncSession) -> None:
     await expect_violation(db_session, "ck_game_results_game")
 
 
+async def test_spell_is_not_a_chapter_result(db_session: AsyncSession) -> None:
+    # Vješalo is practice only (#294): only a heart can name it.
+    chapter = await add_chapter(db_session)
+    profile = await add_profile(db_session)
+
+    db_session.add(GameResult(learning_profile_id=profile.id, chapter_id=chapter.id, game="spell"))  # type: ignore[arg-type]
+    await expect_violation(db_session, "ck_game_results_game")
+
+
 async def test_a_chapter_has_one_progress_row_per_profile(db_session: AsyncSession) -> None:
     chapter = await add_chapter(db_session)
     profile = await add_profile(db_session)

@@ -22,7 +22,7 @@ from app.modules.content import (
 
 from .domain import ChapterProgressRecord, ChildProfile, LocationProgressRecord
 from .models import ChapterProgress, GameResult, HeartEvent, LearningProfile, LocationProgress
-from .schemas import AgeBand, Avatar, GameId, HeartSource
+from .schemas import AgeBand, Avatar, GameId, HeartSource, PracticeGameId
 
 
 class LearningProfileRepository(Protocol):
@@ -193,7 +193,7 @@ class ProgressRepository(Protocol):
         earned_at: datetime,
         source: HeartSource,
         chapter_slug: str | None = None,
-        game: GameId | None = None,
+        game: PracticeGameId | None = None,
     ) -> None: ...
 
 
@@ -391,7 +391,7 @@ class SqlAlchemyProgressRepository:
         earned_at: datetime,
         source: HeartSource,
         chapter_slug: str | None = None,
-        game: GameId | None = None,
+        game: PracticeGameId | None = None,
     ) -> None:
         """Store one heart. The caller has locked the player and checked the day's cap."""
 

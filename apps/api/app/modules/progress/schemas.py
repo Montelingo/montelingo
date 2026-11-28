@@ -33,6 +33,12 @@ GameStatus = Literal["locked", "available", "completed"]
 # The fixed set of games, in the order every chapter lists them.
 GAME_IDS: tuple[GameId, ...] = get_args(GameId)
 
+# The games practice can record (ADR 0009, #294): every chapter game, and
+# `spell` (Vješalo), which only the Riječi tab plays. Not in `GAME_IDS`,
+# so no chapter has it and it gives no star.
+PracticeGameId = Literal["memory", "match", "spell"]
+PRACTICE_GAME_IDS: tuple[PracticeGameId, ...] = get_args(PracticeGameId)
+
 
 class GameState(ApiSchema):
     id: GameId
