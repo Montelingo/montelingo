@@ -99,7 +99,10 @@ async def test_only_expired_or_used_rows_go_and_a_second_run_deletes_nothing(
     assert await _left(db_session, PasswordResetToken, token_ids) == {live_ids[1]}
     assert await _left(db_session, AccountDeletion, deletion_ids) == {live_ids[2]}
     output = capsys.readouterr().out
-    assert output.splitlines() == ["purge: sessions=2 reset_tokens=2 account_deletions=1"]
+    assert output.splitlines() == [
+        "purge: sessions=2 reset_tokens=2 account_deletions=1"
+        " inactivity_warnings=0 inactive_accounts_deleted=0"
+    ]
     # Counts only: nothing about whom the rows belonged to.
     assert user_id not in output and "@" not in output
 
@@ -107,6 +110,7 @@ async def test_only_expired_or_used_rows_go_and_a_second_run_deletes_nothing(
     assert await purge_script.run(_borrowed(db_session), NOW) == 0
     assert capsys.readouterr().out.splitlines() == [
         "purge: sessions=0 reset_tokens=0 account_deletions=0"
+        " inactivity_warnings=0 inactive_accounts_deleted=0"
     ]
     assert await _left(db_session, AuthSession, session_ids) == {live_ids[0]}
     assert await _left(db_session, PasswordResetToken, token_ids) == {live_ids[1]}

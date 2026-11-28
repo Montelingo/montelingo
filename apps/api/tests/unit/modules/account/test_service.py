@@ -22,7 +22,13 @@ class FakeUsers:
         self.deleted: list[UUID] = []
         self.open_transactions: list[int] = []
 
-    async def delete(self, user_id: UUID) -> bool:
+    async def delete(
+        self,
+        user_id: UUID,
+        *,
+        inactive_before: datetime | None = None,
+        warned_before: datetime | None = None,
+    ) -> bool:
         self.open_transactions.append(self.transactions.open)
         if not self.exists:
             return False

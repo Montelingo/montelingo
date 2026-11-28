@@ -3,6 +3,8 @@
 - auth_sessions that have expired. They can never be used again.
 - password_reset_tokens that are used or expired.
 - account_deletions older than 28 days, when no backup still holds the account.
+- inactive accounts (#254): it warns them by email, and later deletes them
+  through the same path as self-service deletion (app/modules/account/inactivity.py).
 
 It prints how many rows it deleted, and nothing about whom they belonged to.
 Running it again deletes nothing more. On the server, deploy/purge.sh runs it
@@ -28,8 +30,15 @@ API_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(API_DIR))
 
 from app.core.config import get_settings  # noqa: E402
+from app.core.security import Argon2PasswordHasher  # noqa: E402
+from app.db.transaction import SessionTransactionManager  # noqa: E402
+from app.infrastructure.email import EmailSender, create_email_sender  # noqa: E402
+from app.modules.account.inactivity import InactiveAccounts, InactivityCounts  # noqa: E402
 from app.modules.account.models import AccountDeletion  # noqa: E402
+from app.modules.account.repository import SqlAlchemyAccountDeletionRepository  # noqa: E402
+from app.modules.account.service import AccountService  # noqa: E402
 from app.modules.auth.models import AuthSession, PasswordResetToken  # noqa: E402
+from app.modules.users.repository import SqlAlchemyUserRepository  # noqa: E402
 
 # Matches the backups: no dump outlives 28 days (ADR 0008, deploy/backup.sh).
 ACCOUNT_DELETIONS_KEPT = timedelta(days=28)
@@ -68,23 +77,68 @@ async def purge(session: AsyncSession, now: datetime) -> PurgeCounts:
     return PurgeCounts(sessions, reset_tokens, account_deletions)
 
 
+class _FixedClock:
+    """One instant for the whole run, so every step agrees on what "now" is."""
+
+    def __init__(self, now: datetime) -> None:
+        self._now = now
+
+    def now(self) -> datetime:
+        return self._now
+
+
+async def handle_inactive(
+    session: AsyncSession, now: datetime, email_sender: EmailSender
+) -> InactivityCounts:
+    settings = get_settings()
+    users = SqlAlchemyUserRepository(session)
+    transactions = SessionTransactionManager(session)
+    clock = _FixedClock(now)
+    accounts = AccountService(
+        users=users,
+        deletions=SqlAlchemyAccountDeletionRepository(session),
+        password_hasher=Argon2PasswordHasher(),
+        clock=clock,
+        transaction_manager=transactions,
+        email_sender=email_sender,
+    )
+    return await InactiveAccounts(
+        users=users,
+        accounts=accounts,
+        transaction_manager=transactions,
+        email_sender=email_sender,
+        clock=clock,
+        warning_days=settings.inactive_warning_days,
+        delete_days=settings.inactive_delete_days,
+        web_base_url=settings.web_base_url,
+    ).run()
+
+
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
-async def run(session_factory: SessionFactory | None = None, now: datetime | None = None) -> int:
+async def run(
+    session_factory: SessionFactory | None = None,
+    now: datetime | None = None,
+    email_sender: EmailSender | None = None,
+) -> int:
     if session_factory is None:
         engine = create_async_engine(get_settings().database_url)
         try:
-            return await run(async_sessionmaker(engine, expire_on_commit=False), now)
+            return await run(async_sessionmaker(engine, expire_on_commit=False), now, email_sender)
         finally:
             await engine.dispose()
 
+    moment = now or datetime.now(UTC)
+    sender = email_sender or create_email_sender(get_settings())
     async with session_factory() as session:
-        counts = await purge(session, now or datetime.now(UTC))
+        counts = await purge(session, moment)
+        inactive = await handle_inactive(session, moment, sender)
 
     print(
         f"purge: sessions={counts.sessions} reset_tokens={counts.reset_tokens}"
         f" account_deletions={counts.account_deletions}"
+        f" inactivity_warnings={inactive.warned} inactive_accounts_deleted={inactive.deleted}"
     )
     return 0
 

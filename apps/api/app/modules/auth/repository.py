@@ -19,6 +19,9 @@ class AuthRepository(Protocol):
     async def update_password(
         self, user_id: UUID, password_hash: str, *, password_changed_at: datetime | None = None
     ) -> None: ...
+    async def record_activity(
+        self, user_id: UUID, *, now: datetime, stale_before: datetime
+    ) -> None: ...
     async def get_session(self, token_hash: bytes) -> AuthSession | None: ...
     async def create_session(
         self,
@@ -57,6 +60,11 @@ class SqlAlchemyAuthRepository:
         await self.users.update_password(
             user_id, password_hash, password_changed_at=password_changed_at
         )
+
+    async def record_activity(
+        self, user_id: UUID, *, now: datetime, stale_before: datetime
+    ) -> None:
+        await self.users.record_activity(user_id, now=now, stale_before=stale_before)
 
     async def get_session(self, token_hash: bytes) -> AuthSession | None:
         return await self.session.scalar(

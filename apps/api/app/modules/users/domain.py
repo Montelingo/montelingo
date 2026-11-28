@@ -17,3 +17,6 @@ class UserAccount:
     # (ADR 0008). None only for accounts created before #250.
     consent_accepted_at: datetime | None = None
     privacy_policy_version: str | None = None
+    # ADR 0008's inactivity clock. None only where a test builds an account by hand.
+    last_active_at: datetime | None = None
+    inactivity_warning_sent_at: datetime | None = None

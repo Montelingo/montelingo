@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from app.core.errors import ApiError, ErrorCode
@@ -52,14 +53,33 @@ class AccountService:
         if not verified:
             raise ApiError(ErrorCode.INVALID_PASSWORD, INVALID_PASSWORD, status_code=403)
 
+        deleted = await self.delete_user(user.id, user.email)
+        # A second request for the same account finds nothing left to delete.
+        if deleted is None:
+            raise ApiError(
+                ErrorCode.AUTHENTICATION_ERROR, "Authentication required.", status_code=401
+            )
+        return deleted
+
+    async def delete_user(
+        self,
+        user_id: UUID,
+        email: str,
+        *,
+        inactive_before: datetime | None = None,
+        warned_before: datetime | None = None,
+    ) -> DeletedAccount | None:
+        """The one deletion path, for self-service and for inactive accounts (ADR 0008):
+        the users row goes, the cascade takes the rest, and the id is recorded for
+        restores. None if there was nothing to delete, or the account was used again.
+        """
         async with self.transaction_manager.transaction():
-            # A second request for the same account finds nothing left to delete.
-            if not await self.users.delete(user.id):
-                raise ApiError(
-                    ErrorCode.AUTHENTICATION_ERROR, "Authentication required.", status_code=401
-                )
-            await self.deletions.record(user.id, deleted_at=self.clock.now())
-        return DeletedAccount(user_id=user.id, email=user.email)
+            if not await self.users.delete(
+                user_id, inactive_before=inactive_before, warned_before=warned_before
+            ):
+                return None
+            await self.deletions.record(user_id, deleted_at=self.clock.now())
+        return DeletedAccount(user_id=user_id, email=email)
 
     async def send_deleted_email(self, deleted: DeletedAccount) -> None:
         """Sent after the commit. A delivery failure is logged by the sender, by

@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -42,6 +42,18 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_security: Literal["none", "starttls", "tls"] = "starttls"
     smtp_from: str | None = None
+
+    # Inactive accounts (ADR 0008): warned after this many days without
+    # activity, deleted after inactive_delete_days, and never sooner than
+    # (delete - warning) days after the warning was sent.
+    inactive_warning_days: int = Field(default=700, gt=0)
+    inactive_delete_days: int = Field(default=730, gt=0)
+
+    @model_validator(mode="after")
+    def warning_comes_before_deletion(self) -> "Settings":
+        if self.inactive_warning_days >= self.inactive_delete_days:
+            raise ValueError("MONTELINGO_INACTIVE_WARNING_DAYS must be less than DELETE_DAYS")
+        return self
 
     @field_validator("allowed_origins", "trusted_proxies", mode="before")
     @classmethod
