@@ -14,6 +14,9 @@ const MEMORY_CARD_COUNT = 12;
 // The Riječi tab, and its practice memory game (#234, #235).
 const WORDS = "/play/words";
 const PRACTICE_MEMORY_URL = `${WORDS}/memory`;
+// Sastavi riječi, practice only (#294, #299): 5 words a game.
+const PRACTICE_SPELL_URL = `${WORDS}/spell`;
+const SPELL_ROUNDS = 5;
 
 // A memory card's accessible name while it is face down, and the end of its
 // name once its pair is found. A turn ends with its cards in either state.
@@ -124,6 +127,80 @@ function pictureName(page: Page): Promise<string | null> {
         .querySelector('[aria-label="Spoji riječ i sliku"] [role="img"]')
         ?.getAttribute("aria-label") ?? null,
   );
+}
+
+/**
+ * A word's Montenegrin letters, as Sastavi riječi's tiles show them: lower
+ * case, with lj, nj and dž one letter each.
+ */
+function letters(word: string): string[] {
+  return (
+    word
+      .normalize("NFC")
+      .toLowerCase()
+      .match(/lj|nj|dž|./gu) ?? []
+  );
+}
+
+/** Sastavi riječi's picture's name, its word, or `null` once it is gone. */
+function spellPictureName(page: Page): Promise<string | null> {
+  return page.evaluate(
+    () =>
+      document
+        .querySelector('[aria-label="Sastavi riječ za sliku"] [role="img"]')
+        ?.getAttribute("aria-label") ?? null,
+  );
+}
+
+/**
+ * Every word of the Sastavi riječi game on screen, to "Bravo!": the first
+ * word starts with a wrong tile, which shakes back and fills nothing. The
+ * deal is random, so it spells each word from its picture's name.
+ */
+async function playSpell(page: Page) {
+  const game = page.getByRole("group", { name: "Sastavi riječ za sliku" });
+  await expect(game.getByTestId("spell-steps").locator("span")).toHaveCount(
+    SPELL_ROUNDS,
+  );
+  const openTile = (letter: string) =>
+    game
+      .locator('button[aria-disabled="false"]')
+      .filter({ hasText: new RegExp(`^${letter}$`) })
+      .first();
+
+  for (let round = 0; round < SPELL_ROUNDS; round += 1) {
+    const word = await game.getByRole("img").getAttribute("aria-label");
+    if (word === null) {
+      throw new Error("the picture has no name");
+    }
+    const spelled = letters(word);
+    if (round === 0) {
+      const wrong = game
+        .locator('button[aria-disabled="false"]')
+        .filter({ hasNotText: new RegExp(`^${spelled[0]}$`) })
+        .first();
+      await wrong.click();
+      await expect(game.getByRole("status")).toHaveText("Pokušaj ponovo.");
+      await expect(wrong).toHaveAttribute("aria-disabled", "false");
+      await expect(
+        game.getByTestId("spell-slots").locator('[data-filled="true"]'),
+      ).toHaveCount(0);
+    }
+    for (const letter of spelled) {
+      await openTile(letter).click();
+    }
+    await expect(game.getByRole("status")).toHaveText(
+      `Tačno! ${spelled.join("")}`,
+    );
+    // The next word, or "Bravo!", follows a moment later.
+    await expect.poll(() => spellPictureName(page)).not.toBe(word);
+  }
+  await expect(page.getByRole("heading", { name: /^Bravo/ })).toBeVisible();
+}
+
+/** The top bar's hearts, on a region's map (#275). */
+function heartsCounter(page: Page, hearts: number) {
+  return page.getByRole("group", { name: `Srca: ${hearts}`, exact: true });
 }
 
 /** Follows the "Bravo!" screen's "Nazad na mjesto" to Budva. */
@@ -286,7 +363,7 @@ async function playMatch(page: Page) {
 // test for its account, since sign-ups are limited (README.md). Each run signs
 // up a new one, so nothing is done yet. Sign-up, the lesson and three games
 // take longer than the default 30 s.
-test("the lesson opens the games, both games are saved, Riječi lists and practises the words, and stars and hearts add up (#136, #138, #225, #236, #277)", async ({
+test("the lesson opens the games, both games are saved, Riječi lists and practises the words, and stars and hearts add up (#136, #138, #225, #236, #277, #299)", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -308,7 +385,11 @@ test("the lesson opens the games, both games are saved, Riječi lists and practi
       page.getByRole("heading", { level: 2, name: "Još nemaš riječi" }),
     ).toBeVisible();
     await expect(page.getByRole("group", { name: "Vježbaj" })).toHaveCount(0);
+    // Sastavi riječi, opened by its URL, has no words to deal yet (#299).
+    await page.goto(PRACTICE_SPELL_URL);
+    await expect(page.getByText("Nauči još riječi pa se vrati!")).toBeVisible();
 
+    await page.goto(WORDS);
     await page.getByRole("link", { name: "Na mapu" }).click();
     await expect(page).toHaveURL("/play");
 
@@ -417,6 +498,41 @@ test("the lesson opens the games, both games are saved, Riječi lists and practi
     await openNaPlazi(page);
   });
 
+  await test.step("practise Sastavi riječi from Riječi: 5 words, a wrong tile shakes back, and it earns a heart (#299)", async () => {
+    await page.goto("/play/coast");
+    await expect(heartsCounter(page, 1)).toBeVisible();
+    const before = (await progress(page)) as { counts: { hearts: number } };
+
+    await page.goto(WORDS);
+    await page
+      .getByRole("group", { name: "Vježbaj" })
+      .getByRole("link", { name: "Sastavi riječi" })
+      .click();
+    await expect(page).toHaveURL(PRACTICE_SPELL_URL);
+    const gameSaved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith("/api/v1/practice/spell/result"),
+    );
+    await playSpell(page);
+    expect((await gameSaved).status()).toBe(200);
+    await expect(
+      page.getByText("+1 srce", { exact: true }).first(),
+    ).toBeVisible();
+    await backFromBravo(page, "Nazad na riječi", WORDS);
+
+    // Only the heart moves: practice has no lock, star or count (ADR 0009).
+    expect(await progress(page)).toEqual({
+      ...before,
+      counts: { ...before.counts, hearts: before.counts.hearts + 1 },
+    });
+    await page.goto("/play/coast");
+    await expect(heartsCounter(page, 2)).toBeVisible();
+
+    await page.goto(BUDVA);
+    await openNaPlazi(page);
+  });
+
   await test.step("play the match game: it saves", () => playMatch(page));
 
   // Back, and a link to a place already visited, show it from the router's
@@ -472,11 +588,11 @@ test("the lesson opens the games, both games are saved, Riječi lists and practi
   // Through the API from here: the screens above already showed each save.
   await test.step("Budva's stars fill one step at a time, and a first time earns no heart (#277)", async () => {
     // Na plaži is done, but a star needs its step in every chapter of the place.
-    // Practice earned the account's one heart so far.
+    // Practice earned the account's two hearts so far: Memory and Sastavi riječi.
     expect(await budvaStars(page)).toMatchObject({
       budva: 0,
       stars: 0,
-      hearts: 1,
+      hearts: 2,
     });
 
     const firstTimes = [];
@@ -491,7 +607,7 @@ test("the lesson opens the games, both games are saved, Riječi lists and practi
       budva: 3,
       stars: 3,
       stickers: 1,
-      hearts: 1,
+      hearts: 2,
     });
   });
 
@@ -499,15 +615,15 @@ test("the lesson opens the games, both games are saved, Riječi lists and practi
     const replay = "budva-beach/games/memory/result";
     // A replay earns a heart, and the count goes up by one.
     expect(await recordResult(page, replay)).toBe(true);
-    expect((await budvaStars(page)).hearts).toBe(2);
+    expect((await budvaStars(page)).hearts).toBe(3);
 
     // Up to the cap: 5 hearts a day, practice's included. A run that crosses
     // midnight in Podgorica would start a new day, and could earn more.
     const earned = [];
-    for (let replays = 0; replays < 3; replays += 1) {
+    for (let replays = 0; replays < 2; replays += 1) {
       earned.push(await recordResult(page, replay));
     }
-    expect(earned).toEqual([true, true, true]);
+    expect(earned).toEqual([true, true]);
     const atCap = (await progress(page)) as Progress;
     expect(atCap.counts.hearts).toBe(5);
 
