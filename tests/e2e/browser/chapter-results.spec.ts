@@ -154,6 +154,43 @@ async function progress(page: Page): Promise<unknown> {
   return response.json();
 }
 
+type Counts = {
+  words_learned: number;
+  stickers: number;
+  stars: number;
+  hearts: number;
+};
+type Progress = {
+  locations: { id: string; state: string; stars: number }[];
+  counts: Counts;
+};
+
+/** Budva's stars and the account's counts, from `GET /progress` (ADR 0009). */
+async function budvaStars(page: Page): Promise<{ budva: number } & Counts> {
+  const { locations, counts } = (await progress(page)) as Progress;
+  const budva = locations.find(({ id }) => id === "budva");
+  if (budva === undefined) {
+    throw new Error("progress has no Budva");
+  }
+  return { budva: budva.stars, ...counts };
+}
+
+/**
+ * Records a lesson or a game through the API, as the screens do, and says
+ * whether it earned a heart. The API wants the page's own Origin (ADR 0004).
+ */
+async function recordResult(page: Page, path: string): Promise<boolean> {
+  const response = await page.request.post(`/api/v1/chapters/${path}`, {
+    headers: { Origin: new URL(page.url()).origin },
+  });
+  expect(response.status(), path).toBe(200);
+  const body = (await response.json()) as { heart_earned: boolean };
+  return body.heart_earned;
+}
+
+// Budva's other chapter (content.json), which the screens above never open.
+const LJETO = "budva-summer-clothes";
+
 /** The word count on Riječi's header or the Ja screen, named "Riječi: N". */
 function wordCount(page: Page, count: number) {
   return page.getByRole("group", { name: `Riječi: ${count}`, exact: true });
@@ -240,17 +277,27 @@ async function playMatch(page: Page) {
 
 // The lesson opens the games (#138), and the lesson and games save their
 // results (#136), which a place already shown picks up (#225). The Riječi tab lists the words the lesson taught, and
-// practice plays them, recording only a heart (#236, #276). The issues share this
+// practice plays them, recording only a heart (#236, #276). Then a place's
+// stars fill one step at a time, and replays earn hearts up to the daily cap
+// (#277, ADR 0009). The issues share this
 // test for its account, since sign-ups are limited (README.md). Each run signs
 // up a new one, so nothing is done yet. Sign-up, the lesson and three games
 // take longer than the default 30 s.
-test("the lesson opens the games, both games are saved, and Riječi lists and practises the words (#136, #138, #225, #236)", async ({
+test("the lesson opens the games, both games are saved, Riječi lists and practises the words, and stars and hearts add up (#136, #138, #225, #236, #277)", async ({
   page,
 }) => {
   test.setTimeout(180_000);
 
   await test.step("a new learner opens Na plaži", () =>
     newLearnerOnNaPlazi(page));
+
+  await test.step("a new account has no stars or hearts (#277)", async () => {
+    expect(await budvaStars(page)).toMatchObject({
+      budva: 0,
+      stars: 0,
+      hearts: 0,
+    });
+  });
 
   await test.step("Riječi has no words yet, and leads to the map", async () => {
     await page.goto(WORDS);
@@ -417,5 +464,53 @@ test("the lesson opens the games, both games are saved, and Riječi lists and pr
         .getByRole("group", { name: "Mjesta", exact: true })
         .getByRole("link", { name: /^Budva, u toku(,|$)/ }),
     ).toBeVisible();
+  });
+
+  // Through the API from here: the screens above already showed each save.
+  await test.step("Budva's stars fill one step at a time, and a first time earns no heart (#277)", async () => {
+    // Na plaži is done, but a star needs its step in every chapter of the place.
+    // Practice earned the account's one heart so far.
+    expect(await budvaStars(page)).toMatchObject({
+      budva: 0,
+      stars: 0,
+      hearts: 1,
+    });
+
+    const firstTimes = [];
+    firstTimes.push(await recordResult(page, `${LJETO}/lesson`));
+    expect((await budvaStars(page)).budva).toBe(1);
+    firstTimes.push(await recordResult(page, `${LJETO}/games/memory/result`));
+    expect((await budvaStars(page)).budva).toBe(2);
+    firstTimes.push(await recordResult(page, `${LJETO}/games/match/result`));
+
+    expect(firstTimes).toEqual([false, false, false]);
+    expect(await budvaStars(page)).toMatchObject({
+      budva: 3,
+      stars: 3,
+      stickers: 1,
+      hearts: 1,
+    });
+  });
+
+  await test.step("replays earn hearts up to 5 a day, then nothing changes (#277)", async () => {
+    const replay = "budva-beach/games/memory/result";
+    // A replay earns a heart, and the count goes up by one.
+    expect(await recordResult(page, replay)).toBe(true);
+    expect((await budvaStars(page)).hearts).toBe(2);
+
+    // Up to the cap: 5 hearts a day, practice's included. A run that crosses
+    // midnight in Podgorica would start a new day, and could earn more.
+    const earned = [];
+    for (let replays = 0; replays < 3; replays += 1) {
+      earned.push(await recordResult(page, replay));
+    }
+    expect(earned).toEqual([true, true, true]);
+    const atCap = (await progress(page)) as Progress;
+    expect(atCap.counts.hearts).toBe(5);
+
+    // Past the cap: still 200, no heart, and nothing else moves.
+    expect(await recordResult(page, replay)).toBe(false);
+    expect(await recordResult(page, "budva-beach/lesson")).toBe(false);
+    expect(await progress(page)).toEqual(atCap);
   });
 });
