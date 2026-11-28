@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/account/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Account
+         * @description The account, every player and all their progress, as a JSON download (ADR 0008).
+         */
+        get: operations["account_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -381,6 +401,23 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** AccountExport */
+        AccountExport: {
+            account: components["schemas"]["ExportAccount"];
+            /**
+             * Exported At
+             * Format: date-time
+             */
+            exported_at: string;
+            /**
+             * Format Version
+             * @default 1
+             * @constant
+             */
+            format_version: 1;
+            /** Players */
+            players: components["schemas"]["ExportPlayer"][];
+        };
         /** Chapter */
         Chapter: {
             /** Id */
@@ -474,6 +511,95 @@ export interface components {
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorBody"];
+        };
+        /** ExportAccount */
+        ExportAccount: {
+            /** Consent Accepted At */
+            consent_accepted_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /** Privacy Policy Version */
+            privacy_policy_version: string | null;
+        };
+        /** ExportChapter */
+        ExportChapter: {
+            /** Chapter */
+            chapter: string;
+            /** Lesson Completed At */
+            lesson_completed_at: string | null;
+        };
+        /** ExportGameResult */
+        ExportGameResult: {
+            /** Chapter */
+            chapter: string;
+            /**
+             * Completed At
+             * Format: date-time
+             */
+            completed_at: string;
+            /**
+             * Game
+             * @enum {string}
+             */
+            game: "memory" | "match";
+        };
+        /** ExportHeart */
+        ExportHeart: {
+            /** Chapter */
+            chapter: string | null;
+            /**
+             * Earned At
+             * Format: date-time
+             */
+            earned_at: string;
+            /** Game */
+            game: ("memory" | "match" | "spell") | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "lesson" | "game" | "practice";
+        };
+        /** ExportPlace */
+        ExportPlace: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Location */
+            location: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+        };
+        /** ExportPlayer */
+        ExportPlayer: {
+            /** Age Band */
+            age_band: string | null;
+            /** Avatar */
+            avatar: string | null;
+            /** Chapters */
+            chapters: components["schemas"]["ExportChapter"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Game Results */
+            game_results: components["schemas"]["ExportGameResult"][];
+            /** Hearts */
+            hearts: components["schemas"]["ExportHeart"][];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+            /** Places */
+            places: components["schemas"]["ExportPlace"][];
         };
         /** GameState */
         GameState: {
@@ -836,6 +962,44 @@ export interface operations {
             };
             /** @description Rate limited */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    account_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountExport"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

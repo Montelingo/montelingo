@@ -16,6 +16,39 @@
         "title": "AccountDeleteRequest",
         "type": "object"
       },
+      "AccountExport": {
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/ExportAccount"
+          },
+          "exported_at": {
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "format_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Format Version",
+            "type": "integer"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/ExportPlayer"
+            },
+            "title": "Players",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format_version",
+          "exported_at",
+          "account",
+          "players"
+        ],
+        "title": "AccountExport",
+        "type": "object"
+      },
       "Chapter": {
         "properties": {
           "id": {
@@ -225,6 +258,277 @@
           "error"
         ],
         "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "ExportAccount": {
+        "properties": {
+          "consent_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Accepted At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "privacy_policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privacy Policy Version"
+          }
+        },
+        "required": [
+          "email",
+          "created_at",
+          "consent_accepted_at",
+          "privacy_policy_version"
+        ],
+        "title": "ExportAccount",
+        "type": "object"
+      },
+      "ExportChapter": {
+        "properties": {
+          "chapter": {
+            "title": "Chapter",
+            "type": "string"
+          },
+          "lesson_completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson Completed At"
+          }
+        },
+        "required": [
+          "chapter",
+          "lesson_completed_at"
+        ],
+        "title": "ExportChapter",
+        "type": "object"
+      },
+      "ExportGameResult": {
+        "properties": {
+          "chapter": {
+            "title": "Chapter",
+            "type": "string"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "title": "Completed At",
+            "type": "string"
+          },
+          "game": {
+            "enum": [
+              "memory",
+              "match"
+            ],
+            "title": "Game",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter",
+          "game",
+          "completed_at"
+        ],
+        "title": "ExportGameResult",
+        "type": "object"
+      },
+      "ExportHeart": {
+        "properties": {
+          "chapter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter"
+          },
+          "earned_at": {
+            "format": "date-time",
+            "title": "Earned At",
+            "type": "string"
+          },
+          "game": {
+            "anyOf": [
+              {
+                "enum": [
+                  "memory",
+                  "match",
+                  "spell"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game"
+          },
+          "source": {
+            "enum": [
+              "lesson",
+              "game",
+              "practice"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "earned_at",
+          "source",
+          "chapter",
+          "game"
+        ],
+        "title": "ExportHeart",
+        "type": "object"
+      },
+      "ExportPlace": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "location",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "ExportPlace",
+        "type": "object"
+      },
+      "ExportPlayer": {
+        "properties": {
+          "age_band": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Band"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/ExportChapter"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "game_results": {
+            "items": {
+              "$ref": "#/components/schemas/ExportGameResult"
+            },
+            "title": "Game Results",
+            "type": "array"
+          },
+          "hearts": {
+            "items": {
+              "$ref": "#/components/schemas/ExportHeart"
+            },
+            "title": "Hearts",
+            "type": "array"
+          },
+          "id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/ExportPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "age_band",
+          "avatar",
+          "created_at",
+          "places",
+          "chapters",
+          "game_results",
+          "hearts"
+        ],
+        "title": "ExportPlayer",
         "type": "object"
       },
       "GameState": {
@@ -1091,6 +1395,48 @@
           }
         },
         "summary": "Delete Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/export": {
+      "get": {
+        "description": "The account, every player and all their progress, as a JSON download (ADR 0008).",
+        "operationId": "account_export",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountExport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected server error"
+          }
+        },
+        "summary": "Export Account",
         "tags": [
           "account"
         ]
