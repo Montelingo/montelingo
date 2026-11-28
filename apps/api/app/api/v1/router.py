@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.modules.account.router import router as account_router
 from app.modules.auth.router import router as auth_router
 from app.modules.content.router import router as content_router
 from app.modules.health.router import router as health_router
@@ -18,3 +19,4 @@ router.include_router(progress_router)
 router.include_router(players_router, prefix="/players", tags=["players"])
 # Users owns /privacy-policy, the version a grown-up accepts at sign-up (ADR 0008).
 router.include_router(users_router, tags=["privacy"])
+router.include_router(account_router, prefix="/account", tags=["account"])

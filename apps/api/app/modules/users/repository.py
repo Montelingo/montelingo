@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .domain import UserAccount
@@ -30,6 +30,8 @@ class UserRepository(Protocol):
     ) -> None: ...
 
     async def lock(self, user_id: UUID) -> None: ...
+
+    async def delete(self, user_id: UUID) -> bool: ...
 
 
 def _account(user: User) -> UserAccount:
@@ -89,3 +91,13 @@ class SqlAlchemyUserRepository:
     async def lock(self, user_id: UUID) -> None:
         """Lock the account's row until the transaction ends."""
         await self.session.execute(select(User.id).where(User.id == user_id).with_for_update())
+
+    async def delete(self, user_id: UUID) -> bool:
+        """Deletes the account. The foreign keys cascade to every row that holds its
+        data: sessions, reset tokens, players and all their progress. False if it
+        was already gone.
+        """
+        deleted = await self.session.scalar(
+            delete(User).where(User.id == user_id).returning(User.id)
+        )
+        return deleted is not None
