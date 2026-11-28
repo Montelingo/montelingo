@@ -3,7 +3,7 @@
 - Status: Proposed (Accepted once Product confirms the daily cap below)
 - Date: 2026-11-27
 - Daily cap confirmed by: _pending (Product)_
-- Amended: 2026-11-28 (#294: Složi riječ, a practice-only game id)
+- Amended: 2026-11-28 (#294: Vješalo, a practice-only game id)
 
 ## Context
 
@@ -49,7 +49,7 @@ One row per heart, in `heart_events`:
 
 - **ADR 0006 is amended.** "Results are recorded once" still holds for state: a replay changes no lesson, game, lock, place or sticker. But it may now add a heart.
 - **Practice gets a route.** `POST /api/v1/practice/{game_id}/result` records a finished practice game. It needs at least one learned word, since practice cannot be dealt without one. This amends #237's "Not recorded" row for hearts only: practice still changes no lock, sticker, star or count of words.
-- **Practice has its own game ids.** Amended by #294. `{game_id}` is a `PracticeGameId`: the chapter games `memory` and `match`, and the practice-only `spell` (**Složi riječ**, ADR 0006). One finished Složi riječ game, five words, is one practice heart under the same daily cap, like a finished Memory or Spoji game. `spell` is not in `GAME_IDS`, which lists the chapter games and from which the stars are counted (`STARS_PER_PLACE = 1 + len(GAME_IDS)`), so a place still gives 3 stars.
+- **Practice has its own game ids.** Amended by #294. `{game_id}` is a `PracticeGameId`: the chapter games `memory` and `match`, and the practice-only `spell` (**Vješalo**, ADR 0006). One finished Vješalo game, five words, is one practice heart under the same daily cap, like a finished Memory or Spoji game. `spell` is not in `GAME_IDS`, which lists the chapter games and from which the stars are counted (`STARS_PER_PLACE = 1 + len(GAME_IDS)`), so a place still gives 3 stars.
 
 ### Per player
 
