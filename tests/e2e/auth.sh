@@ -201,10 +201,20 @@ check_contains "Unknown region shows the learner not-found page" "$unknown" \
 
 echo "[e2e] Testing auth flow for $EMAIL"
 
+# Sign-up needs the grown-up's consent to the policy version in force (ADR 0008).
+policy_version="$(curl --silent --fail "$WEB_URL/api/v1/privacy-policy" | jq -r '.version')"
+if [[ -z "$policy_version" || "$policy_version" == "null" ]]; then
+  echo "[e2e] Privacy policy: response did not contain a version" >&2
+  exit 1
+fi
+echo "[e2e] Privacy policy: OK ($policy_version)"
+
 sign_up_body="$(curl --silent --fail-with-body --request POST \
   --header "Origin: $ORIGIN" \
   --header "Content-Type: application/json" \
-  --data "{\"email\":\"$EMAIL\",\"password\":\"$OLD_PASSWORD\"}" \
+  --data "$(jq -n --arg email "$EMAIL" --arg password "$OLD_PASSWORD" \
+    --arg version "$policy_version" \
+    '{email: $email, password: $password, parental_consent: true, privacy_policy_version: $version}')" \
   "$WEB_URL/api/v1/auth/sign-up")"
 check_json_email "Sign up" "$sign_up_body"
 

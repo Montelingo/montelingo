@@ -126,6 +126,23 @@ describe("toAuthFormError", () => {
     });
   });
 
+  describe("privacy_policy_outdated", () => {
+    it("asks for a reload, on the form", () => {
+      expect(
+        toAuthFormError(makeApiError(409, "privacy_policy_outdated"), {
+          fields: signUpFields,
+        }),
+      ).toEqual({
+        code: "privacy_policy_outdated",
+        formError:
+          "Politika privatnosti je promijenjena. Osvježi stranicu i pokušaj ponovo.",
+        fieldErrors: {},
+        retryAfterSeconds: null,
+        requestId: "req-1",
+      });
+    });
+  });
+
   describe("rate_limited", () => {
     it.each([
       ["1", 1, "1 sekundu"],
@@ -244,6 +261,19 @@ describe("toAuthFormError", () => {
         },
         retryAfterSeconds: null,
         requestId: "req-1",
+      });
+    });
+
+    it("maps parental_consent onto the consent checkbox", () => {
+      expect(
+        toAuthFormError(validationError("parental_consent"), {
+          fields: signUpFields,
+        }),
+      ).toMatchObject({
+        formError: null,
+        fieldErrors: {
+          parentalConsent: validationMessages.parentalConsentRequired,
+        },
       });
     });
 

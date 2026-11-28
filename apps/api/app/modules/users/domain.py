@@ -13,3 +13,7 @@ class UserAccount:
     password_changed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    # When the grown-up gave consent at sign-up, and to which policy version
+    # (ADR 0008). None only for accounts created before #250.
+    consent_accepted_at: datetime | None = None
+    privacy_policy_version: str | None = None

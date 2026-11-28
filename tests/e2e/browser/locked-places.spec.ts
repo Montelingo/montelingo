@@ -28,6 +28,9 @@ test("locked regions and places cannot be opened, including by URL (#104)", asyn
       await page.getByLabel("E-pošta odrasle osobe").fill(email);
       await page.getByLabel("Lozinka", { exact: true }).fill(password);
       await page.getByLabel("Potvrdi lozinku").fill(password);
+      await page
+        .getByRole("checkbox", { name: /Ja sam roditelj ili staratelj/ })
+        .check();
       await page.getByRole("button", { name: "Napravi nalog" }).click();
     }
 

@@ -89,7 +89,7 @@ function renderSignInHook() {
 
 function fill(
   result: {
-    current: ReturnType<typeof useAuthForm<"email" | "password", SignInValues>>;
+    current: ReturnType<typeof useAuthForm<SignInValues, SignInValues>>;
   },
   values: { email: string; password: string },
 ) {

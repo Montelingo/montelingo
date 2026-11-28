@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import Argon2PasswordHasher
 from app.modules.progress.models import LearningProfile
 from app.modules.users.models import User
+from app.modules.users.privacy import PRIVACY_POLICY_VERSION
 
 pytestmark = pytest.mark.integration
 
@@ -86,7 +87,12 @@ async def test_a_profile_created_at_sign_up_starts_empty(
     email = f"sign-up-{uuid4().hex}@example.com"
     sign_up = await integration_client.post(
         "/api/v1/auth/sign-up",
-        json={"email": email, "password": PASSWORD},
+        json={
+            "email": email,
+            "password": PASSWORD,
+            "parental_consent": True,
+            "privacy_policy_version": PRIVACY_POLICY_VERSION,
+        },
         headers={"Origin": ORIGIN},
     )
     assert sign_up.status_code == 201, sign_up.text

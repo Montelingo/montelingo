@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.core.security import SecureToken
 from app.infrastructure.email import InMemoryEmailSender
 from app.modules.auth.dependencies import get_auth_service
+from app.modules.users.privacy import PRIVACY_POLICY_VERSION
 
 from .test_password_reset_service import (
     NOW,
@@ -21,6 +22,8 @@ from .test_password_reset_service import make_service as make_reset_service
 from .test_sign_up_service import FakeUsersService, make_sign_up_service
 
 ORIGIN = {"Origin": "http://localhost:3000"}
+# What the sign-up page sends with the credentials (ADR 0008).
+CONSENT = {"parental_consent": True, "privacy_policy_version": PRIVACY_POLICY_VERSION}
 
 
 @pytest.fixture
@@ -162,7 +165,7 @@ def test_me_without_cookie_requires_authentication(client: TestClient) -> None:
 def test_sign_up_rejects_invalid_input(client: TestClient, payload: dict[str, str]) -> None:
     response = client.post(
         "/api/v1/auth/sign-up",
-        json=payload,
+        json={**payload, **CONSENT},
         headers={"Origin": "http://localhost:3000"},
     )
     assert response.status_code == 422
@@ -172,7 +175,7 @@ def test_sign_up_rejects_invalid_input(client: TestClient, payload: dict[str, st
 def test_sign_up_validates_input_before_reaching_the_service(client: TestClient) -> None:
     response = client.post(
         "/api/v1/auth/sign-up",
-        json={"email": "not-an-email", "password": "short"},
+        json={"email": "not-an-email", "password": "short", **CONSENT},
         headers={"Origin": "http://localhost:3000"},
     )
 
@@ -208,6 +211,7 @@ def test_sign_up_rate_limit_returns_envelope_and_retry_after(
                 json={
                     "email": "user@example.com",
                     "password": "password123",
+                    **CONSENT,
                 },
                 headers=headers,
             )
@@ -218,6 +222,7 @@ def test_sign_up_rate_limit_returns_envelope_and_retry_after(
             json={
                 "email": "user@example.com",
                 "password": "password123",
+                **CONSENT,
             },
             headers=headers,
         )
@@ -235,9 +240,94 @@ def test_sign_up_rate_limit_returns_envelope_and_retry_after(
 def test_foreign_origin_is_rejected(client: TestClient) -> None:
     response = client.post(
         "/api/v1/auth/sign-up",
-        json={"email": "user@example.com", "password": "password123"},
+        json={"email": "user@example.com", "password": "password123", **CONSENT},
         headers={"Origin": "https://foreign.example"},
     )
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "authorization_error"
+
+
+@pytest.mark.parametrize(
+    "consent",
+    [
+        {"privacy_policy_version": PRIVACY_POLICY_VERSION},
+        {**CONSENT, "parental_consent": False},
+        {**CONSENT, "parental_consent": None},
+        {**CONSENT, "parental_consent": "true"},
+        {**CONSENT, "parental_consent": 1},
+        {"parental_consent": True},
+    ],
+    ids=["missing", "false", "null", "string", "number", "no-version"],
+)
+def test_sign_up_without_parental_consent_returns_422(
+    client: TestClient, consent: dict[str, object]
+) -> None:
+    users = FakeUsersService()
+    service, _ = make_sign_up_service(users)
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+
+    try:
+        response = client.post(
+            "/api/v1/auth/sign-up",
+            json={"email": "user@example.com", "password": "password123", **consent},
+            headers=ORIGIN,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_auth_service, None)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert users.created_email is None
+
+
+def test_sign_up_with_an_old_policy_version_returns_409(client: TestClient) -> None:
+    users = FakeUsersService()
+    service, _ = make_sign_up_service(users)
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+
+    try:
+        response = client.post(
+            "/api/v1/auth/sign-up",
+            json={
+                "email": "user@example.com",
+                "password": "password123",
+                **CONSENT,
+                "privacy_policy_version": "2020-01-01",
+            },
+            headers=ORIGIN,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_auth_service, None)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "privacy_policy_outdated"
+    assert users.created_email is None
+
+
+def test_sign_up_with_consent_records_it(client: TestClient) -> None:
+    users = FakeUsersService()
+    service, _ = make_sign_up_service(users)
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+
+    try:
+        response = client.post(
+            "/api/v1/auth/sign-up",
+            json={"email": "user@example.com", "password": "password123", **CONSENT},
+            headers=ORIGIN,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_auth_service, None)
+
+    assert response.status_code == 201
+    assert users.created_policy_version == PRIVACY_POLICY_VERSION
+    assert users.created_consent_at is not None
+
+
+def test_privacy_policy_returns_the_current_version_without_a_session(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/v1/privacy-policy")
+
+    assert response.status_code == 200
+    assert response.json() == {"version": PRIVACY_POLICY_VERSION}

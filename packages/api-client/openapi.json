@@ -620,6 +620,19 @@
         "title": "PracticeResult",
         "type": "object"
       },
+      "PrivacyPolicy": {
+        "properties": {
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "PrivacyPolicy",
+        "type": "object"
+      },
       "Profile": {
         "description": "The current account's child profile. Fields stay null until it is set up.",
         "properties": {
@@ -907,16 +920,29 @@
             "title": "Email",
             "type": "string"
           },
+          "parental_consent": {
+            "const": true,
+            "title": "Parental Consent",
+            "type": "boolean"
+          },
           "password": {
             "maxLength": 128,
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "privacy_policy_version": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Privacy Policy Version",
+            "type": "string"
           }
         },
         "required": [
           "email",
-          "password"
+          "password",
+          "parental_consent",
+          "privacy_policy_version"
         ],
         "title": "SignUpRequest",
         "type": "object"
@@ -1905,6 +1931,28 @@
         "summary": "Complete Practice",
         "tags": [
           "progress"
+        ]
+      }
+    },
+    "/api/v1/privacy-policy": {
+      "get": {
+        "description": "No session needed: the sign-up page sends this version back (ADR 0008).",
+        "operationId": "privacy_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyPolicy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The current privacy policy version",
+        "tags": [
+          "privacy"
         ]
       }
     },

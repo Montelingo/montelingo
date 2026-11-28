@@ -5,14 +5,14 @@ import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
-import type { Credentials } from "../api/auth-api";
+import type { SignUpDetails } from "../api/auth-api";
 import { authErrorMessages, SignInAfterSignUpError } from "../errors";
 import { validationMessages } from "../model/messages";
 import type { CurrentUser } from "../model/user";
 import { SignUpForm } from "./SignUpForm";
 
 const { signUpAndSignIn } = vi.hoisted(() => ({
-  signUpAndSignIn: vi.fn<(credentials: Credentials) => Promise<CurrentUser>>(),
+  signUpAndSignIn: vi.fn<(details: SignUpDetails) => Promise<CurrentUser>>(),
 }));
 vi.mock("../api/auth-api", () => ({ signUpAndSignIn }));
 
@@ -73,8 +73,15 @@ function flushPromises() {
   });
 }
 
+const POLICY_VERSION = "2026-12-01";
+
 function renderForm(redirectTo = "/play") {
-  const view = render(<SignUpForm redirectTo={redirectTo} />);
+  const view = render(
+    <SignUpForm
+      redirectTo={redirectTo}
+      privacyPolicyVersion={POLICY_VERSION}
+    />,
+  );
   return { ...view, user: userEvent.setup() };
 }
 
@@ -95,6 +102,13 @@ function confirmInput() {
   return screen.getByLabelText("Potvrdi lozinku");
 }
 
+// jsdom puts a space before the full stop that follows the link; browsers do not.
+function consentCheckbox() {
+  return screen.getByRole("checkbox", {
+    name: /^Ja sam roditelj ili staratelj djeteta i prihvatam Politiku privatnosti ?\.$/,
+  });
+}
+
 function submitButton() {
   return screen.getByRole("button", { name: "Napravi nalog" });
 }
@@ -105,11 +119,20 @@ async function fillAndSubmit(
     email = "ana@example.com",
     password = "correct horse",
     confirmPassword = password,
-  }: { email?: string; password?: string; confirmPassword?: string } = {},
+    consent = true,
+  }: {
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    consent?: boolean;
+  } = {},
 ) {
   await user.type(emailInput(), email);
   await user.type(passwordInput(), password);
   await user.type(confirmInput(), confirmPassword);
+  if (consent) {
+    await user.click(consentCheckbox());
+  }
   await user.click(submitButton());
 }
 
@@ -128,7 +151,9 @@ describe("SignUpForm", () => {
 
   it("keeps the submit button disabled in the server HTML, until hydration", () => {
     const container = document.createElement("div");
-    container.innerHTML = renderToString(<SignUpForm redirectTo="/play" />);
+    container.innerHTML = renderToString(
+      <SignUpForm redirectTo="/play" privacyPolicyVersion={POLICY_VERSION} />,
+    );
 
     expect(
       within(container).getByRole("button", { name: "Napravi nalog" }),
@@ -197,6 +222,99 @@ describe("SignUpForm", () => {
     );
   });
 
+  describe("parental consent", () => {
+    it("asks for it with a required checkbox, unticked at first", () => {
+      renderForm();
+
+      expect(consentCheckbox()).not.toBeChecked();
+      expect(consentCheckbox()).toBeRequired();
+    });
+
+    it("ticks when its label text is clicked", async () => {
+      const { user: actor } = renderForm();
+
+      await actor.click(
+        screen.getByText(/Ja sam roditelj ili staratelj djeteta/),
+      );
+
+      expect(consentCheckbox()).toBeChecked();
+    });
+
+    it("links to the privacy policy in a new tab, so nothing typed is lost", () => {
+      renderForm();
+
+      const link = screen.getByRole("link", { name: "Politiku privatnosti" });
+      expect(link).toHaveAttribute("href", "/privatnost");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener");
+    });
+
+    it("gives the box a target of at least 44×44px", () => {
+      renderForm();
+
+      // size-touch is 3rem (48px), and the whole label row is clickable.
+      expect(consentCheckbox().parentElement).toHaveClass("size-touch");
+      expect(consentCheckbox().closest("label")).toHaveClass("min-h-touch");
+    });
+
+    it("shows its error on the field and in the summary, and sends nothing", async () => {
+      const { user: actor } = renderForm();
+
+      await fillAndSubmit(actor, { consent: false });
+
+      expect(consentCheckbox()).toHaveAttribute("aria-invalid", "true");
+      expect(consentCheckbox()).toHaveAccessibleDescription(
+        validationMessages.parentalConsentRequired,
+      );
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
+      expect(signUpAndSignIn).not.toHaveBeenCalled();
+    });
+
+    it("clears its error once ticked, and then signs up", async () => {
+      signUpAndSignIn.mockResolvedValue(user);
+      const { user: actor } = renderForm();
+      await fillAndSubmit(actor, { consent: false });
+
+      await actor.click(consentCheckbox());
+
+      expect(consentCheckbox()).not.toHaveAttribute("aria-invalid");
+      await actor.click(submitButton());
+      expect(signUpAndSignIn).toHaveBeenCalledTimes(1);
+    });
+
+    it("says the policy changed when the page showed an older version", async () => {
+      signUpAndSignIn.mockRejectedValue(
+        makeApiError(409, "privacy_policy_outdated"),
+      );
+      const { user: actor } = renderForm();
+
+      await fillAndSubmit(actor);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Politika privatnosti je promijenjena. Osvježi stranicu i pokušaj ponovo.",
+      );
+      expect(
+        errorSummary(authErrorMessages.privacyPolicyOutdated),
+      ).toHaveFocus();
+      expect(router.replace).not.toHaveBeenCalled();
+    });
+
+    it("shows the API's validation_error for the consent on the checkbox", async () => {
+      signUpAndSignIn.mockRejectedValue(validationError("parental_consent"));
+      const { user: actor } = renderForm();
+
+      await fillAndSubmit(actor);
+
+      await waitFor(() => {
+        expect(consentCheckbox()).toHaveAccessibleDescription(
+          validationMessages.parentalConsentRequired,
+        );
+      });
+      expect(errorSummary("Ispravi 1 stvar ispod")).toHaveFocus();
+    });
+  });
+
   describe("validation", () => {
     it("shows a field's error when the user leaves it", async () => {
       const { user: actor } = renderForm();
@@ -256,10 +374,13 @@ describe("SignUpForm", () => {
       expect(confirmInput()).toHaveAccessibleDescription(
         validationMessages.confirmPasswordRequired,
       );
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        "Ispravi 3 stvari ispod",
+      expect(consentCheckbox()).toHaveAccessibleDescription(
+        validationMessages.parentalConsentRequired,
       );
-      expect(errorSummary("Ispravi 3 stvari ispod")).toHaveFocus();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Ispravi 4 stvari ispod",
+      );
+      expect(errorSummary("Ispravi 4 stvari ispod")).toHaveFocus();
       expect(signUpAndSignIn).not.toHaveBeenCalled();
     });
 
@@ -277,7 +398,7 @@ describe("SignUpForm", () => {
   });
 
   describe("on success", () => {
-    it("signs up and in with the trimmed email, then goes to the destination and refreshes", async () => {
+    it("signs up and in with the trimmed email and the policy version, then goes to the destination and refreshes", async () => {
       signUpAndSignIn.mockResolvedValue(user);
       const { user: actor } = renderForm("/lessons/42");
 
@@ -287,6 +408,7 @@ describe("SignUpForm", () => {
       expect(signUpAndSignIn).toHaveBeenCalledWith({
         email: "ana@example.com",
         password: "correct horse",
+        privacyPolicyVersion: POLICY_VERSION,
       });
       await waitFor(() => {
         expect(router.replace).toHaveBeenCalledWith("/lessons/42");
@@ -545,6 +667,24 @@ describe("SignUpForm", () => {
     it("has no violations with field errors", async () => {
       const { container, user: actor } = renderForm();
       await actor.click(submitButton());
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
+
+    it("has no violations with the consent ticked", async () => {
+      const { container, user: actor } = renderForm();
+      await actor.click(consentCheckbox());
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
+
+    it("has no violations when the policy changed", async () => {
+      signUpAndSignIn.mockRejectedValue(
+        makeApiError(409, "privacy_policy_outdated"),
+      );
+      const { container, user: actor } = renderForm();
+      await fillAndSubmit(actor);
+      await screen.findByRole("alert");
 
       expect(await axe(container)).toHaveNoViolations();
     });

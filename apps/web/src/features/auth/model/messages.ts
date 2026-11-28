@@ -32,4 +32,6 @@ export const validationMessages = {
   signInPassword: `Upiši lozinku (najviše ${PASSWORD_MAX_LENGTH} znakova).`,
   confirmPasswordRequired: "Upiši lozinku još jednom.",
   passwordsDiffer: "Lozinke se ne poklapaju.",
+  parentalConsentRequired:
+    "Potvrdi da si roditelj ili staratelj i prihvati politiku privatnosti.",
 };

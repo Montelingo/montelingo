@@ -28,7 +28,7 @@ export type PasswordResetRequestField = keyof PasswordResetRequestValues;
 export type PasswordResetConfirmField = keyof PasswordResetConfirmValues;
 
 // Returns the parsed form, or the first message for each invalid field.
-function validate<Form extends Record<string, string>>(
+function validate<Form extends Record<string, string | boolean>>(
   schema: z.ZodType<Form, Form>,
   form: Form,
 ): ValidationResult<Form, Extract<keyof Form, string>> {
@@ -53,7 +53,7 @@ export function validateSignIn(
   return validate(signInSchema, form);
 }
 
-/** Validates the sign-up form. On success the email is trimmed. */
+/** Validates the sign-up form, consent included. On success the email is trimmed. */
 export function validateSignUp(
   form: SignUpValues,
 ): ValidationResult<SignUpValues, SignUpField> {

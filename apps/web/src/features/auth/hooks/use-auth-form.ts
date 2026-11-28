@@ -11,22 +11,35 @@ import {
 import { type ApiFieldMap, toAuthFormError } from "../errors";
 import {
   authFormReducer,
+  type FieldValue,
   initialAuthFormState,
   visibleFieldErrors,
 } from "../model/form-state";
 import type { ValidationResult } from "../model/validation";
 
-type FormValues<Field extends string> = Readonly<Record<Field, string>>;
+type FormValues = Readonly<Record<string, FieldValue>>;
 
-type UseAuthFormOptions<Field extends string, Data> = {
+type FieldOf<Values extends FormValues> = Extract<keyof Values, string>;
+
+/** The fields holding text, for `fieldProps()`. */
+type TextFieldOf<Values extends FormValues> = {
+  [Field in FieldOf<Values>]: Values[Field] extends string ? Field : never;
+}[FieldOf<Values>];
+
+/** The fields holding a checkbox's state, for `checkboxProps()`. */
+type CheckboxFieldOf<Values extends FormValues> = {
+  [Field in FieldOf<Values>]: Values[Field] extends boolean ? Field : never;
+}[FieldOf<Values>];
+
+type UseAuthFormOptions<Values extends FormValues, Data> = {
   /** The form's fields, in the order they appear, with their starting values. */
-  initialValues: FormValues<Field>;
-  validate: (values: FormValues<Field>) => ValidationResult<Data, Field>;
+  initialValues: Values;
+  validate: (values: Values) => ValidationResult<Data, FieldOf<Values>>;
   /**
    * Maps the API's `validation_error` fields onto this form's fields. It may
    * cover only some of them, so the fields are inferred from `initialValues`.
    */
-  apiFields: ApiFieldMap<NoInfer<Field>>;
+  apiFields: ApiFieldMap<NoInfer<FieldOf<Values>>>;
   /** Calls the API. A thrown error is mapped with `toAuthFormError()`. */
   submit: (data: Data) => Promise<void>;
   /** Runs once the API call succeeds, unless the form has unmounted meanwhile. */
@@ -53,7 +66,7 @@ const CLOCK_CHECK_INTERVAL_MS = 1000;
  * Attach `formRef` to the `<form>`, so focus can move to its fields by name,
  * and `summaryRef` to the error summary when focus goes there.
  */
-export function useAuthForm<Field extends string, Data>({
+export function useAuthForm<Values extends FormValues, Data>({
   initialValues,
   validate,
   apiFields,
@@ -61,7 +74,8 @@ export function useAuthForm<Field extends string, Data>({
   onSuccess,
   now = Date.now,
   focusOnError = "field",
-}: UseAuthFormOptions<Field, Data>) {
+}: UseAuthFormOptions<Values, Data>) {
+  type Field = FieldOf<Values>;
   const [state, dispatch] = useReducer(
     authFormReducer<Field>,
     initialValues,
@@ -73,7 +87,10 @@ export function useAuthForm<Field extends string, Data>({
   // "Sign up" link) must not navigate them somewhere else.
   const isMountedRef = useRef(false);
 
-  const validation = validate(state.values);
+  // The reducer only knows each value is text or a checkbox's state. Each field
+  // keeps the kind it started with, because fieldProps() writes only text
+  // fields and checkboxProps() only checkboxes.
+  const validation = validate(state.values as Values);
   const fieldErrors = visibleFieldErrors(
     state,
     validation.ok ? {} : validation.fieldErrors,
@@ -130,13 +147,26 @@ export function useAuthForm<Field extends string, Data>({
     };
   }, [isRetryHeld, now]);
 
-  function fieldProps(field: Field) {
+  /** Props for a text input: its value, error and handlers. */
+  function fieldProps(field: TextFieldOf<Values>) {
     return {
       name: field,
-      value: state.values[field],
+      value: String(state.values[field]),
       error: fieldErrors[field],
       onChange: (event: ChangeEvent<HTMLInputElement>) =>
         dispatch({ type: "changed", field, value: event.target.value }),
+      onBlur: () => dispatch({ type: "blurred", field }),
+    };
+  }
+
+  /** Props for a checkbox: whether it is ticked, its error and handlers. */
+  function checkboxProps(field: CheckboxFieldOf<Values>) {
+    return {
+      name: field,
+      checked: state.values[field] === true,
+      error: fieldErrors[field],
+      onChange: (event: ChangeEvent<HTMLInputElement>) =>
+        dispatch({ type: "changed", field, value: event.target.checked }),
       onBlur: () => dispatch({ type: "blurred", field }),
     };
   }
@@ -190,6 +220,7 @@ export function useAuthForm<Field extends string, Data>({
     formRef,
     summaryRef,
     fieldProps,
+    checkboxProps,
     /** The API's field errors from the last submit, until their field changes. */
     serverFieldErrors: state.serverFieldErrors,
     failure: state.failure,

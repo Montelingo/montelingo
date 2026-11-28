@@ -92,11 +92,18 @@ export const signInSchema = z.object({
   password: passwordSchema,
 });
 
+// The grown-up confirms they are the parent or guardian and accepts the privacy
+// policy (ADR 0008). The API takes only `true`, so an unticked box never leaves.
+const parentalConsentSchema = z
+  .boolean()
+  .refine((value) => value, validationMessages.parentalConsentRequired);
+
 export const signUpSchema = z
   .object({
     email: emailSchema,
     password: newPasswordSchema,
     confirmPassword: confirmPasswordSchema,
+    parentalConsent: parentalConsentSchema,
   })
   .refine((form) => form.password === form.confirmPassword, {
     error: validationMessages.passwordsDiffer,

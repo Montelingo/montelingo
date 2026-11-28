@@ -27,6 +27,7 @@ class ErrorCode(str, Enum):
     NO_LEARNED_WORDS = "no_learned_words"
     PLAYERS_LIMIT = "players_limit"
     PLAYER_NOT_FOUND = "player_not_found"
+    PRIVACY_POLICY_OUTDATED = "privacy_policy_outdated"
 
 
 @dataclass

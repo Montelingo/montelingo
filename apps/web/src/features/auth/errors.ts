@@ -51,6 +51,10 @@ export const signInFields = {
 export const signUpFields = {
   email: emailField,
   password: { field: "password", message: validationMessages.passwordLength },
+  parental_consent: {
+    field: "parentalConsent",
+    message: validationMessages.parentalConsentRequired,
+  },
 } as const satisfies ApiFieldMap<SignUpField>;
 
 export const passwordResetRequestFields = {
@@ -81,6 +85,8 @@ export const authErrorMessages = {
   emailTaken: "Nalog s ovom e-poštom već postoji.",
   invalidResetToken:
     "Ovaj link za novu lozinku nije ispravan ili je istekao. Zatraži novi.",
+  privacyPolicyOutdated:
+    "Politika privatnosti je promijenjena. Osvježi stranicu i pokušaj ponovo.",
   rateLimited: "Previše pokušaja. Sačekaj malo pa pokušaj ponovo.",
   invalidInput: "Provjeri unesene podatke i pokušaj ponovo.",
   unreachable:
@@ -137,6 +143,13 @@ export function toAuthFormError<Field extends string = never>(
       );
     case "invalid_reset_token":
       return formLevel(code, authErrorMessages.invalidResetToken, requestId);
+    // The page showed an older policy than the one in force (ADR 0008).
+    case "privacy_policy_outdated":
+      return formLevel(
+        code,
+        authErrorMessages.privacyPolicyOutdated,
+        requestId,
+      );
     case "rate_limited": {
       const retryAfterSeconds = parseRetryAfter(
         error.headers.get("retry-after"),
