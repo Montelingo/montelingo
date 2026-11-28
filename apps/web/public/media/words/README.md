@@ -22,29 +22,31 @@ scripts/word-images.sh ~/masters/kotor
 
 It reads every `NNNN.png` in the folder, writes both variants here, updates `media_hashes.json`, prints their sizes and fails if one is over budget. If an image is over budget, simplify the drawing. Don't lower the quality. A folder of 1024 px `NNNN.webp` files also works when the PNG master is lost: the 1024 file is copied unchanged, and only the 512 file is made.
 
-| Numbers | Chapter                            | Added in |
-| ------- | ---------------------------------- | -------- |
-| 1–10    | Na plaži (Budva)                   | #127     |
-| 11–20   | U luci (Kotor)                     | #188     |
-| 21–30   | Morske životinje (Ulcinj)          | #189     |
-| 31–40   | Šetnja uz more (Herceg Novi)       | #190     |
-| 41–50   | Putujemo (Tivat)                   | #191     |
-| 51–60   | Voće na pijaci (Bar)               | #192     |
-| 61–70   | Ljeto i odjeća (Budva)             | #120     |
-| 71–80   | Boje oko nas (Kotor)               | #188     |
-| 81–90   | Igramo se (Ulcinj)                 | #189     |
-| 91–100  | Šta radimo na obali (Herceg Novi)  | #190     |
-| 101–110 | Kod kuće (Podgorica)               | #193     |
-| 111–120 | Porodica (Cetinje)                 | #194     |
-| 121–130 | Za stolom (Nikšić)                 | #195     |
-| 131–140 | Povrće i ručak (Podgorica)         | #193     |
-| 141–150 | U kuhinji (Podgorica)              | #193     |
-| 151–160 | Moje tijelo (Cetinje)              | #194     |
-| 161–170 | Oblačimo se (Danilovgrad)          | #196     |
-| 171–180 | U vrtiću (Podgorica)               | #193     |
-| 181–190 | Muzika i slavlje (Cetinje)         | #194     |
-| 191–200 | Pored jezera (Skadarsko jezero)    | #197     |
-| 211–220 | U šumi (Kolašin)                   | #199     |
-| 221–230 | Šumske životinje (Berane)          | #200     |
-| 251–260 | Livada i mali stanovnici (Kolašin) | #199     |
-| 281–290 | Brojimo (Berane)                   | #200     |
+| Numbers | Chapter                                | Added in |
+| ------- | -------------------------------------- | -------- |
+| 1–10    | Na plaži (Budva)                       | #127     |
+| 11–20   | U luci (Kotor)                         | #188     |
+| 21–30   | Morske životinje (Ulcinj)              | #189     |
+| 31–40   | Šetnja uz more (Herceg Novi)           | #190     |
+| 41–50   | Putujemo (Tivat)                       | #191     |
+| 51–60   | Voće na pijaci (Bar)                   | #192     |
+| 61–70   | Ljeto i odjeća (Budva)                 | #120     |
+| 71–80   | Boje oko nas (Kotor)                   | #188     |
+| 81–90   | Igramo se (Ulcinj)                     | #189     |
+| 91–100  | Šta radimo na obali (Herceg Novi)      | #190     |
+| 101–110 | Kod kuće (Podgorica)                   | #193     |
+| 111–120 | Porodica (Cetinje)                     | #194     |
+| 121–130 | Za stolom (Nikšić)                     | #195     |
+| 131–140 | Povrće i ručak (Podgorica)             | #193     |
+| 141–150 | U kuhinji (Podgorica)                  | #193     |
+| 151–160 | Moje tijelo (Cetinje)                  | #194     |
+| 161–170 | Oblačimo se (Danilovgrad)              | #196     |
+| 171–180 | U vrtiću (Podgorica)                   | #193     |
+| 181–190 | Muzika i slavlje (Cetinje)             | #194     |
+| 191–200 | Pored jezera (Skadarsko jezero)        | #197     |
+| 201–210 | Na planini (Durmitor / Žabljak)        | #198     |
+| 211–220 | U šumi (Kolašin)                       | #199     |
+| 221–230 | Šumske životinje (Berane)              | #200     |
+| 251–260 | Livada i mali stanovnici (Kolašin)     | #199     |
+| 261–270 | Vrijeme i priroda (Durmitor / Žabljak) | #198     |
+| 281–290 | Brojimo (Berane)                       | #200     |
