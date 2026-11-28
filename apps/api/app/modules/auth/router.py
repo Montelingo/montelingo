@@ -50,7 +50,11 @@ async def sign_up(
     payload: SignUpRequest,
     service: AuthService = Depends(get_auth_service),
 ) -> CurrentUser:
-    user = await service.sign_up(email=str(payload.email), password=payload.password)
+    user = await service.sign_up(
+        email=str(payload.email),
+        password=payload.password,
+        privacy_policy_version=payload.privacy_policy_version,
+    )
     return CurrentUser(id=str(user.id), email=user.email, created_at=user.created_at)
 
 

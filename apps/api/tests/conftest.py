@@ -106,6 +106,9 @@ async def db_session(
 
 @pytest.fixture
 def integration_app(db_session: AsyncSession) -> FastAPI:
+    # A fresh rate limiter per test, as for unit tests, so the suite's sign-ups
+    # do not add up to the per-IP limit.
+    get_rate_limiter.cache_clear()
     app_instance = create_app()
 
     async def _get_test_db_session() -> AsyncGenerator[AsyncSession, None]:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -10,11 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from app.core.security import Argon2PasswordHasher
 from app.modules.progress.models import LearningProfile
 from app.modules.users.models import User
+from app.modules.users.privacy import PRIVACY_POLICY_VERSION
 
 pytestmark = pytest.mark.integration
 
 SIGN_UP_URL = "/api/v1/auth/sign-up"
 SIGN_UP_HEADERS = {"Origin": "http://localhost:3000"}
+# What the sign-up page sends with the credentials (ADR 0008).
+CONSENT = {"parental_consent": True, "privacy_policy_version": PRIVACY_POLICY_VERSION}
 
 
 async def test_sign_up_success(
@@ -26,6 +30,7 @@ async def test_sign_up_success(
         json={
             "email": "  USER@Example.COM  ",
             "password": "password123",
+            **CONSENT,
         },
         headers=SIGN_UP_HEADERS,
     )
@@ -52,6 +57,59 @@ async def test_sign_up_success(
     assert profile is not None
 
 
+async def test_sign_up_stores_the_consent_and_policy_version(
+    integration_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    before = datetime.now(UTC)
+    response = await integration_client.post(
+        SIGN_UP_URL,
+        json={"email": "consent@example.com", "password": "password123", **CONSENT},
+        headers=SIGN_UP_HEADERS,
+    )
+    after = datetime.now(UTC)
+
+    assert response.status_code == 201, response.text
+    user = await db_session.scalar(select(User).where(User.email == "consent@example.com"))
+    assert user is not None
+    assert user.privacy_policy_version == PRIVACY_POLICY_VERSION
+    # The server's clock, stored as timestamptz. The slack covers clock skew
+    # between the test process and PostgreSQL, which share one host here.
+    assert user.consent_accepted_at is not None
+    assert user.consent_accepted_at.tzinfo is not None
+    assert before - timedelta(seconds=5) <= user.consent_accepted_at <= after + timedelta(seconds=5)
+
+
+@pytest.mark.parametrize(
+    ("consent", "status", "code"),
+    [
+        ({**CONSENT, "parental_consent": False}, 422, "validation_error"),
+        ({"privacy_policy_version": PRIVACY_POLICY_VERSION}, 422, "validation_error"),
+        ({**CONSENT, "privacy_policy_version": "2020-01-01"}, 409, "privacy_policy_outdated"),
+    ],
+    ids=["not-accepted", "missing", "outdated-version"],
+)
+async def test_sign_up_without_valid_consent_creates_no_account(
+    integration_client: AsyncClient,
+    db_session: AsyncSession,
+    consent: dict[str, object],
+    status: int,
+    code: str,
+) -> None:
+    response = await integration_client.post(
+        SIGN_UP_URL,
+        json={"email": "no-consent@example.com", "password": "password123", **consent},
+        headers=SIGN_UP_HEADERS,
+    )
+
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    count = await db_session.scalar(
+        select(func.count()).select_from(User).where(User.email == "no-consent@example.com")
+    )
+    assert count == 0
+
+
 async def test_sign_up_duplicate_email_returns_409(
     integration_client: AsyncClient,
 ) -> None:
@@ -60,6 +118,7 @@ async def test_sign_up_duplicate_email_returns_409(
         json={
             "email": "user@example.com",
             "password": "password123",
+            **CONSENT,
         },
         headers=SIGN_UP_HEADERS,
     )
@@ -71,6 +130,7 @@ async def test_sign_up_duplicate_email_returns_409(
         json={
             "email": "USER@EXAMPLE.COM",
             "password": "anotherpassword123",
+            **CONSENT,
         },
         headers=SIGN_UP_HEADERS,
     )
@@ -93,7 +153,7 @@ async def test_sign_up_validation_returns_422(
 ) -> None:
     response = await integration_client.post(
         SIGN_UP_URL,
-        json=payload,
+        json={**payload, **CONSENT},
         headers=SIGN_UP_HEADERS,
     )
 
@@ -110,6 +170,7 @@ async def test_sign_up_password_cannot_equal_email(
         json={
             "email": "user@example.com",
             "password": "user@example.com",
+            **CONSENT,
         },
         headers=SIGN_UP_HEADERS,
     )
@@ -166,7 +227,7 @@ async def test_concurrent_sign_up_returns_201_and_409(
             async def register():
                 return await client.post(
                     SIGN_UP_URL,
-                    json={"email": email, "password": "password123"},
+                    json={"email": email, "password": "password123", **CONSENT},
                     headers=SIGN_UP_HEADERS,
                 )
 

@@ -246,6 +246,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current privacy policy version
+         * @description No session needed: the sign-up page sends this version back (ADR 0008).
+         */
+        get: operations["privacy_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -591,6 +611,11 @@ export interface components {
             /** Heart Earned */
             heart_earned: boolean;
         };
+        /** PrivacyPolicy */
+        PrivacyPolicy: {
+            /** Version */
+            version: string;
+        };
         /**
          * Profile
          * @description The current account's child profile. Fields stay null until it is set up.
@@ -703,8 +728,15 @@ export interface components {
              * Format: email
              */
             email: string;
+            /**
+             * Parental Consent
+             * @constant
+             */
+            parental_consent: true;
             /** Password */
             password: string;
+            /** Privacy Policy Version */
+            privacy_policy_version: string;
         };
         /** Word */
         Word: {
@@ -1509,6 +1541,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    privacy_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyPolicy"];
                 };
             };
         };

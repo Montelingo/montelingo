@@ -19,6 +19,7 @@ from app.db.transaction import TransactionManager
 from app.infrastructure.email import EmailSender, EmailSendError
 from app.modules.progress.repository import LearningProfileRepository
 from app.modules.users.domain import UserAccount
+from app.modules.users.privacy import PRIVACY_POLICY_VERSION
 from app.modules.users.service import UsersService
 
 from .repository import AuthRepository
@@ -76,11 +77,21 @@ class AuthService:
         self.email_sender = email_sender
         self.web_base_url = web_base_url.rstrip("/")
 
-    async def sign_up(self, *, email: str, password: str) -> UserAccount:
+    async def sign_up(
+        self, *, email: str, password: str, privacy_policy_version: str
+    ) -> UserAccount:
         if self.users_service is None:
             raise RuntimeError("UsersService is not configured.")
         if self.learning_profile_repository is None:
             raise RuntimeError("LearningProfileRepository is not configured.")
+
+        # A stale page must not record consent to a text the grown-up did not see.
+        if privacy_policy_version != PRIVACY_POLICY_VERSION:
+            raise ApiError(
+                ErrorCode.PRIVACY_POLICY_OUTDATED,
+                "The privacy policy has changed. Reload it and accept the current version.",
+                status_code=409,
+            )
 
         normalized_email = email.strip().lower()
 
@@ -108,6 +119,8 @@ class AuthService:
                 user = await self.users_service.create_user(
                     email=normalized_email,
                     password_hash=password_hash,
+                    consent_accepted_at=self.clock.now(),
+                    privacy_policy_version=privacy_policy_version,
                 )
                 await self.learning_profile_repository.create_for_user(user.id)
 

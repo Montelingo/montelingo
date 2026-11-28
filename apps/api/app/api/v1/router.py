@@ -5,6 +5,7 @@ from app.modules.content.router import router as content_router
 from app.modules.health.router import router as health_router
 from app.modules.players.router import router as players_router
 from app.modules.progress.router import router as progress_router
+from app.modules.users.router import router as users_router
 
 # Aggregates module routers under /api/v1; endpoints live in app/modules/<name>/router.py.
 router = APIRouter()
@@ -15,3 +16,5 @@ router.include_router(content_router, tags=["content"])
 # Progress owns /progress and /profile (the learning profile), so its routes carry their paths.
 router.include_router(progress_router)
 router.include_router(players_router, prefix="/players", tags=["players"])
+# Users owns /privacy-policy, the version a grown-up accepts at sign-up (ADR 0008).
+router.include_router(users_router, tags=["privacy"])

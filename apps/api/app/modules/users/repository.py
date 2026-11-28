@@ -12,7 +12,14 @@ from .models import User
 
 
 class UserRepository(Protocol):
-    async def create(self, *, email: str, password_hash: str) -> UserAccount: ...
+    async def create(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+        consent_accepted_at: datetime,
+        privacy_policy_version: str,
+    ) -> UserAccount: ...
 
     async def get_by_email(self, email: str) -> UserAccount | None: ...
 
@@ -33,6 +40,8 @@ def _account(user: User) -> UserAccount:
         password_changed_at=user.password_changed_at,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        consent_accepted_at=user.consent_accepted_at,
+        privacy_policy_version=user.privacy_policy_version,
     )
 
 
@@ -40,10 +49,19 @@ class SqlAlchemyUserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def create(self, *, email: str, password_hash: str) -> UserAccount:
+    async def create(
+        self,
+        *,
+        email: str,
+        password_hash: str,
+        consent_accepted_at: datetime,
+        privacy_policy_version: str,
+    ) -> UserAccount:
         user = User(
             email=email,
             password_hash=password_hash,
+            consent_accepted_at=consent_accepted_at,
+            privacy_policy_version=privacy_policy_version,
         )
 
         self.session.add(user)
