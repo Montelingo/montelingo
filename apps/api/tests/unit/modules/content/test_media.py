@@ -67,12 +67,16 @@ def test_word_image_url_carries_the_file_hash(monkeypatch: pytest.MonkeyPatch) -
         220,
         221,
         230,
+        231,
+        240,
         251,
         260,
         261,
         270,
         281,
         290,
+        291,
+        300,
     ],
 )
 def test_word_image_url(number: int) -> None:
@@ -81,7 +85,7 @@ def test_word_image_url(number: int) -> None:
     assert word_image_url(number) == f"/media/words/{name}.webp?v={MEDIA_HASHES[name]['1024']}"
 
 
-@pytest.mark.parametrize("number", [231, 250, 271, 280, 291, 300])
+@pytest.mark.parametrize("number", [241, 250, 271, 280, 301])
 def test_word_image_url_is_none_without_an_image(number: int) -> None:
     assert word_image_url(number) is None
 
