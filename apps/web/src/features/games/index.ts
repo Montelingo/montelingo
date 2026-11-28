@@ -1,7 +1,8 @@
 // The games feature's public API: a chapter's games (ADR 0006), and practice
-// with every learned word (#237). Each game takes its words and does no
-// fetching; its route loads them, and shows GameUnavailable instead when the
-// server has not opened the game.
+// with every learned word (#237), where Sastavi riječi is the one
+// practice-only game (#294). Each game takes its words and does no fetching;
+// its route loads them, and shows GameUnavailable instead when the server has
+// not opened the game.
 export {
   GameUnavailable,
   type GameUnavailableProps,
@@ -17,6 +18,8 @@ export {
   practiceTitle,
   practiceWords,
 } from "./model/practice";
+export { SpellGame, type SpellGameProps } from "./components/SpellGame";
+export { canDealSpellGame, spellLetters, type SpellWord } from "./model/spell";
 export {
   PracticeGame,
   type PracticeGameProps,

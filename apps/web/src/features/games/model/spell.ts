@@ -1,6 +1,6 @@
-// Vješalo's rules (#296, ADR 0006): a word's picture, one empty slot per
-// letter, and that word's letters as shuffled tiles. The child taps them in
-// order. Pure functions, no React: the screen drives `spellReducer` with
+// Sastavi riječi: the rules (#296, ADR 0006), a word's picture, one empty
+// slot per letter, and that word's letters as shuffled tiles. The child taps
+// them in order. Pure functions, no React: the screen drives `spellReducer` with
 // `useReducer`. No timer, no score, no fail state: a wrong tile bounces back
 // and stays tappable. Played only from the Riječi tab (#294).
 

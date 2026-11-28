@@ -181,7 +181,7 @@ function distinctWords(words: readonly MatchWord[]): MatchWord[] {
 
 /**
  * The words a round can show: each has a picture, and a picture two words
- * share is shown for neither, since both words would be right. Vješalo
+ * share is shown for neither, since both words would be right. Sastavi riječi
  * deals by the same rule.
  */
 export function wordsWithOwnPicture<W extends MatchWord>(

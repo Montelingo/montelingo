@@ -13,6 +13,13 @@ export const STARS_PER_PLACE = 3;
 /** A chapter's games, in the order the server lists them (ADR 0006). */
 export type GameId = Schemas["GameState"]["id"];
 
+/**
+ * The games the Riječi tab practises: every chapter game, and Sastavi riječi
+ * (`spell`), which no chapter has (#294), so it never gets a card, a lock or
+ * a star.
+ */
+export type PracticeGameId = GameId | "spell";
+
 /** A game's state. Only the server decides it: `locked` until the lesson is done. */
 export type GameState = Schemas["GameState"]["state"];
 

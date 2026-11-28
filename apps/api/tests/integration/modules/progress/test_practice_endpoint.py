@@ -162,7 +162,7 @@ async def test_without_learned_words_is_409_and_records_nothing(
 async def test_spell_is_practice_and_earns_a_heart_without_touching_chapters(
     integration_client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    # Vješalo is played only from the Riječi tab (#294).
+    # Sastavi riječi is played only from the Riječi tab (#294).
     user, profile, _budva = await seed_learner(db_session)
     await sign_in(integration_client, user)
     before = (await integration_client.get("/api/v1/progress")).json()

@@ -1,6 +1,6 @@
 import { PLAY_PATH } from "@/features/auth/edge";
 
-import type { GameId } from "./progress";
+import type { GameId, PracticeGameId } from "./progress";
 
 // The map's URLs: /play, then /play/<region>, then /play/<region>/<location>,
 // then a chapter, /play/<region>/<location>/<chapter>, its lesson and games
@@ -27,7 +27,7 @@ export const WORDS_PATH = `${PLAY_PATH}/words`;
  * Each one's screen is at app/(learner)/play/words/(practice)/<game>/page.tsx;
  * a test checks every game has one.
  */
-export function practicePath(gameId: GameId): string {
+export function practicePath(gameId: PracticeGameId): string {
   return `${WORDS_PATH}/${gameId}`;
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  type GameId,
   hasResultNotice,
+  type PracticeGameId,
   ResultNotice,
   useSaveResult,
   WORDS_PATH,
@@ -20,10 +20,11 @@ import {
 import { GameUnavailable } from "./GameUnavailable";
 import { MatchGame } from "./MatchGame";
 import { MemoryGame } from "./MemoryGame";
+import { SpellGame } from "./SpellGame";
 
 export type PracticeGameProps = {
   /** Which game to practise. */
-  gameId: GameId;
+  gameId: PracticeGameId;
   /** The learned places with their words, or `null` when they failed to load. */
   places: readonly PracticePlace[] | null;
   /** The learner's name, for "Bravo, Mia!". */
@@ -87,11 +88,12 @@ export function PracticeGame({
   return (
     <>
       <h1 className="sr-only">{heading}</h1>
-      {gameId === "memory" ? (
-        <MemoryGame {...game} />
-      ) : (
+      {gameId === "memory" ? <MemoryGame {...game} /> : null}
+      {gameId === "match" ? (
         <MatchGame {...game} rounds={PRACTICE_ROUNDS} />
-      )}
+      ) : null}
+      {/* Sastavi riječi deals its own five words and reports every game. */}
+      {gameId === "spell" ? <SpellGame {...game} /> : null}
     </>
   );
 }

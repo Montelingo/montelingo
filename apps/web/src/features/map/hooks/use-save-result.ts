@@ -13,7 +13,7 @@ import {
   type Recorded,
 } from "../api/progress-browser-api";
 import { isSignedOut } from "../errors";
-import type { GameId } from "../model/progress";
+import type { GameId, PracticeGameId } from "../model/progress";
 
 /**
  * What finishing records: a chapter's lesson or one of its games, saved once
@@ -22,7 +22,7 @@ import type { GameId } from "../model/progress";
 export type SavedResult =
   | { kind: "lesson"; chapterId: string }
   | { kind: "game"; chapterId: string; gameId: GameId }
-  | { kind: "practice"; gameId: GameId };
+  | { kind: "practice"; gameId: PracticeGameId };
 
 /**
  * `idle` until the child finishes, then `saving`, and `saved` or `failed`.
