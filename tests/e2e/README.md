@@ -79,6 +79,13 @@ that more words wait in Budva. Vježbaj → Memory then plays every pair to
 "Bravo!", which shows "+1 srce", and whose "Nazad na riječi" returns to Riječi.
 Its one write is `POST /api/v1/practice/memory/result`, and `GET /progress` is
 unchanged but for one more heart: practice records only a heart (#276).
+Last, through the API on the same account (#277): a new account starts with no
+stars or hearts; with Na plaži done Budva still has 0 stars, and Ljeto i
+odjeća's lesson, Memory and Spoji take it to 1, 2 and 3 (`counts.stars` 3,
+Budva's sticker), none of them earning a heart. A replay then earns one, three
+more reach the cap of 5 a day, and past it a replay and a lesson seen again
+still answer `200` with `heart_earned: false`, and `GET /progress` does not
+change.
 
 Sign-up is limited to 10 an hour per IP, and one CI run shares that: `auth.sh`
 uses 1 and the browser tests 8, which leaves 1 for a retry.
