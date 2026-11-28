@@ -93,6 +93,27 @@ wait_for_reset_message() {
   return 1
 }
 
+# Waits for the newest Mailpit message to $EMAIL with this subject.
+wait_for_subject() {
+  local subject="$1" messages found
+  for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+    if messages="$(curl --silent --fail "$MAILPIT_URL/api/v1/messages?limit=50")"; then
+      found="$(jq -r --arg recipient "$EMAIL" --arg subject "$subject" '
+        [.messages[] | select(any(.To[]?; .Address == $recipient) and .Subject == $subject)]
+        | length
+      ' <<<"$messages")"
+      if [[ "$found" != "0" ]]; then
+        echo "[e2e] Email \"$subject\" received from Mailpit"
+        return 0
+      fi
+    fi
+    echo "[e2e] waiting for email \"$subject\" - attempt $attempt/$MAX_ATTEMPTS"
+    sleep "$SLEEP_SECONDS"
+  done
+  echo "[e2e] Mailpit has no email \"$subject\" for $EMAIL" >&2
+  return 1
+}
+
 # Next.js streaming-payload details, verified against next 15.5.28: the start
 # of the <meta> a streamed redirect() renders (its target follows), and the
 # digest a streamed notFound() carries. Recheck them when Next.js is upgraded.
@@ -306,5 +327,72 @@ foreign_origin_status="$(status_for POST "$WEB_URL/api/v1/auth/password-reset" \
   --header "Content-Type: application/json" \
   --data "{\"email\":\"$EMAIL\"}")"
 check_status "Foreign-origin state-changing request" 403 "$foreign_origin_status"
+
+# Children's data (#248, ADR 0008): consent at sign-up, the data export and
+# deleting the account. It reuses this account, since sign-ups are limited
+# (README.md). A sign-up the schema refuses does not count toward that limit.
+echo "[e2e] Testing consent, export and account deletion for $EMAIL"
+
+no_consent_body="$(curl --silent --write-out '\n%{http_code}' --request POST \
+  --header "Origin: $ORIGIN" --header "Content-Type: application/json" \
+  --data "$(jq -n --arg email "e2e-no-consent-${RUN_ID}@example.com" \
+    --arg version "$policy_version" \
+    '{email: $email, password: "password-123", privacy_policy_version: $version}')" \
+  "$WEB_URL/api/v1/auth/sign-up")"
+check_status "Sign up without parental consent" 422 "${no_consent_body##*$'\n'}"
+if ! jq -e '.error.code == "validation_error"
+    and any(.error.details[]?; (.field // "") | test("parental_consent"))' \
+  <<<"${no_consent_body%$'\n'*}" >/dev/null; then
+  echo "[e2e] Sign up without parental consent: the error does not name parental_consent" >&2
+  exit 1
+fi
+
+export_headers="${TMPDIR:-/tmp}/montelingo-e2e-export-$$.headers"
+trap 'rm -f "$COOKIE_JAR" "$export_headers"' EXIT
+export_body="$(curl --silent --fail --cookie "$COOKIE_JAR" --dump-header "$export_headers" \
+  "$WEB_URL/api/v1/account/export")"
+check_contains "Export is a JSON attachment" "$(cat "$export_headers")" \
+  'attachment; filename="montelingo-'
+check_contains "Export is never cached" "$(tr '[:upper:]' '[:lower:]' <"$export_headers")" \
+  'cache-control: no-store'
+# The stored consent, as the API reads it back from the users row.
+if ! jq -e --arg email "$EMAIL" --arg version "$policy_version" '
+    .format_version == 1
+    and .account.email == $email
+    and .account.privacy_policy_version == $version
+    and (.account.consent_accepted_at | type) == "string"
+    and ([.players[].name] == ["Mia"])
+  ' <<<"$export_body" >/dev/null; then
+  echo "[e2e] Export: expected the account with its consent and the player Mia" >&2
+  exit 1
+fi
+echo "[e2e] Export holds the account, its consent and its player: OK"
+if grep --quiet --ignore-case --extended-regexp 'argon2|password|token' <<<"$export_body"; then
+  echo "[e2e] Export contains a password hash or a token" >&2
+  exit 1
+fi
+echo "[e2e] Export has no password hash or token: OK"
+check_status "Export without a session" 401 "$(status_for GET "$WEB_URL/api/v1/account/export")"
+
+wrong_delete_status="$(status_for POST "$WEB_URL/api/v1/account/delete" \
+  --cookie "$COOKIE_JAR" --header "Origin: $ORIGIN" --header "Content-Type: application/json" \
+  --data '{"password":"not-the-password"}')"
+# 403, not 401, so the web does not take it for a signed-out session (ADR 0008).
+check_status "Delete account with a wrong password" 403 "$wrong_delete_status"
+check_status "Account still there after a wrong password" 200 \
+  "$(status_for GET "$WEB_URL/api/v1/auth/me" --cookie "$COOKIE_JAR")"
+
+# No --cookie-jar: the jar keeps the old cookie, to check it no longer works.
+delete_status="$(status_for POST "$WEB_URL/api/v1/account/delete" \
+  --cookie "$COOKIE_JAR" --header "Origin: $ORIGIN" --header "Content-Type: application/json" \
+  --data "$(jq -n --arg password "$NEW_PASSWORD" '{password: $password}')")"
+check_status "Delete account" 204 "$delete_status"
+check_status "Old cookie after deleting the account" 401 \
+  "$(status_for GET "$WEB_URL/api/v1/auth/me" --cookie "$COOKIE_JAR")"
+check_status "Sign in after deleting the account" 401 \
+  "$(status_for POST "$WEB_URL/api/v1/auth/sign-in" \
+    --header "Origin: $ORIGIN" --header "Content-Type: application/json" \
+    --data "{\"email\":\"$EMAIL\",\"password\":\"$NEW_PASSWORD\"}")"
+wait_for_subject "Tvoj Montelingo nalog je obrisan"
 
 echo "[e2e] All auth checks passed."

@@ -24,8 +24,15 @@ reported as skipped while the content read endpoints still answer `501`, unless
 `E2E_REQUIRE_MAP=1`, which makes a non-`200` from `GET /api/v1/regions` fail the
 run instead; set it once the content seed (#62) and read endpoints (#63) land),
 sign-out, password reset using the link retrieved from Mailpit's HTTP API,
-password replacement, sign-in rate limiting, and foreign-origin protection. It uses `jq` to parse JSON, in addition
-to Bash and curl.
+password replacement, sign-in rate limiting, and foreign-origin protection. It ends
+with children's data (#248, ADR 0008), on the same account: a sign-up without
+parental consent is refused (`422`, naming `parental_consent`); the data export
+is a JSON attachment that is never cached, holds the account with its stored
+consent and policy version and its player, and has no password hash or token,
+and answers `401` without a session; deleting the account with a wrong password
+answers `403` and keeps it, the right one answers `204`, after which the old
+cookie and the password both get `401`, and Mailpit has "Tvoj Montelingo nalog
+je obrisan". It uses `jq` to parse JSON, in addition to Bash and curl.
 
 ```bash
 docker compose up --build -d --wait
@@ -94,7 +101,9 @@ still answer `200` with `heart_earned: false`, and `GET /progress` does not
 change.
 
 Sign-up is limited to 10 an hour per IP, and one CI run shares that: `auth.sh`
-uses 1 and the browser tests 8, which leaves 1 for a retry.
+uses 1 and the browser tests 8, which leaves 1 for a retry. A sign-up the request
+schema refuses (`422`, such as `auth.sh`'s one without consent) is not counted
+(ADR 0004).
 
 | Test                        | Sign-ups                                   |
 | --------------------------- | ------------------------------------------ |

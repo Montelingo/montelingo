@@ -15,7 +15,7 @@ from fastapi import Depends, HTTPException, Request
 from app.core.config import Settings, get_settings
 from app.core.security import Clock, SystemClock
 
-from .schemas import PasswordResetRequest, SignInRequest
+from .schemas import PasswordResetRequest, SignInRequest, SignUpRequest
 
 
 @dataclass(frozen=True)
@@ -270,6 +270,10 @@ def account_password_rate_limit(
 
 
 def rate_limit_sign_up(
+    # Taking the body means FastAPI calls this only once it is valid: a request
+    # the schema rejects (422) never reaches the database or Argon2, so it is not
+    # counted (ADR 0004). Every other outcome is.
+    payload: SignUpRequest,
     request: Request,
     settings: Settings = Depends(get_settings),
     limiter: RateLimiter = Depends(get_rate_limiter),

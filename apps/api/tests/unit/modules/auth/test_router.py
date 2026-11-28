@@ -331,3 +331,29 @@ def test_privacy_policy_returns_the_current_version_without_a_session(
 
     assert response.status_code == 200
     assert response.json() == {"version": PRIVACY_POLICY_VERSION}
+
+
+def test_sign_ups_the_schema_rejects_do_not_count_toward_the_limit(client: TestClient) -> None:
+    users = FakeUsersService()
+    service, _ = make_sign_up_service(users)
+    client.app.dependency_overrides[get_auth_service] = lambda: service
+
+    try:
+        # More than the limit of 10, each refused before the service runs.
+        for _ in range(12):
+            refused = client.post(
+                "/api/v1/auth/sign-up",
+                json={"email": "user@example.com", "password": "password123"},
+                headers=ORIGIN,
+            )
+            assert refused.status_code == 422
+
+        accepted = client.post(
+            "/api/v1/auth/sign-up",
+            json={"email": "user@example.com", "password": "password123", **CONSENT},
+            headers=ORIGIN,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_auth_service, None)
+
+    assert accepted.status_code == 201
