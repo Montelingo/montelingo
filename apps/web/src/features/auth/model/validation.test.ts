@@ -30,6 +30,7 @@ function makeSignUpForm(overrides: Partial<SignUpValues> = {}): SignUpValues {
     email: VALID_EMAIL,
     password,
     confirmPassword: password,
+    parentalConsent: true,
     ...overrides,
   };
 }
@@ -257,6 +258,7 @@ describe("validateSignUp", () => {
         email: " ana@example.com ",
         password: " password ",
         confirmPassword: " password ",
+        parentalConsent: true,
       }),
     ).toEqual({
       ok: true,
@@ -264,6 +266,16 @@ describe("validateSignUp", () => {
         email: "ana@example.com",
         password: " password ",
         confirmPassword: " password ",
+        parentalConsent: true,
+      },
+    });
+  });
+
+  it("asks for the parental consent when the box is not ticked", () => {
+    expect(validateSignUp(makeSignUpForm({ parentalConsent: false }))).toEqual({
+      ok: false,
+      fieldErrors: {
+        parentalConsent: validationMessages.parentalConsentRequired,
       },
     });
   });
@@ -305,6 +317,7 @@ describe("validateSignUp", () => {
         email: "not-an-email",
         password: "short",
         confirmPassword: "different",
+        parentalConsent: true,
       }),
     ).toEqual({
       ok: false,
@@ -318,13 +331,19 @@ describe("validateSignUp", () => {
 
   it("reports only the first message for each field", () => {
     expect(
-      validateSignUp({ email: "", password: "", confirmPassword: "" }),
+      validateSignUp({
+        email: "",
+        password: "",
+        confirmPassword: "",
+        parentalConsent: false,
+      }),
     ).toEqual({
       ok: false,
       fieldErrors: {
         email: validationMessages.emailRequired,
         password: validationMessages.passwordRequired,
         confirmPassword: validationMessages.confirmPasswordRequired,
+        parentalConsent: validationMessages.parentalConsentRequired,
       },
     });
   });

@@ -4,8 +4,10 @@ import { EnvelopeIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useId } from "react";
 
+import { CheckboxField } from "@/components/ui/CheckboxField";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { TextField } from "@/components/ui/TextField";
+import { PRIVACY_PATH } from "@/features/privacy/edge";
 import { useNavigate } from "@/lib/use-navigate";
 
 import { signUpAndSignIn } from "../api/auth-api";
@@ -26,11 +28,19 @@ import { WelcomeFormHeader } from "./WelcomeFormHeader";
 type SignUpFormProps = {
   /** Where to go after signing up, from the page's `?next=`. */
   redirectTo: string;
+  /**
+   * The privacy policy version in force when the page rendered, sent with the
+   * consent so the API can refuse a stale page (ADR 0008).
+   */
+  privacyPolicyVersion: string;
 };
 
 // The "Create your family account" panel (#153, Figma "1 · Welcome & Auth"),
 // inside the welcome frame of the (welcome) layout.
-export function SignUpForm({ redirectTo }: SignUpFormProps) {
+export function SignUpForm({
+  redirectTo,
+  privacyPolicyVersion,
+}: SignUpFormProps) {
   const router = useNavigate();
   const titleId = useId();
   // The value comes from the URL, so it is checked here too; a safe path is unchanged.
@@ -38,6 +48,7 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
   const signInHref = authPageHref(SIGN_IN_PATH, destination);
   const {
     fieldProps,
+    checkboxProps,
     serverFieldErrors,
     failure,
     rejectedFieldCount,
@@ -48,12 +59,18 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
     summaryRef,
     retryAfterSeconds,
   } = useAuthForm({
-    initialValues: { email: "", password: "", confirmPassword: "" },
+    initialValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      parentalConsent: false,
+    },
     validate: validateSignUp,
     apiFields: signUpFields,
     focusOnError: "summary",
+    // Validation lets this run only once the consent box is ticked.
     submit: async ({ email, password }) => {
-      await signUpAndSignIn({ email, password });
+      await signUpAndSignIn({ email, password, privacyPolicyVersion });
     },
     onSuccess: () => {
       router.replace(destination);
@@ -146,6 +163,25 @@ export function SignUpForm({ redirectTo }: SignUpFormProps) {
           label="Potvrdi lozinku"
           toggleLabel="Prikaži potvrđenu lozinku"
           autoComplete="new-password"
+          required
+        />
+        <CheckboxField
+          {...checkboxProps("parentalConsent")}
+          label={
+            <>
+              Ja sam roditelj ili staratelj djeteta i prihvatam{" "}
+              {/* A new tab, so nothing typed here is lost. */}
+              <a
+                href={PRIVACY_PATH}
+                target="_blank"
+                rel="noopener"
+                className={kidLinkClassName}
+              >
+                Politiku privatnosti
+              </a>
+              .
+            </>
+          }
           required
         />
         <div className="mt-auto flex flex-col gap-3 pt-1">

@@ -57,6 +57,21 @@ export function FieldSkeleton({ hasDescription = false }: FieldSkeletonProps) {
   );
 }
 
+/** A kit checkbox with two lines of label, like the sign-up consent. */
+export function CheckboxSkeleton() {
+  return (
+    <div className="flex items-start gap-2">
+      <div className="flex size-touch shrink-0 items-center justify-center">
+        <Bar className="size-8 rounded-lg" />
+      </div>
+      <div className="flex flex-1 flex-col gap-2 py-2.5">
+        <Bar className="h-6 w-full" />
+        <Bar className="h-6 w-40" />
+      </div>
+    </div>
+  );
+}
+
 type LinkSkeletonProps = {
   className?: string;
 };

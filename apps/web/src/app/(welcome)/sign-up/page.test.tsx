@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
@@ -11,6 +12,16 @@ const { getAuthState } = vi.hoisted(() => ({
   getAuthState: vi.fn<() => Promise<AuthState>>(),
 }));
 vi.mock("@/features/auth/server", () => ({ getAuthState }));
+
+const { getPrivacyPolicyVersion } = vi.hoisted(() => ({
+  getPrivacyPolicyVersion: vi.fn<() => Promise<string>>(),
+}));
+vi.mock("@/features/privacy/server", () => ({ getPrivacyPolicyVersion }));
+
+const { signUpAndSignIn } = vi.hoisted(() => ({
+  signUpAndSignIn: vi.fn(),
+}));
+vi.mock("@/features/auth/api/auth-api", () => ({ signUpAndSignIn }));
 
 // Like Next.js, redirect() throws, so nothing after it runs.
 const { redirect } = vi.hoisted(() => ({
@@ -35,6 +46,7 @@ function renderPage(searchParams: { next?: string | string[] } = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getPrivacyPolicyVersion.mockResolvedValue("2026-12-01");
 });
 
 describe("SignUpPage", () => {
@@ -102,6 +114,29 @@ describe("SignUpPage", () => {
       expect(redirect).toHaveBeenCalledWith("/play");
     },
   );
+
+  it("sends the policy version read when the page rendered with the consent", async () => {
+    getAuthState.mockResolvedValue({ status: "signed-out" });
+    getPrivacyPolicyVersion.mockResolvedValue("2027-03-01");
+    signUpAndSignIn.mockReturnValue(new Promise(() => {}));
+    const actor = userEvent.setup();
+
+    render(await renderPage());
+    await actor.type(
+      screen.getByLabelText("E-pošta odrasle osobe"),
+      "ana@example.com",
+    );
+    await actor.type(screen.getByLabelText("Lozinka"), "correct horse");
+    await actor.type(screen.getByLabelText("Potvrdi lozinku"), "correct horse");
+    await actor.click(screen.getByRole("checkbox"));
+    await actor.click(screen.getByRole("button", { name: "Napravi nalog" }));
+
+    expect(signUpAndSignIn).toHaveBeenCalledWith({
+      email: "ana@example.com",
+      password: "correct horse",
+      privacyPolicyVersion: "2027-03-01",
+    });
+  });
 
   it("shows the form when the session check fails, keeping the destination", async () => {
     getAuthState.mockResolvedValue({ status: "unavailable" });

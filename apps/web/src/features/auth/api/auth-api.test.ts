@@ -31,6 +31,7 @@ vi.mock("@/lib/browser-api", () => ({
 }));
 
 const credentials = { email: "ana@example.com", password: "correct horse" };
+const signUpDetails = { ...credentials, privacyPolicyVersion: "2026-12-01" };
 
 function makeUserResource(
   overrides: Partial<Schemas["CurrentUser"]> = {},
@@ -150,10 +151,10 @@ describe("auth API adapters", () => {
   });
 
   describe("signUp", () => {
-    it("posts the credentials to the sign-up endpoint", async () => {
+    it("posts the credentials, the consent and the policy version to the sign-up endpoint", async () => {
       fetchMock.mockResolvedValue(jsonResponse(201, makeUserResource()));
 
-      await signUp(credentials);
+      await signUp(signUpDetails);
 
       const request = sentRequest();
       expect(request.method).toBe("POST");
@@ -161,13 +162,15 @@ describe("auth API adapters", () => {
       expect(await request.json()).toEqual({
         email: "ana@example.com",
         password: "correct horse",
+        parental_consent: true,
+        privacy_policy_version: "2026-12-01",
       });
     });
 
     it("returns the created user", async () => {
       fetchMock.mockResolvedValue(jsonResponse(201, makeUserResource()));
 
-      await expect(signUp(credentials)).resolves.toEqual({
+      await expect(signUp(signUpDetails)).resolves.toEqual({
         id: "8f14e45f-ceea-4e7a-9b1c-3c5d2a6f0b11",
         email: "ana@example.com",
         createdAt: "2026-09-01T10:00:00Z",
@@ -181,6 +184,12 @@ describe("auth API adapters", () => {
         status: 409,
         code: "email_taken",
       },
+      {
+        name: "privacy_policy_outdated",
+        response: () => errorResponse(409, "privacy_policy_outdated"),
+        status: 409,
+        code: "privacy_policy_outdated",
+      },
       rateLimited,
       validationError("password"),
       authorizationError,
@@ -188,7 +197,7 @@ describe("auth API adapters", () => {
     ])("throws an ApiClientError on $name", async (errorCase) => {
       fetchMock.mockResolvedValue(errorCase.response());
 
-      const error = await apiErrorFrom(signUp(credentials));
+      const error = await apiErrorFrom(signUp(signUpDetails));
 
       expect(error.status).toBe(errorCase.status);
       expect(error.error.error.code).toBe(errorCase.code);
@@ -322,7 +331,7 @@ describe("auth API adapters", () => {
   });
 
   describe("signUpAndSignIn", () => {
-    it("signs up, then signs in with the same credentials", async () => {
+    it("signs up with the consent, then signs in with the same credentials only", async () => {
       fetchMock
         .mockResolvedValueOnce(
           jsonResponse(201, makeUserResource({ email: "new@example.com" })),
@@ -334,11 +343,15 @@ describe("auth API adapters", () => {
           ),
         );
 
-      const user = await signUpAndSignIn(credentials);
+      const user = await signUpAndSignIn(signUpDetails);
 
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(sentRequest(0).url).toBe("http://web.test/api/v1/auth/sign-up");
-      expect(await sentRequest(0).json()).toEqual(credentials);
+      expect(await sentRequest(0).json()).toEqual({
+        ...credentials,
+        parental_consent: true,
+        privacy_policy_version: "2026-12-01",
+      });
       expect(sentRequest(1).url).toBe("http://web.test/api/v1/auth/sign-in");
       expect(await sentRequest(1).json()).toEqual(credentials);
       expect(user.email).toBe("signed-in@example.com");
@@ -347,7 +360,7 @@ describe("auth API adapters", () => {
     it("throws a sign-up failure as is and never signs in", async () => {
       fetchMock.mockResolvedValue(errorResponse(409, "email_taken"));
 
-      const error = await apiErrorFrom(signUpAndSignIn(credentials));
+      const error = await apiErrorFrom(signUpAndSignIn(signUpDetails));
 
       expect(error.status).toBe(409);
       expect(error.error.error.code).toBe("email_taken");
@@ -363,7 +376,7 @@ describe("auth API adapters", () => {
           }),
         );
 
-      const error: unknown = await signUpAndSignIn(credentials).catch(
+      const error: unknown = await signUpAndSignIn(signUpDetails).catch(
         (reason: unknown) => reason,
       );
 

@@ -14,19 +14,38 @@ export type Credentials = {
   password: string;
 };
 
+/**
+ * What sign-up sends: the credentials, and the version of the privacy policy
+ * the page showed. Only call `signUp()` once the grown-up has ticked the
+ * consent checkbox: the request always says they did (ADR 0008).
+ */
+export type SignUpDetails = Credentials & {
+  privacyPolicyVersion: string;
+};
+
 export type PasswordResetConfirmation = {
   token: string;
   newPassword: string;
 };
 
-/** Creates an account. It does not sign the user in (ADR 0004); see signUpAndSignIn(). */
+/**
+ * Creates an account with the grown-up's consent. It does not sign the user in
+ * (ADR 0004); see signUpAndSignIn(). A version that is no longer current is a
+ * `409 privacy_policy_outdated`.
+ */
 export async function signUp({
   email,
   password,
-}: Credentials): Promise<CurrentUser> {
+  privacyPolicyVersion,
+}: SignUpDetails): Promise<CurrentUser> {
   const user = await unwrap(
     getBrowserApiClient().POST("/api/v1/auth/sign-up", {
-      body: { email, password },
+      body: {
+        email,
+        password,
+        parental_consent: true,
+        privacy_policy_version: privacyPolicyVersion,
+      },
     }),
   );
   return toCurrentUser(user);
@@ -52,11 +71,12 @@ export async function signIn({
  * whole flow would now fail with `email_taken`.
  */
 export async function signUpAndSignIn(
-  credentials: Credentials,
+  details: SignUpDetails,
 ): Promise<CurrentUser> {
-  await signUp(credentials);
+  await signUp(details);
+  const { email, password } = details;
   try {
-    return await signIn(credentials);
+    return await signIn({ email, password });
   } catch (error) {
     throw new SignInAfterSignUpError({ cause: error });
   }

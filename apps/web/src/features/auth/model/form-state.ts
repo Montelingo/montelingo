@@ -13,7 +13,10 @@ export type AuthFormFailure = {
   formError: string | null;
 };
 
-type FormValues<Field extends string> = Readonly<Record<Field, string>>;
+/** A text field's value, or a checkbox's (the sign-up consent). */
+export type FieldValue = string | boolean;
+
+type FormValues<Field extends string> = Readonly<Record<Field, FieldValue>>;
 
 export type AuthFormState<Field extends string> = {
   values: FormValues<Field>;
@@ -46,7 +49,7 @@ export type AuthFormState<Field extends string> = {
 };
 
 export type AuthFormAction<Field extends string> =
-  | { type: "changed"; field: Field; value: string }
+  | { type: "changed"; field: Field; value: FieldValue }
   | { type: "blurred"; field: Field }
   | {
       type: "submitted";

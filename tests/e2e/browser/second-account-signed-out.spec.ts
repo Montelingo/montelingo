@@ -24,9 +24,19 @@ async function createAndSignIn(
   email: string,
   password: string,
 ) {
+  // Sign-up needs the grown-up's consent to the policy in force (ADR 0008).
+  const policy = await context.get("/api/v1/privacy-policy");
+  expect(policy.status(), "Privacy policy version").toBe(200);
+  const { version } = (await policy.json()) as { version: string };
+
   const signUp = await context.post("/api/v1/auth/sign-up", {
     headers: { Origin: WEB_URL },
-    data: { email, password },
+    data: {
+      email,
+      password,
+      parental_consent: true,
+      privacy_policy_version: version,
+    },
   });
   expect(signUp.status(), `Registration for ${email}`).toBe(201);
 
