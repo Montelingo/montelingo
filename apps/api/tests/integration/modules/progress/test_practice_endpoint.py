@@ -22,6 +22,7 @@ pytestmark = pytest.mark.integration
 
 PRACTICE_MEMORY = "/api/v1/practice/memory/result"
 PRACTICE_MATCH = "/api/v1/practice/match/result"
+PRACTICE_SPELL = "/api/v1/practice/spell/result"
 
 
 async def seed_learner(session: AsyncSession) -> tuple[User, LearningProfile, Location]:
@@ -155,4 +156,59 @@ async def test_without_learned_words_is_409_and_records_nothing(
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "no_learned_words"
+    assert await hearts(db_session, profile) == []
+
+
+async def test_spell_is_practice_and_earns_a_heart_without_touching_chapters(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    # Vješalo is played only from the Riječi tab (#294).
+    user, profile, _budva = await seed_learner(db_session)
+    await sign_in(integration_client, user)
+    before = (await integration_client.get("/api/v1/progress")).json()
+
+    body = await record(integration_client, PRACTICE_SPELL)
+
+    assert body == {"heart_earned": True}
+    [heart] = await hearts(db_session, profile)
+    assert (heart.source, heart.chapter_id, heart.game) == ("practice", None, "spell")
+    after = (await integration_client.get("/api/v1/progress")).json()
+    assert after["counts"] == {**before["counts"], "hearts": 1}
+    assert {key: after[key] for key in ("regions", "locations", "chapters")} == {
+        key: before[key] for key in ("regions", "locations", "chapters")
+    }
+    # No chapter lists it, and a place still gives 3 stars at most.
+    assert all(
+        [game["id"] for game in chapter["games"]] == ["memory", "match"]
+        for chapter in after["chapters"]
+    )
+
+
+async def test_spell_shares_the_daily_cap(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user, profile, _budva = await seed_learner(db_session)
+    await sign_in(integration_client, user)
+
+    earned = [
+        (await record(integration_client, PRACTICE_SPELL))["heart_earned"]
+        for _ in range(HEARTS_PER_DAY + 1)
+    ]
+
+    assert earned == [True] * HEARTS_PER_DAY + [False]
+    assert len(await hearts(db_session, profile)) == HEARTS_PER_DAY
+
+
+async def test_spell_is_not_a_chapter_game(
+    integration_client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user, profile, _budva = await seed_learner(db_session)
+    await sign_in(integration_client, user)
+
+    response = await integration_client.post(
+        "/api/v1/chapters/budva-beach/games/spell/result", headers={"Origin": ORIGIN}
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "content_not_found"
     assert await hearts(db_session, profile) == []

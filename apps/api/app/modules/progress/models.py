@@ -24,8 +24,10 @@ from .schemas import (
     GAME_IDS,
     HEART_SOURCES,
     NAME_MAX_LENGTH,
+    PRACTICE_GAME_IDS,
     GameId,
     HeartSource,
+    PracticeGameId,
 )
 
 
@@ -176,7 +178,8 @@ class HeartEvent(Base):
     __tablename__ = "heart_events"
     __table_args__ = (
         CheckConstraint(f"source IN ({_one_of(HEART_SOURCES)})", name="ck_heart_events_source"),
-        CheckConstraint(f"game IN ({_one_of(GAME_IDS)})", name="ck_heart_events_game"),
+        # Practice game ids, not only chapter ones: practice can record `spell` (#294).
+        CheckConstraint(f"game IN ({_one_of(PRACTICE_GAME_IDS)})", name="ck_heart_events_game"),
         # A lesson has a chapter and no game, a game both, practice only a game.
         CheckConstraint(
             "(source = 'lesson' AND chapter_id IS NOT NULL AND game IS NULL)"
@@ -210,4 +213,4 @@ class HeartEvent(Base):
             ondelete="CASCADE",
         ),
     )
-    game: Mapped[GameId | None] = mapped_column(Text)
+    game: Mapped[PracticeGameId | None] = mapped_column(Text)
