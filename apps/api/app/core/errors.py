@@ -28,6 +28,7 @@ class ErrorCode(str, Enum):
     PLAYERS_LIMIT = "players_limit"
     PLAYER_NOT_FOUND = "player_not_found"
     PRIVACY_POLICY_OUTDATED = "privacy_policy_outdated"
+    INVALID_PASSWORD = "invalid_password"
 
 
 @dataclass

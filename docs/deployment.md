@@ -128,6 +128,17 @@ deploy/compose.sh exec -T postgres dropdb -U montelingo restore_test
 
 To recover the live database, stop the API and web first (`deploy/compose.sh stop api web`), then drop and recreate `montelingo`, restore into it, and redeploy the current tag. The `-U` user is `POSTGRES_USER` from `.env`.
 
+**A restore must not bring deleted accounts back** (ADR 0008). If the dump you restored is not the newest one, delete again every account in the newest dump's `account_deletions`, before you start the API:
+
+```bash
+newest=backups/daily/montelingo-<newest timestamp>.dump   # the newest dump you have
+deploy/compose.sh exec -T postgres psql -U montelingo -d montelingo -c 'truncate account_deletions'
+deploy/compose.sh exec -T postgres pg_restore --no-owner --data-only --table=account_deletions -U montelingo -d montelingo < "$newest"
+deploy/compose.sh exec -T postgres psql -U montelingo -d montelingo -c 'delete from users where id in (select user_id from account_deletions)'
+```
+
+The newest dump's table holds every deletion of the last 28 days, which covers every older dump still kept. Accounts deleted after the newest dump cannot be deleted again this way, and neither can anything else written since.
+
 Hetzner server backups are a second layer, not a replacement: they snapshot the whole disk, including a database that may be mid-write.
 
 ## 6. Rotating secrets

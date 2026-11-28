@@ -238,6 +238,37 @@ def rate_limit_sign_in(
     )
 
 
+@dataclass(frozen=True)
+class AccountPasswordRateLimit:
+    """Wrong passwords typed to confirm an account action, such as deleting it.
+
+    They share the sign-in account bucket (ADR 0008), so a stolen session
+    cannot be used to guess the password faster than sign-in allows.
+    """
+
+    limiter: RateLimiter
+    key: str
+    limit: int
+    window: timedelta
+
+    def record_failure(self) -> None:
+        self.limiter.record(self.key, self.limit, self.window)
+
+
+def account_password_rate_limit(
+    email: str, settings: Settings, limiter: RateLimiter
+) -> AccountPasswordRateLimit:
+    """429 while the account's sign-in bucket is full; otherwise the bucket to record into."""
+    key = f"sign-in:email:{_email_key(email)}"
+    _check(limiter, key, settings.sign_in_account_limit, settings.sign_in_account_window)
+    return AccountPasswordRateLimit(
+        limiter,
+        key,
+        settings.sign_in_account_limit,
+        timedelta(seconds=settings.sign_in_account_window),
+    )
+
+
 def rate_limit_sign_up(
     request: Request,
     settings: Settings = Depends(get_settings),

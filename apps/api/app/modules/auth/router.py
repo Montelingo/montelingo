@@ -6,6 +6,7 @@ from app.api.responses import error_responses
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, ErrorCode
 
+from .cookies import clear_session_cookie, set_session_cookie
 from .dependencies import get_auth_service, get_current_user
 from .rate_limit import (
     SignInRateLimitContext,
@@ -24,18 +25,6 @@ from .schemas import (
 from .service import AuthService
 
 router = APIRouter()
-
-
-def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
-    response.set_cookie(
-        key=settings.session_cookie_name,
-        value=token,
-        max_age=settings.session_ttl,
-        httponly=True,
-        samesite="lax",
-        secure=settings.cookie_secure,
-        path="/",
-    )
 
 
 @router.post(
@@ -83,7 +72,7 @@ async def sign_in(
         if exc.stable_code == ErrorCode.INVALID_CREDENTIALS.value:
             rate_limit.record_failure()
         raise
-    _set_session_cookie(response, result.token, settings)
+    set_session_cookie(response, result.token, settings)
     return CurrentUser(
         id=str(result.user.id),
         email=result.user.email,
@@ -106,13 +95,7 @@ async def sign_out(
     settings: Settings = Depends(get_settings),
 ) -> Response:
     await service.sign_out(request.cookies.get(settings.session_cookie_name))
-    response.delete_cookie(
-        key=settings.session_cookie_name,
-        path="/",
-        secure=settings.cookie_secure,
-        httponly=True,
-        samesite="lax",
-    )
+    clear_session_cookie(response, settings)
     response.status_code = 204
     return response
 
