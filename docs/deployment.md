@@ -15,6 +15,7 @@ Internet ──443──▶ caddy ──▶ web:3000 ──internal──▶ api
 | [`deploy/deploy.sh`](../deploy/deploy.sh)                         | One deploy: pull, migrate, start, wait until healthy                                         |
 | [`deploy/compose.sh`](../deploy/compose.sh)                       | `docker compose` on the server with the deployed image tag                                   |
 | [`deploy/backup.sh`](../deploy/backup.sh)                         | Nightly `pg_dump` to the Storage Box                                                         |
+| [`deploy/purge.sh`](../deploy/purge.sh)                           | Nightly deletion of expired sessions, reset tokens and old `account_deletions` rows          |
 | [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | Deploys `main` after the Containers workflow has pushed its images                           |
 
 Secrets live only in `/opt/montelingo/.env` on the server and in the GitHub `staging` environment. They never go into git, an issue, a PR or a chat.
@@ -113,7 +114,10 @@ Cron entry for `deploy` (`crontab -e`):
 ```cron
 MAILTO=ops@example.com
 15 3 * * * BACKUP_REMOTE=u123456@u123456.your-storagebox.de:montelingo-backups /opt/montelingo/deploy/backup.sh
+45 3 * * * /opt/montelingo/deploy/purge.sh
 ```
+
+`deploy/purge.sh` is the nightly retention job (ADR 0008). It runs `apps/api/scripts/purge_expired.py` in a one-off API container, which deletes expired sessions, used or expired password reset tokens, and `account_deletions` rows older than 28 days. It prints row counts only, and running it twice deletes nothing more. It runs after the backup, so the night's dump still holds that day's `account_deletions` for a restore.
 
 Restore into a scratch database to check a dump, or into `montelingo` to recover:
 
