@@ -11,6 +11,7 @@ const MORE: Schemas["Word"] = {
   text: "more",
   note: null,
   image_url: "/media/words/0001.webp",
+  image_url_512: "/media/words/0001-512.webp",
   audio_url: null,
 };
 
@@ -65,6 +66,7 @@ describe("toLearnedWords", () => {
               number: 1,
               text: "more",
               imageUrl: "/media/words/0001.webp",
+              imageUrl512: "/media/words/0001-512.webp",
             }),
             expect.objectContaining({ number: 2, text: "pijesak" }),
           ],

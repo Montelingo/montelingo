@@ -193,6 +193,10 @@ async def test_location_detail_recording_order(
     assert chapters[0]["words"][0]["image_url"] == f"/media/words/0001.webp?v={first}"
     assert chapters[0]["words"][9]["image_url"] == f"/media/words/0010.webp?v={tenth}"
     assert all(word["image_url"] is None for word in chapters[1]["words"])
+    # The 512 px variant, for the boards (#206), with its own file's hash.
+    first_512 = MEDIA_HASHES["0001"]["512"]
+    assert chapters[0]["words"][0]["image_url_512"] == f"/media/words/0001-512.webp?v={first_512}"
+    assert all(word["image_url_512"] is None for word in chapters[1]["words"])
 
 
 @pytest.mark.parametrize(

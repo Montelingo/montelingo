@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckIcon } from "@heroicons/react/24/solid";
-import { preload } from "react-dom";
 import {
   type ReactNode,
   useCallback,
@@ -12,6 +11,8 @@ import {
 } from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { useWordPicturesReady } from "@/components/ui/use-word-pictures-ready";
+import { WordImage } from "@/components/ui/WordImage";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -26,6 +27,7 @@ import {
   type MatchOption,
   matchReducer,
   type MatchRound,
+  OPTIONS,
   type MatchState,
   type MatchWord,
 } from "../model/match";
@@ -186,7 +188,15 @@ type RoundsProps = {
   onComplete: (rounds: number) => void;
 };
 
-// One game: its rounds, dealt once, when it mounts.
+/**
+ * How wide a round's picture shows: most of the screen's width in portrait,
+ * and in landscape, most of its height, since the words take the rest.
+ */
+const PICTURE_SIZES = "(orientation: landscape) 60vh, 90vw";
+
+// One game: its rounds, dealt once, when it mounts. The first round waits
+// until every round's picture is loaded and decoded (#206), showing blocks in
+// the round's shape meanwhile, so no round opens on an empty card.
 function Rounds({
   words,
   cap,
@@ -202,6 +212,13 @@ function Rounds({
   const round = currentRound(state);
   const isGameComplete = isComplete(state);
   const count = state.rounds.length;
+  const isReady = useWordPicturesReady(
+    state.rounds.map((dealt) => ({
+      src: dealt.imageUrl,
+      src512: dealt.imageUrl512,
+    })),
+    PICTURE_SIZES,
+  );
 
   // The right word shows a moment, then the next round (or "Bravo!").
   useEffect(() => {
@@ -218,18 +235,20 @@ function Rounds({
     }
   }, [isGameComplete, count, onComplete]);
 
-  // The words are new buttons each round.
+  // The words are new buttons each round, and the first ones appear only once
+  // the pictures are ready (-1 until then).
   const optionsRef = useRef<HTMLDivElement>(null);
-  useFocusOnNewButtons(optionsRef, state.current, shouldFocusFirstOnMount);
-
-  // Fetch the next picture while this one is on screen, so it is there at once.
-  const upcoming = state.rounds[state.current + 1];
-  if (upcoming !== undefined) {
-    preload(upcoming.imageUrl, { as: "image" });
-  }
+  useFocusOnNewButtons(
+    optionsRef,
+    isReady ? state.current : -1,
+    shouldFocusFirstOnMount,
+  );
 
   if (round === null) {
     return null;
+  }
+  if (!isReady) {
+    return <RoundSkeleton />;
   }
   const word = round.options.find((option) => option.wordId === round.wordId);
 
@@ -249,16 +268,16 @@ function Rounds({
         {/* Named by its word, as the lesson's picture is, so a screen reader
             hears what the child sees. */}
         <div role="img" aria-label={word?.text} className="absolute inset-4">
-          {/* Word images are same-origin WebP files at their final size
-              (public/media/words), so next/image would add nothing. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
-          <img
+          {/* No letter on a placeholder: it would give the word away. */}
+          <WordImage
             key={round.wordId}
             src={round.imageUrl}
-            alt=""
-            draggable={false}
-            decoding="async"
+            src512={round.imageUrl512}
+            sizes={PICTURE_SIZES}
+            placeholderId={round.wordId}
+            withInitial={false}
             className="size-full object-contain"
+            placeholderClassName="rounded-kid"
           />
         </div>
       </div>
@@ -282,6 +301,31 @@ function Rounds({
       <p role="status" className="sr-only">
         {statusText(state)}
       </p>
+    </div>
+  );
+}
+
+// A round while the pictures load: the picture's card and the three words, as
+// plain blocks. Marked busy, it says "Loading…" once to screen readers.
+function RoundSkeleton() {
+  return (
+    <div aria-busy="true" className="flex min-h-0 flex-1 flex-col gap-4">
+      <span role="status" className="sr-only">
+        Loading…
+      </span>
+      <div
+        aria-hidden="true"
+        data-testid="match-skeleton"
+        className="min-h-0 flex-1 animate-pulse rounded-kid-lg border-3 border-kid-line bg-surface-sunken"
+      />
+      <div aria-hidden="true" className="grid gap-3 landscape:grid-cols-3">
+        {Array.from({ length: OPTIONS }, (_, index) => (
+          <span
+            key={index}
+            className="min-h-touch-xl animate-pulse rounded-kid-lg bg-surface-sunken"
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -10,7 +10,7 @@ function word(
   text: string,
   imageUrl: string | null = `/w/${id}.webp`,
 ): PracticeWord {
-  return { id, text, imageUrl };
+  return { id, text, imageUrl, imageUrl512: null };
 }
 
 /** A place of `count` words, `prefix-1` to `prefix-count`, each with a picture. */

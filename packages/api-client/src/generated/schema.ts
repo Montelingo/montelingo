@@ -892,8 +892,16 @@ export interface components {
             audio_url: string | null;
             /** Id */
             id: string;
-            /** Image Url */
+            /**
+             * Image Url
+             * @description The 1024 px picture, for the lesson's big card. Null when the word has none.
+             */
             image_url: string | null;
+            /**
+             * Image Url 512
+             * @description The 512 px picture, for the boards and word cards. Null when image_url is.
+             */
+            image_url_512: string | null;
             /** Note */
             note: string | null;
             /**

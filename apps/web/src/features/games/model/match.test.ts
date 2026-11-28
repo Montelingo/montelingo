@@ -14,7 +14,8 @@ import {
 import { seeded } from "./test-random";
 
 function word(n: number, imageUrl: string | null = `/w/${n}.webp`): MatchWord {
-  return { id: `word-${n}`, text: `word ${n}`, imageUrl };
+  const imageUrl512 = imageUrl?.replace(".webp", "-512.webp") ?? null;
+  return { id: `word-${n}`, text: `word ${n}`, imageUrl, imageUrl512 };
 }
 
 const SIX_WORDS = Array.from({ length: 6 }, (_, i) => word(i + 1));
@@ -65,6 +66,7 @@ describe("createMatchGame", () => {
     );
     for (const round of game.rounds) {
       expect(round.imageUrl).toBe(`/w/${round.wordId.slice(5)}.webp`);
+      expect(round.imageUrl512).toBe(`/w/${round.wordId.slice(5)}-512.webp`);
     }
   });
 
@@ -130,7 +132,7 @@ describe("createMatchGame", () => {
   it("never offers a second word that reads the same as the right one", () => {
     const words = [
       word(1),
-      { id: "word-1b", text: " Word 1 ", imageUrl: null },
+      { id: "word-1b", text: " Word 1 ", imageUrl: null, imageUrl512: null },
       word(2, null),
       word(3, null),
     ];

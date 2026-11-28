@@ -1,10 +1,17 @@
 import { useId } from "react";
 
-import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
+import { WordImage } from "@/components/ui/WordImage";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
 
 import { CONTENT_LANG, type Word } from "../model/content";
+
+/**
+ * How wide a card's picture shows: a grid column of at least 10rem (a phone's
+ * Riječi tab fits three narrower ones), so even a 3× screen takes the 512 px
+ * file.
+ */
+const PICTURE_SIZES = "10rem";
 
 type WordCardProps = {
   word: Word;
@@ -45,22 +52,18 @@ export function WordCard({ word, size = "regular" }: WordCardProps) {
           isCompact ? "m-1.5 mb-0 rounded-kid-sm" : "m-2 mb-0 rounded-kid",
         )}
       >
-        {word.imageUrl !== null ? (
-          // Word images are same-origin static files, already WebP at their
-          // final size (public/media/words), so next/image would add nothing.
-          // Square pictures in a 4:3 tile: contain, so none is cropped.
-          // eslint-disable-next-line @next/next/no-img-element -- see above
-          <img
-            src={word.imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="block size-full object-contain"
-          />
-        ) : (
-          // Keyed on the recording number, the word's id in every environment.
-          <PlaceholderArt id={`word-${word.number}`} label={word.text} />
-        )}
+        {/* Square pictures in a 4:3 tile: contain, so none is cropped. The
+            placeholder is keyed on the recording number, the word's id in
+            every environment. */}
+        <WordImage
+          src={word.imageUrl}
+          src512={word.imageUrl512}
+          sizes={PICTURE_SIZES}
+          loading="lazy"
+          placeholderId={`word-${word.number}`}
+          placeholderLabel={word.text}
+          className="block size-full object-contain"
+        />
       </div>
       <figcaption
         id={captionId}

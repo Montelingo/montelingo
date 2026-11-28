@@ -26,6 +26,7 @@ export type SpellTile = {
 export type SpellRound = {
   wordId: string;
   imageUrl: string;
+  imageUrl512: string | null;
   /** The word's letters, in order: one slot each. */
   letters: readonly string[];
   /** The same letters, shuffled, never already in order. */
@@ -119,6 +120,7 @@ export function createSpellGame(
       ({ word, letters }): SpellRound => ({
         wordId: word.id,
         imageUrl: word.imageUrl,
+        imageUrl512: word.imageUrl512,
         letters,
         tiles: dealTiles(word.id, letters, random),
       }),

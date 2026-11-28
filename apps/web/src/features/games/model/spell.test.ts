@@ -19,7 +19,8 @@ function word(
   text: string,
   imageUrl: string | null = `/w/${text}.webp`,
 ): SpellWord {
-  return { id: `id-${text}`, text, imageUrl };
+  const imageUrl512 = imageUrl?.replace(".webp", "-512.webp") ?? null;
+  return { id: `id-${text}`, text, imageUrl, imageUrl512 };
 }
 
 const BUDVA = ["more", "riba", "rak", "sunce", "galeb", "kamen", "sidro"].map(
@@ -133,6 +134,7 @@ describe("createSpellGame", () => {
     expect(round).toMatchObject({
       wordId: "id-konj",
       imageUrl: "/w/konj.webp",
+      imageUrl512: "/w/konj-512.webp",
       letters: ["k", "o", "nj"],
     });
     expect(round.tiles.map((tile) => tile.letter).sort()).toEqual([

@@ -42,8 +42,13 @@ export type Word = {
   number: number;
   text: string;
   note: string | null;
-  /** Always `null` in phase 1 (ADR 0005). */
+  /** The 1024 px picture, for the lesson's big card; `null` without one. */
   imageUrl: string | null;
+  /**
+   * The 512 px picture, for the boards and word cards; `null` when `imageUrl`
+   * is. `WordImage` offers both and the browser picks.
+   */
+  imageUrl512: string | null;
   /** Always `null` in phase 1 (ADR 0005). */
   audioUrl: string | null;
 };
@@ -96,6 +101,7 @@ export function toWord(data: Schemas["Word"]): Word {
     text: data.text,
     note: data.note,
     imageUrl: data.image_url,
+    imageUrl512: data.image_url_512,
     audioUrl: data.audio_url,
   };
 }

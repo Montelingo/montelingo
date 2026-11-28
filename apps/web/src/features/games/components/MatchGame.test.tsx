@@ -6,6 +6,7 @@ import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
+import { stubImageDecode } from "@/components/ui/test-image-decode";
 import { CONTENT_LANG } from "@/features/map/edge";
 
 import type { MatchWord } from "../model/match";
@@ -26,6 +27,7 @@ function makeWords(): MatchWord[] {
       id: `word-${index + 1}`,
       text,
       imageUrl: `/media/words/${number}.webp`,
+      imageUrl512: `/media/words/${number}-512.webp`,
     };
   });
 }
@@ -411,5 +413,79 @@ describe("MatchGame with the keyboard and axe", () => {
     fireEvent.click(option("more"));
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("MatchGame while its pictures load", () => {
+  let decode: ReturnType<typeof stubImageDecode>;
+
+  beforeEach(() => {
+    decode = stubImageDecode();
+  });
+
+  afterEach(() => {
+    decode.restore();
+    vi.useRealTimers();
+  });
+
+  function round() {
+    return screen.queryByRole("group", { name: "Spoji riječ i sliku" });
+  }
+
+  it("shows the round's shape, not the first round, until every round's picture is decoded", async () => {
+    renderGame();
+
+    expect(round()).not.toBeInTheDocument();
+    expect(screen.getByTestId("match-skeleton")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    expect(decode.requests.map(({ src }) => src)).toEqual(
+      makeWords().map(({ imageUrl }) => imageUrl),
+    );
+
+    await act(() => decode.loadAll());
+
+    expect(round()).toBeInTheDocument();
+    expect(screen.queryByTestId("match-skeleton")).not.toBeInTheDocument();
+  });
+
+  it("decodes each picture as the round's picture will choose it", async () => {
+    renderGame();
+    await act(() => decode.loadAll());
+
+    const image = picture().querySelector("img");
+    expect(image).toHaveAttribute(
+      "srcset",
+      "/media/words/0001-512.webp 512w, /media/words/0001.webp 1024w",
+    );
+    expect(decode.requests[0]?.srcset).toBe(image?.getAttribute("srcset"));
+    expect(decode.requests[0]?.sizes).toBe(image?.getAttribute("sizes"));
+  });
+
+  it("starts anyway when a picture fails", async () => {
+    renderGame();
+
+    await act(() => decode.failFirst());
+
+    expect(round()).toBeInTheDocument();
+  });
+
+  it("leaves the focus alone when the first round appears", async () => {
+    renderGame();
+
+    await act(() => decode.loadAll());
+
+    expect(document.body).toHaveFocus();
+  });
+
+  it("gives the first word the focus after Igraj ponovo, once the round appears", async () => {
+    vi.useFakeTimers();
+    renderGame();
+    await act(() => decode.loadAll());
+    playToBravo();
+
+    fireEvent.click(playAgain());
+    await act(() => decode.loadAll());
+
+    expect(options()[0]).toHaveFocus();
   });
 });

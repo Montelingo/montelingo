@@ -19,7 +19,7 @@ import {
 import { preload } from "react-dom";
 
 import { BIG_BUTTON, FOCUS_RING } from "@/components/ui/kid-styles";
-import { PlaceholderArt } from "@/components/ui/PlaceholderArt";
+import { WordImage, wordImageSrcSet } from "@/components/ui/WordImage";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -74,6 +74,13 @@ const MODE_LABELS: Record<LessonMode, string> = {
  * tap after the last card.
  */
 export { SETTLE_DELAY_MS };
+
+/**
+ * How wide the card's picture shows: nearly the screen's width in portrait,
+ * and its height in landscape, where the card is shorter than it is wide. On
+ * a tablet or a phone that picks the 1024 px file, the lesson's.
+ */
+const PICTURE_SIZES = "(orientation: landscape) 70vh, 90vw";
 
 // A chapter's lesson (ADR 0006): one large card, the picture alone or the word
 // alone, then a "Bravo!" screen after the last card. The copy is Montenegrin,
@@ -174,10 +181,18 @@ function LessonScreen({
     }
   }, [focusNextOnMount]);
 
-  // Fetch the next picture while this one is on screen, so it is there at once.
+  // Fetch the next picture while this one is on screen, so it is there at
+  // once: the same file the card will choose.
   const upcoming = words[index + 1];
   if (state.mode === "pictures" && upcoming?.imageUrl) {
-    preload(upcoming.imageUrl, { as: "image" });
+    preload(upcoming.imageUrl, {
+      as: "image",
+      imageSrcSet: wordImageSrcSet({
+        src: upcoming.imageUrl,
+        src512: upcoming.imageUrl512,
+      }),
+      imageSizes: PICTURE_SIZES,
+    });
   }
 
   if (word === undefined) {
@@ -216,7 +231,7 @@ function LessonScreen({
       >
         <div className="absolute inset-0 flex">
           {state.mode === "pictures" ? (
-            <PictureCard key={word.id} word={word} />
+            <PictureCard key={word.id} word={word} isFirst={index === 0} />
           ) : (
             <WordText key={word.id} word={word} />
           )}
@@ -256,30 +271,27 @@ type CardProps = {
   word: LessonWord;
 };
 
+type PictureCardProps = CardProps & {
+  /** The card the lesson opens on: its picture is fetched first. */
+  isFirst: boolean;
+};
+
 // The picture alone, as large as the card allows, never cropped. Its name is
-// the word, so a screen reader hears what the child sees; nothing is written.
-function PictureCard({ word }: CardProps) {
+// the word, so a screen reader hears what the child sees; nothing is written,
+// not even a letter on the placeholder.
+function PictureCard({ word, isFirst }: PictureCardProps) {
   return (
     <div role="img" aria-label={word.text} className="absolute inset-4">
-      {word.imageUrl !== null ? (
-        // Word images are same-origin WebP files at their final size
-        // (public/media/words), so next/image would add nothing.
-        // eslint-disable-next-line @next/next/no-img-element -- see above
-        <img
-          src={word.imageUrl}
-          alt=""
-          draggable={false}
-          decoding="async"
-          className="size-full object-contain"
-        />
-      ) : (
-        // No letter on the stand-in either: the card shows no writing.
-        <PlaceholderArt
-          id={`word-${word.number}`}
-          withInitial={false}
-          className="rounded-kid"
-        />
-      )}
+      <WordImage
+        src={word.imageUrl}
+        src512={word.imageUrl512}
+        sizes={PICTURE_SIZES}
+        fetchPriority={isFirst ? "high" : undefined}
+        placeholderId={`word-${word.number}`}
+        withInitial={false}
+        className="size-full object-contain"
+        placeholderClassName="rounded-kid"
+      />
     </div>
   );
 }

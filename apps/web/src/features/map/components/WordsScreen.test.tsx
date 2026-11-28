@@ -18,6 +18,7 @@ function word(number: number, text: string, note: string | null = null): Word {
     text,
     note,
     imageUrl: `/media/words/${String(number).padStart(4, "0")}.webp`,
+    imageUrl512: `/media/words/${String(number).padStart(4, "0")}-512.webp`,
     audioUrl: null,
   };
 }

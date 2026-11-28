@@ -250,6 +250,7 @@ export function makeWord(overrides: Partial<Word> = {}): Word {
     text: "more",
     note: null,
     imageUrl: null,
+    imageUrl512: null,
     audioUrl: null,
     ...overrides,
   };

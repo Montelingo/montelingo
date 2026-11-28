@@ -6,6 +6,9 @@ import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
+import { stubImageDecode } from "@/components/ui/test-image-decode";
+import { PICTURES_READY_TIMEOUT_MS } from "@/components/ui/use-word-pictures-ready";
+
 import type { MemoryWord } from "../model/memory";
 import {
   BRAVO_DELAY_MS,
@@ -25,6 +28,7 @@ function makeWords(): MemoryWord[] {
       id: `word-${index + 1}`,
       text,
       imageUrl: `/media/words/${number}.webp`,
+      imageUrl512: `/media/words/${number}-512.webp`,
     };
   });
 }
@@ -429,5 +433,100 @@ describe("MemoryGame with the keyboard and axe", () => {
     );
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("MemoryGame while its pictures load", () => {
+  let decode: ReturnType<typeof stubImageDecode>;
+
+  beforeEach(() => {
+    decode = stubImageDecode();
+  });
+
+  afterEach(() => {
+    decode.restore();
+    vi.useRealTimers();
+  });
+
+  function board() {
+    return screen.queryByRole("group", { name: "Memorija" });
+  }
+
+  it("shows a block for each card, not the board, until every picture is decoded", async () => {
+    renderGame();
+
+    expect(board()).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("memory-card-skeleton")).toHaveLength(
+      TEXTS.length * 2,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+
+    await act(() => decode.loadAll());
+
+    expect(board()).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("memory-card-skeleton"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("decodes each picture once, choosing the 512 px file as the cards do", () => {
+    renderGame();
+
+    expect(decode.requests).toHaveLength(TEXTS.length);
+    for (const [index, request] of decode.requests.entries()) {
+      const number = String(index + 1).padStart(4, "0");
+      expect(request.srcset).toBe(
+        `/media/words/${number}-512.webp 512w, /media/words/${number}.webp 1024w`,
+      );
+      expect(request.sizes).toBe(
+        "(orientation: landscape) min(25vw, 18rem), 33vw",
+      );
+    }
+  });
+
+  it("gives the cards the same choice of files", async () => {
+    renderGame();
+    await act(() => decode.loadAll());
+
+    fireEvent.click(card(1));
+
+    const image = card(1).querySelector("img");
+    expect(image).toHaveAttribute(
+      "srcset",
+      "/media/words/0001-512.webp 512w, /media/words/0001.webp 1024w",
+    );
+    expect(image).toHaveAttribute("sizes", decode.requests[0]?.sizes);
+  });
+
+  it("starts anyway when a picture fails, which shows the placeholder", async () => {
+    renderGame();
+
+    await act(() => decode.failFirst());
+
+    expect(board()).toBeInTheDocument();
+  });
+
+  it("starts anyway when a picture never arrives", () => {
+    vi.useFakeTimers();
+    renderGame();
+
+    wait(PICTURES_READY_TIMEOUT_MS - 1);
+    expect(board()).not.toBeInTheDocument();
+
+    wait(1);
+    expect(board()).toBeInTheDocument();
+  });
+
+  it("gives the first card the focus after Igraj ponovo, once the cards appear", async () => {
+    vi.useFakeTimers();
+    renderGame();
+    await act(() => decode.loadAll());
+    playToBravo();
+
+    fireEvent.click(playAgain());
+    expect(board()).not.toBeInTheDocument();
+    await act(() => decode.loadAll());
+
+    expect(card(1)).toHaveFocus();
   });
 });

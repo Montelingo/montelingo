@@ -24,14 +24,13 @@ const TEXTS = [
 function makeWords(): LessonWord[] {
   return TEXTS.map((text, index) => {
     const number = 61 + index;
+    const file = `/media/words/${String(number).padStart(4, "0")}`;
     return {
       id: `word-${number}`,
       number,
       text,
-      imageUrl:
-        index < 8
-          ? `/media/words/${String(number).padStart(4, "0")}.webp`
-          : null,
+      imageUrl: index < 8 ? `${file}.webp` : null,
+      imageUrl512: index < 8 ? `${file}-512.webp` : null,
     };
   });
 }
@@ -462,6 +461,29 @@ describe("LessonCards", () => {
     expect(card.querySelector("img")).toHaveAttribute(
       "src",
       "/media/words/0061.webp",
+    );
+  });
+
+  it("fetches the first card's picture first, and offers both files to every card", async () => {
+    const { user } = renderLesson();
+
+    const first = picture("majica").querySelector("img");
+    expect(first).toHaveAttribute("fetchpriority", "high");
+    expect(first).not.toHaveAttribute("loading");
+    expect(first).toHaveAttribute(
+      "srcset",
+      "/media/words/0061-512.webp 512w, /media/words/0061.webp 1024w",
+    );
+
+    await goToCard(user, 2);
+
+    const second = screen
+      .getByRole("img", { name: TEXTS[1] })
+      .querySelector("img");
+    expect(second).not.toHaveAttribute("fetchpriority");
+    expect(second).toHaveAttribute(
+      "srcset",
+      "/media/words/0062-512.webp 512w, /media/words/0062.webp 1024w",
     );
   });
 

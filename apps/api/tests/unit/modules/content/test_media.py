@@ -10,7 +10,12 @@ import pytest
 
 from app.modules.content import media
 from app.modules.content.loader import load_content
-from app.modules.content.media import MEDIA_HASHES, WORD_IMAGES, word_image_url
+from app.modules.content.media import (
+    MEDIA_HASHES,
+    WORD_IMAGES,
+    word_image_url,
+    word_image_url_512,
+)
 
 # apps/api/tests/unit/modules/content/test_media.py -> repository root.
 REPO_ROOT = Path(__file__).resolve().parents[6]
@@ -31,6 +36,7 @@ def test_word_image_url_carries_the_file_hash(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(media, "MEDIA_HASHES", {"0011": {"1024": "0a1b2c3d", "512": "4e5f6a7b"}})
 
     assert word_image_url(11) == "/media/words/0011.webp?v=0a1b2c3d"
+    assert word_image_url_512(11) == "/media/words/0011-512.webp?v=4e5f6a7b"
 
 
 @pytest.mark.parametrize(
@@ -85,11 +91,15 @@ def test_word_image_url(number: int) -> None:
     name = f"{number:04}"
 
     assert word_image_url(number) == f"/media/words/{name}.webp?v={MEDIA_HASHES[name]['1024']}"
+    assert word_image_url_512(number) == (
+        f"/media/words/{name}-512.webp?v={MEDIA_HASHES[name]['512']}"
+    )
 
 
 @pytest.mark.parametrize("number", [271, 280, 301])
 def test_word_image_url_is_none_without_an_image(number: int) -> None:
     assert word_image_url(number) is None
+    assert word_image_url_512(number) is None
 
 
 def test_every_word_image_has_both_hashes() -> None:

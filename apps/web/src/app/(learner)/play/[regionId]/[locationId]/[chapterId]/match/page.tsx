@@ -45,10 +45,11 @@ export default async function MatchPage(props: MatchPageProps) {
     </>
   );
 
-  const words = chapter.words.map(({ id, text, imageUrl }) => ({
+  const words = chapter.words.map(({ id, text, imageUrl, imageUrl512 }) => ({
     id,
     text,
     imageUrl,
+    imageUrl512,
   }));
   const unavailable = gameUnavailableReason(gameState, canDealMatchGame(words));
 

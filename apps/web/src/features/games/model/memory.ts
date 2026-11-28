@@ -16,6 +16,8 @@ export type MemoryWord = {
   id: string;
   text: string;
   imageUrl: string | null;
+  /** The 512 px picture (#206); `null` when the API sent none. */
+  imageUrl512: string | null;
 };
 
 export type MemoryCard = {
@@ -24,6 +26,7 @@ export type MemoryCard = {
   wordId: string;
   text: string;
   imageUrl: string;
+  imageUrl512: string | null;
 };
 
 export type MemoryState = {
@@ -74,6 +77,7 @@ export function createMemoryGame(
       wordId: word.id,
       text: word.text,
       imageUrl: word.imageUrl,
+      imageUrl512: word.imageUrl512,
     })),
   );
 

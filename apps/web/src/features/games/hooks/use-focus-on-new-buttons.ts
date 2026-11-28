@@ -9,7 +9,9 @@ import { type RefObject, useLayoutEffect, useRef } from "react";
  * nothing to restore, since the focus was never on the old button to lose.
  *
  * On mount only when `shouldFocusOnMount`: after "Igraj ponovo", whose button
- * has gone too, but not on a screen's first appearance.
+ * has gone too, but not on a screen's first appearance. While `container` is
+ * not on the page (a game still loading its pictures), nothing counts: its
+ * first appearance is still to come, so change `step` when it appears.
  *
  * A layout effect, so the focus moves in the same commit as the new buttons:
  * neither a screen reader nor a test ever finds it on the page between the
@@ -22,6 +24,9 @@ export function useFocusOnNewButtons(
 ): void {
   const hasMounted = useRef(false);
   useLayoutEffect(() => {
+    if (container.current === null) {
+      return;
+    }
     const isMount = !hasMounted.current;
     hasMounted.current = true;
     if (isMount && !shouldFocusOnMount) {

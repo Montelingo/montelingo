@@ -31,6 +31,7 @@ const WORDS: LessonWord[] = ["more", "plaža", "pijesak"].map((text, index) => (
   number: index + 1,
   text,
   imageUrl: null,
+  imageUrl512: null,
 }));
 
 function jsonResponse(status: number, body: unknown): Response {

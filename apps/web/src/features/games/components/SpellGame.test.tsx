@@ -17,6 +17,7 @@ function makeWords(): SpellWord[] {
     id: `word-${index + 1}`,
     text,
     imageUrl: `/media/words/${String(index + 1).padStart(4, "0")}.webp`,
+    imageUrl512: `/media/words/${String(index + 1).padStart(4, "0")}-512.webp`,
   }));
 }
 
@@ -270,7 +271,14 @@ describe("SpellGame", () => {
 
   it("shows nothing for words that deal no game", () => {
     const { container } = renderGame({
-      words: [{ id: "w", text: "morski konjić", imageUrl: "/w.webp" }],
+      words: [
+        {
+          id: "w",
+          text: "morski konjić",
+          imageUrl: "/w.webp",
+          imageUrl512: "/w-512.webp",
+        },
+      ],
     });
 
     expect(container).toBeEmptyDOMElement();

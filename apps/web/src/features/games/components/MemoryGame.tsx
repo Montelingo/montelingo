@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import { FOCUS_RING } from "@/components/ui/kid-styles";
+import { useWordPicturesReady } from "@/components/ui/use-word-pictures-ready";
+import { WordImage } from "@/components/ui/WordImage";
 import { CONTENT_LANG } from "@/features/map/edge";
 import { cn } from "@/lib/cn";
 import { fredoka } from "@/lib/fonts";
@@ -93,6 +95,19 @@ export const BRAVO_DELAY_MS = 800;
 export { SETTLE_DELAY_MS };
 
 type Phase = "playing" | "complete" | "bravo";
+
+/**
+ * How wide a card's picture shows: a third of the screen in portrait, a
+ * quarter of the learner column (72rem at most) in landscape. On a tablet at
+ * 2× that is the 512 px file.
+ */
+const CARD_SIZES = "(orientation: landscape) min(25vw, 18rem), 33vw";
+
+/** The board's grid: 3 × 4 in portrait, 4 × 3 in landscape. */
+const BOARD_GRID = cn(
+  "grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-3",
+  "landscape:grid-cols-4 landscape:grid-rows-3",
+);
 
 // A chapter's memory game (#132, #133, ADR 0006): #131's model on a board of
 // up to 12 cards, then a "Bravo!" screen once every pair is found. It takes
@@ -187,7 +202,9 @@ type BoardProps = {
   onComplete: (pairs: number) => void;
 };
 
-// One round: the cards, dealt once, when the board mounts.
+// One round: the cards, dealt once, when the board mounts. The board waits
+// until the dealt pictures are loaded and decoded (#206), showing card-shaped
+// blocks meanwhile, so a card never turns to an empty face.
 function Board({
   words,
   random,
@@ -202,6 +219,14 @@ function Board({
   const missShowing = isMissShowing(state);
   const complete = isComplete(state);
   const pairs = state.cards.length / 2;
+
+  const isReady = useWordPicturesReady(
+    state.cards.map((card) => ({
+      src: card.imageUrl,
+      src512: card.imageUrl512,
+    })),
+    CARD_SIZES,
+  );
 
   useEffect(() => {
     if (!missShowing) {
@@ -222,15 +247,19 @@ function Board({
 
   const boardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (shouldFocusFirstOnMount) {
+    if (isReady && shouldFocusFirstOnMount) {
       boardRef.current?.querySelector("button")?.focus();
     }
-    // Only on mount: a new deal is a new board.
+    // Only once the cards are on screen: a new deal is a new board.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
-  }, []);
+  }, [isReady]);
 
   if (state.cards.length === 0) {
     return null;
+  }
+
+  if (!isReady) {
+    return <BoardSkeleton count={state.cards.length} />;
   }
 
   return (
@@ -239,11 +268,7 @@ function Board({
       role="group"
       aria-label="Memorija"
       lang={CONTENT_LANG}
-      className={cn(
-        fredoka.className,
-        "grid min-h-0 flex-1 grid-cols-3 grid-rows-4 gap-3 text-kid-ink",
-        "landscape:grid-cols-4 landscape:grid-rows-3",
-      )}
+      className={cn(fredoka.className, BOARD_GRID, "text-kid-ink")}
     >
       {state.cards.map((card, index) => (
         <Card
@@ -308,15 +333,15 @@ function Card({ card, position, face, locked, onFlip }: CardProps) {
               : "border-kid-line shadow-raised-line-4",
           )}
         >
-          {/* Word images are same-origin WebP files at their final size
-              (public/media/words), so next/image would add nothing. */}
-          {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
-          <img
+          {/* No letter on a placeholder: the pair is two of the same picture. */}
+          <WordImage
             src={card.imageUrl}
-            alt=""
-            draggable={false}
-            decoding="async"
-            className="min-h-0 flex-1 object-contain"
+            src512={card.imageUrl512}
+            sizes={CARD_SIZES}
+            placeholderId={card.wordId}
+            withInitial={false}
+            className="min-h-0 w-full flex-1 object-contain"
+            placeholderClassName="rounded-kid"
           />
           {face === "matched" && (
             <span className="text-center text-xl font-semibold md:text-2xl">
@@ -326,6 +351,31 @@ function Card({ card, position, face, locked, onFlip }: CardProps) {
         </span>
       </span>
     </button>
+  );
+}
+
+type BoardSkeletonProps = {
+  /** How many cards the board will have. */
+  count: number;
+};
+
+// The board while its pictures load: a block for each card, where the cards
+// will be. Marked busy, it says "Loading…" once to screen readers.
+function BoardSkeleton({ count }: BoardSkeletonProps) {
+  return (
+    <div aria-busy="true" className={BOARD_GRID}>
+      <span role="status" className="sr-only">
+        Loading…
+      </span>
+      {Array.from({ length: count }, (_, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          data-testid="memory-card-skeleton"
+          className="min-h-0 animate-pulse rounded-kid-lg border-3 border-kid-line bg-surface-sunken"
+        />
+      ))}
+    </div>
   );
 }
 
