@@ -1,13 +1,20 @@
-import { type GameId, WORDS_PATH } from "@/features/map";
+"use client";
+
+import {
+  type GameId,
+  hasResultNotice,
+  ResultNotice,
+  useSaveResult,
+  WORDS_PATH,
+} from "@/features/map";
 import { CONTENT_LANG } from "@/features/map/edge";
 import type { Random } from "@/lib/random";
 
-import { canDealMatchGame } from "../model/match";
-import { canDealMemoryGame } from "../model/memory";
 import {
+  PRACTICE_GAMES,
   PRACTICE_ROUNDS,
   type PracticePlace,
-  type PracticeWord,
+  practiceTitle,
   practiceWords,
 } from "../model/practice";
 import { GameUnavailable } from "./GameUnavailable";
@@ -27,24 +34,12 @@ export type PracticeGameProps = {
 
 const BACK_TO_WORDS = "Nazad na riječi";
 
-// A Record, so a new game id fails to compile until it can be practised.
-const GAMES: Record<
-  GameId,
-  { title: string; canDeal: (words: readonly PracticeWord[]) => boolean }
-> = {
-  memory: { title: "Memory", canDeal: canDealMemoryGame },
-  match: { title: "Spoji riječi", canDeal: canDealMatchGame },
-};
-
-/** A practice game's page title: "Vježbaj: Memory". */
-export function practiceTitle(gameId: GameId): string {
-  return `Vježbaj: ${GAMES[gameId].title}`;
-}
-
 // Practice (#235, screen 2 of #237): a chapter's game, dealt from every word
-// the child has learned, each text once. It is not recorded, so it is the game
-// itself, not ChapterGame: no onCompleted, no save, and its "Bravo!" only
-// praises, since the words are not new. It leads back to Riječi. Practice has
+// the child has learned, each text once. Every game played to the end is
+// recorded, "Igraj ponovo"'s too, and may earn a heart (ADR 0009, #276): its
+// "Bravo!" shows the heart or a failed save's retry, as a chapter game's does,
+// and otherwise only praises, since the words are not new. Practice changes
+// no lock, star or count. It leads back to Riječi. Practice has
 // no lock, so the only ways it cannot play are the words not loading and too
 // few of them with a picture yet; the h1 is for screen readers only while the
 // game is on screen, as on a chapter's game.
@@ -54,6 +49,7 @@ export function PracticeGame({
   learnerName,
   random,
 }: PracticeGameProps) {
+  const saved = useSaveResult({ kind: "practice", gameId }, WORDS_PATH);
   const heading = <span lang={CONTENT_LANG}>{practiceTitle(gameId)}</span>;
   const words =
     places === null
@@ -64,7 +60,7 @@ export function PracticeGame({
           imageUrl,
         }));
 
-  if (words === null || !GAMES[gameId].canDeal(words)) {
+  if (words === null || !PRACTICE_GAMES[gameId].canDeal(words)) {
     return (
       <GameUnavailable
         heading={heading}
@@ -83,6 +79,9 @@ export function PracticeGame({
     backLabel: BACK_TO_WORDS,
     teachesWords: false,
     learnerName: learnerName ?? undefined,
+    onCompleted: saved.save,
+    reportsEveryGame: true,
+    saveNotice: hasResultNotice(saved) ? <ResultNotice {...saved} /> : null,
     ...(random === undefined ? {} : { random }),
   };
   return (

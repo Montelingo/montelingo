@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: practiceTitle("match"),
 };
 
-// Practice match with every learned word (#235). Not recorded: see PracticeGame.
+// Practice match with every learned word (#235). Recorded as a heart: see PracticeGame.
 export default async function PracticeMatchPage() {
   return <PracticeGame gameId="match" {...await loadPractice("match")} />;
 }

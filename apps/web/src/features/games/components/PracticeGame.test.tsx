@@ -1,11 +1,38 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { createApiClient } from "@app/api-client";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 
 import type { GameId } from "@/features/map";
+import { endNavigation } from "@/lib/navigation-progress";
 
 import { type PracticePlace, PRACTICE_ROUNDS } from "../model/practice";
+import { RIGHT_DELAY_MS, SETTLE_DELAY_MS } from "./MatchGame";
 import { PracticeGame } from "./PracticeGame";
+
+const fetchMock = vi.hoisted(() =>
+  vi.fn<(request: Request) => Promise<Response>>(),
+);
+vi.mock("@/lib/browser-api", () => ({
+  getBrowserApiClient: () =>
+    createApiClient({ baseUrl: "http://web.test", fetch: fetchMock }),
+}));
+
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+
+const PRACTICE_MATCH_URL = "http://web.test/api/v1/practice/match/result";
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 type Word = { id: string; text: string; imageUrl: string | null };
 
@@ -46,6 +73,116 @@ function renderPractice(
     />,
   );
 }
+
+function practicePosts() {
+  return fetchMock.mock.calls.filter(
+    ([request]) =>
+      request.method === "POST" && request.url === PRACTICE_MATCH_URL,
+  );
+}
+
+/** Advances the timers and lets a save's promise settle. */
+async function wait(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+/** Every round of match solved, by its right word, and "Bravo!" settled. */
+async function playMatchToBravo() {
+  const game = () => screen.getByRole("group", { name: "Spoji riječ i sliku" });
+  while (screen.queryByRole("heading", { name: /^Bravo/ }) === null) {
+    // An unshuffled round offers its word first.
+    const [right] = within(game()).getAllByRole("button");
+    if (right === undefined) {
+      throw new Error("no options");
+    }
+    fireEvent.click(right);
+    await wait(RIGHT_DELAY_MS);
+  }
+  await wait(SETTLE_DELAY_MS);
+}
+
+describe("PracticeGame saves every game (ADR 0009)", () => {
+  beforeEach(() => {
+    // Here, not after each test: unmounting a test's screen refreshes.
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse(200, { heart_earned: false })),
+    );
+  });
+
+  afterEach(() => {
+    endNavigation();
+    vi.useRealTimers();
+  });
+
+  it("records a game once when it ends, and says nothing about hearts without one", async () => {
+    renderPractice("match");
+    expect(practicePosts()).toHaveLength(0);
+
+    await playMatchToBravo();
+    await wait(200);
+
+    expect(practicePosts()).toHaveLength(1);
+    expect(screen.queryByText(/src/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pokušaj ponovo" })).toBeNull();
+  });
+
+  it("shows +1 srce on Bravo when the game earned a heart", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse(200, { heart_earned: true })),
+    );
+    renderPractice("match");
+
+    await playMatchToBravo();
+    await wait(200);
+
+    expect(screen.getByText("+1 srce", { selector: "p" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("+1 srce");
+  });
+
+  it("records Igraj ponovo's new game again when it ends", async () => {
+    renderPractice("match");
+    await playMatchToBravo();
+
+    fireEvent.click(screen.getByRole("button", { name: "Igraj ponovo" }));
+    await playMatchToBravo();
+
+    expect(practicePosts()).toHaveLength(2);
+  });
+
+  it("keeps a failed save on Bravo with a retry, and still lets the child go on", async () => {
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve(
+        jsonResponse(503, {
+          error: {
+            code: "service_unavailable",
+            message: "down",
+            request_id: "req-1",
+            details: null,
+          },
+        }),
+      ),
+    );
+    renderPractice("match");
+    await playMatchToBravo();
+    await wait(0);
+
+    expect(
+      screen.getByText("Ovo još nije sačuvano.", { selector: "p" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Nazad na riječi" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Igraj ponovo" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pokušaj ponovo" }));
+    await wait(200);
+
+    expect(practicePosts()).toHaveLength(2);
+    expect(screen.getAllByText("Sačuvano!").length).toBeGreaterThan(0);
+  });
+});
 
 describe("PracticeGame", () => {
   it("deals memory from every place, each text once", () => {

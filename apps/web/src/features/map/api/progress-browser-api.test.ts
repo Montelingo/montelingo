@@ -1,7 +1,11 @@
 import { ApiClientError, createApiClient } from "@app/api-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { completeGame, completeLesson } from "./progress-browser-api";
+import {
+  completeGame,
+  completeLesson,
+  completePractice,
+} from "./progress-browser-api";
 
 const fetchMock = vi.hoisted(() =>
   vi.fn<(request: Request) => Promise<Response>>(),
@@ -89,6 +93,25 @@ describe("progress browser API", () => {
       heartEarned: true,
     });
   });
+
+  it.each(["memory", "match"] as const)(
+    "records a practice %s game with POST /practice/{game}/result, and says whether it earned a heart",
+    async (gameId) => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(jsonResponse(200, { heart_earned: true })),
+      );
+
+      await expect(completePractice(gameId)).resolves.toEqual({
+        heartEarned: true,
+      });
+
+      const request = lastRequest();
+      expect(request.method).toBe("POST");
+      expect(request.url).toBe(
+        `http://web.test/api/v1/practice/${gameId}/result`,
+      );
+    },
+  );
 
   it("rejects with the API's error, so a 409 can be told apart", async () => {
     fetchMock.mockResolvedValue(errorResponse(409, "game_locked"));

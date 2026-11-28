@@ -13,21 +13,28 @@ export type GameVisit = {
 
 /**
  * A game's visit (ADR 0006): it can be played again and again, but
- * `onCompleted` is called once, the first time `isFinished` turns true.
- * Marked only when called, so a callback passed in late still runs.
+ * `onCompleted` is called once, the first time `isFinished` turns true. With
+ * `everyGame`, as practice records each game (ADR 0009), it is called once
+ * for every game instead. Marked only when called, so a callback passed in
+ * late still runs.
  */
 export function useGameVisit(
   isFinished: boolean,
   onCompleted: (() => void) | undefined,
+  everyGame = false,
 ): GameVisit {
   const [game, setGame] = useState(0);
-  const hasReported = useRef(false);
+  // The game last reported, or `null` before the first.
+  const reportedGame = useRef<number | null>(null);
   useEffect(() => {
-    if (isFinished && !hasReported.current && onCompleted !== undefined) {
-      hasReported.current = true;
+    const hasReported = everyGame
+      ? reportedGame.current === game
+      : reportedGame.current !== null;
+    if (isFinished && !hasReported && onCompleted !== undefined) {
+      reportedGame.current = game;
       onCompleted();
     }
-  }, [isFinished, onCompleted]);
+  }, [isFinished, onCompleted, everyGame, game]);
   const playAgain = useCallback(() => setGame((current) => current + 1), []);
   return { game, isReplay: game > 0, playAgain };
 }

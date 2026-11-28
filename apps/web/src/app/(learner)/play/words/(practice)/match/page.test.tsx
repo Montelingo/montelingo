@@ -29,11 +29,22 @@ vi.mock("@/lib/api", () => ({
     createApiClient({ baseUrl: "http://api.test", fetch: fetchMock }),
 }));
 
-// Like Next.js, redirect() throws, so nothing after it runs.
+// Practice records each game from the browser (#276), through its own client.
+const browserFetch = vi.hoisted(() =>
+  vi.fn<(request: Request) => Promise<Response>>(),
+);
+vi.mock("@/lib/browser-api", () => ({
+  getBrowserApiClient: (): ApiClient =>
+    createApiClient({ baseUrl: "http://web.test", fetch: browserFetch }),
+}));
+
+// Like Next.js, redirect() throws, so nothing after it runs. The save's
+// router is a stand-in: the page renders without Next.js's app router.
 const navigation = vi.hoisted(() => ({
   redirect: vi.fn((url: string): never => {
     throw new Error(`NEXT_REDIRECT ${url}`);
   }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof Navigation>()),
@@ -45,6 +56,14 @@ let consoleError: MockInstance<typeof console.error>;
 beforeEach(() => {
   vi.clearAllMocks();
   serveApi(fetchMock, "podgorica-open");
+  browserFetch.mockImplementation(() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ heart_earned: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -98,7 +117,7 @@ describe("PracticeMatchPage", () => {
     expect(metadata.title).toBe("Vježbaj: Spoji riječi");
   });
 
-  it(`plays ${PRACTICE_ROUNDS} rounds, records nothing, and leads back to Riječi`, async () => {
+  it(`plays ${PRACTICE_ROUNDS} rounds, records the game once, and leads back to Riječi`, async () => {
     // Fisher–Yates with just under 1 keeps every item where it is.
     vi.spyOn(Math, "random").mockReturnValue(0.999);
     await renderPage();
@@ -117,9 +136,15 @@ describe("PracticeMatchPage", () => {
     expect(
       screen.getByRole("link", { name: "Nazad na riječi" }),
     ).toHaveAttribute("href", "/play/words");
+    // The server only reads; the browser records the game, as a heart (#276).
     expect(
       fetchMock.mock.calls.filter(([request]) => request.method !== "GET"),
     ).toEqual([]);
+    expect(
+      browserFetch.mock.calls.map(
+        ([request]) => `${request.method} ${new URL(request.url).pathname}`,
+      ),
+    ).toEqual(["POST /api/v1/practice/match/result"]);
     expect(
       fetchMock.mock.calls.map(([request]) => new URL(request.url).pathname),
     ).not.toContain("/api/v1/progress");

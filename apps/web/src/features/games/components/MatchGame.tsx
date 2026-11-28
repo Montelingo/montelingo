@@ -61,6 +61,11 @@ export type MatchGameProps = {
    * played (ADR 0006). Playing again does not call it a second time.
    */
   onCompleted?: () => void;
+  /**
+   * Calls `onCompleted` for every game played to the end, not only the
+   * first: practice records each one (ADR 0009).
+   */
+  reportsEveryGame?: boolean;
   /** The learner's name, for "Bravo, Mia!". Without it, "Bravo!". */
   learnerName?: string;
   /**
@@ -114,6 +119,7 @@ export function MatchGame({
   backLabel = BACK_TO_PLACE,
   teachesWords = true,
   onCompleted,
+  reportsEveryGame = false,
   rounds: roundCap,
   learnerName,
   reward,
@@ -126,6 +132,7 @@ export function MatchGame({
   const { game, isReplay, playAgain } = useGameVisit(
     rounds !== null,
     onCompleted,
+    reportsEveryGame,
   );
 
   const handleComplete = useCallback((count: number) => {

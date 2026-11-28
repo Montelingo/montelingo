@@ -9,15 +9,20 @@ import { useNavigate } from "@/lib/use-navigate";
 import {
   completeGame,
   completeLesson,
+  completePractice,
   type Recorded,
 } from "../api/progress-browser-api";
 import { isSignedOut } from "../errors";
 import type { GameId } from "../model/progress";
 
-/** What finishing records: a chapter's lesson, or one of its games. */
-export type ChapterResult =
+/**
+ * What finishing records: a chapter's lesson or one of its games, saved once
+ * a visit (ADR 0006), or a practice game, saved every time (ADR 0009).
+ */
+export type SavedResult =
   | { kind: "lesson"; chapterId: string }
-  | { kind: "game"; chapterId: string; gameId: GameId };
+  | { kind: "game"; chapterId: string; gameId: GameId }
+  | { kind: "practice"; gameId: GameId };
 
 /**
  * `idle` until the child finishes, then `saving`, and `saved` or `failed`.
@@ -31,16 +36,24 @@ export type SaveResult = {
   hasFailed: boolean;
   /** Whether the save earned a heart: a replay, under the daily cap (ADR 0009). */
   heartEarned: boolean;
-  /** Saves the result once a visit; later calls do nothing. */
+  /**
+   * Saves the result: a chapter's once a visit, so later calls do nothing; a
+   * practice game's each time, unless one is still saving.
+   */
   save: () => void;
   /** Saves again after a failure. Does nothing at any other time. */
   retry: () => void;
 };
 
-function record(result: ChapterResult): Promise<Recorded> {
-  return result.kind === "lesson"
-    ? completeLesson(result.chapterId)
-    : completeGame(result.chapterId, result.gameId);
+function record(result: SavedResult): Promise<Recorded> {
+  switch (result.kind) {
+    case "lesson":
+      return completeLesson(result.chapterId);
+    case "game":
+      return completeGame(result.chapterId, result.gameId);
+    case "practice":
+      return completePractice(result.gameId);
+  }
 }
 
 /** `409`: the place is locked, or the game is until the lesson is seen. */
@@ -49,7 +62,8 @@ function isConflict(error: unknown): boolean {
 }
 
 /**
- * Saves a finished lesson or game (ADR 0006) from the browser. Once it is
+ * Saves a finished lesson or game (ADR 0006), or practice game (ADR 0009),
+ * from the browser. Once it is
  * saved and the child leaves the screen, the router refreshes, which also
  * drops its cache, so the place's screen shows the new state, by its link or
  * by Back, with no full reload. The refresh waits until the child leaves: one
@@ -65,7 +79,7 @@ function isConflict(error: unknown): boolean {
  * has already gone back to the place is not moved again.
  */
 export function useSaveResult(
-  result: ChapterResult,
+  result: SavedResult,
   placeHref: string,
 ): SaveResult {
   const navigate = useNavigate();
@@ -103,6 +117,8 @@ export function useSaveResult(
     isSaving.current = true;
     isFailed.current = false;
     setStatus("saving");
+    // A new practice game starts without the last one's heart.
+    setHeartEarned(false);
     const { result: current } = latest.current;
     record(current).then(
       (recorded) => {
@@ -132,6 +148,14 @@ export function useSaveResult(
   }, []);
 
   const save = useCallback(() => {
+    if (latest.current.result.kind === "practice") {
+      // Every practice game is saved (ADR 0009), each from a fresh notice.
+      if (!isSaving.current) {
+        setHasFailed(false);
+        run();
+      }
+      return;
+    }
     if (hasStarted.current) {
       return;
     }

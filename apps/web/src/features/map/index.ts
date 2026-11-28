@@ -25,7 +25,7 @@ export { SaveNotice, type SaveNoticeProps } from "./components/SaveNotice";
 export { WordsScreen } from "./components/WordsScreen";
 export { WordsScreenSkeleton } from "./components/WordsScreenSkeleton";
 export {
-  type ChapterResult,
+  type SavedResult,
   type SaveResult,
   type SaveStatus,
   useSaveResult,

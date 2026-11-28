@@ -4,8 +4,10 @@
 // `PRACTICE_ROUNDS` as its cap, or a child who has finished eight places
 // would play eighty rounds.
 
-import { type MatchWord, textKey } from "./match";
-import { type MemoryWord } from "./memory";
+import type { GameId } from "@/features/map";
+
+import { canDealMatchGame, type MatchWord, textKey } from "./match";
+import { canDealMemoryGame, type MemoryWord } from "./memory";
 
 /** How many rounds a practice match plays, at most. Tune after testing with children. */
 export const PRACTICE_ROUNDS = 10;
@@ -42,4 +44,19 @@ export function practiceWords<W extends PracticeWord>(
     result.push(word);
   }
   return result;
+}
+
+// A Record, so a new game id fails to compile until it can be practised.
+// Here, not in PracticeGame, so a server page can title itself with it.
+export const PRACTICE_GAMES: Record<
+  GameId,
+  { title: string; canDeal: (words: readonly PracticeWord[]) => boolean }
+> = {
+  memory: { title: "Memory", canDeal: canDealMemoryGame },
+  match: { title: "Spoji riječi", canDeal: canDealMatchGame },
+};
+
+/** A practice game's page title: "Vježbaj: Memory". */
+export function practiceTitle(gameId: GameId): string {
+  return `Vježbaj: ${PRACTICE_GAMES[gameId].title}`;
 }
