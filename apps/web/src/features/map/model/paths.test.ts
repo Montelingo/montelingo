@@ -82,7 +82,7 @@ const PRACTICE_ROUTES = join(
   "../../../app/(learner)/play/words/(practice)",
 );
 
-// Every practice game id: the chapter games, and Vješalo (#294).
+// Every practice game id: the chapter games, and Sastavi riječi (#294).
 const EVERY_PRACTICE_GAME: Record<PracticeGameId, true> = {
   ...EVERY_GAME,
   spell: true,

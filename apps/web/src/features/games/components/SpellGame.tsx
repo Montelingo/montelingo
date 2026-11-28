@@ -42,8 +42,9 @@ export type SpellGameProps = {
   /** The way back's label. */
   backLabel: string;
   /**
-   * Called when the last word is spelled. Vješalo is practice only (#294),
-   * so it is called for every game played to the end, "Igraj ponovo"'s too.
+   * Called when the last word is spelled. Sastavi riječi is practice only
+   * (#294), so it is called for every game played to the end, "Igraj
+   * ponovo"'s too.
    */
   onCompleted?: () => void;
   /** The learner's name, for "Bravo, Mia!". Without it, "Bravo!". */
@@ -66,7 +67,7 @@ const NO_GAME: SpellState = {
 /** How long the spelled word shows before the next one, so the child reads it. */
 export const SOLVED_DELAY_MS = 1200;
 
-// Vješalo (#297, ADR 0006): a learned word's picture, an empty slot per
+// Sastavi riječi (#297, ADR 0006): a learned word's picture, an empty slot per
 // letter, and the word's letters as shuffled tiles. The child taps them in
 // order: a right tile fills the next slot, a wrong one shakes, its border
 // turns red until the next right tile, and it stays tappable (with
@@ -180,7 +181,7 @@ function Rounds({
   return (
     <div
       role="group"
-      aria-label="Složi riječ za sliku"
+      aria-label="Sastavi riječ za sliku"
       lang={CONTENT_LANG}
       className={cn(
         fredoka.className,

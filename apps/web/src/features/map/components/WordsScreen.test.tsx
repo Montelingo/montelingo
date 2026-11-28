@@ -113,7 +113,7 @@ describe("WordsScreen", () => {
     expect(within(budva).queryByRole("figure")).not.toBeInTheDocument();
   });
 
-  it("offers practice with every word: Memory, Spoji riječi and Vješalo", () => {
+  it("offers practice with every word: Memory, Spoji riječi and Sastavi riječi", () => {
     render(<WordsScreen {...TWO_PLACES} />);
 
     const practice = screen.getByRole("group", { name: "Vježbaj" });
@@ -124,7 +124,7 @@ describe("WordsScreen", () => {
       within(practice).getByRole("link", { name: "Spoji riječi" }),
     ).toHaveAttribute("href", "/play/words/match");
     expect(
-      within(practice).getByRole("link", { name: "Vješalo" }),
+      within(practice).getByRole("link", { name: "Sastavi riječi" }),
     ).toHaveAttribute("href", "/play/words/spell");
   });
 

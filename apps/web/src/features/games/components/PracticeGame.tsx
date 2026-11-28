@@ -92,7 +92,7 @@ export function PracticeGame({
       {gameId === "match" ? (
         <MatchGame {...game} rounds={PRACTICE_ROUNDS} />
       ) : null}
-      {/* Vješalo deals its own five words and reports every game. */}
+      {/* Sastavi riječi deals its own five words and reports every game. */}
       {gameId === "spell" ? <SpellGame {...game} /> : null}
     </>
   );

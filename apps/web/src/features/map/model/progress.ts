@@ -14,7 +14,7 @@ export const STARS_PER_PLACE = 3;
 export type GameId = Schemas["GameState"]["id"];
 
 /**
- * The games the Riječi tab practises: every chapter game, and Vješalo
+ * The games the Riječi tab practises: every chapter game, and Sastavi riječi
  * (`spell`), which no chapter has (#294), so it never gets a card, a lock or
  * a star.
  */

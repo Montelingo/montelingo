@@ -52,8 +52,8 @@ vi.mock("next/navigation", async (importOriginal) => ({
 }));
 
 /**
- * The fixture's words are "riječ 1" and on, and Vješalo leaves out a word
- * with a space: they become "w1" and on, two to four letters each.
+ * The fixture's words are "riječ 1" and on, and Sastavi riječi leaves out
+ * a word with a space: they become "w1" and on, two to four letters each.
  */
 function serveSpellableWords() {
   const answer = fetchMock.getMockImplementation();
@@ -106,7 +106,7 @@ async function renderPage() {
 }
 
 function game() {
-  return screen.getByRole("group", { name: "Složi riječ za sliku" });
+  return screen.getByRole("group", { name: "Sastavi riječ za sliku" });
 }
 
 /** Spells each word, the picture's name, letter by letter, then lets "Bravo!" settle. */
@@ -137,7 +137,7 @@ function playToBravo() {
 
 describe("PracticeSpellPage", () => {
   it("is titled", () => {
-    expect(metadata.title).toBe("Vježbaj: Vješalo");
+    expect(metadata.title).toBe("Vježbaj: Sastavi riječi");
   });
 
   it("plays 5 words, records the game as practice, and leads back to Riječi", async () => {
@@ -146,7 +146,10 @@ describe("PracticeSpellPage", () => {
     vi.useFakeTimers();
 
     expect(
-      screen.getByRole("heading", { level: 1, name: "Vježbaj: Vješalo" }),
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Vježbaj: Sastavi riječi",
+      }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("spell-steps").children).toHaveLength(5);
     playToBravo();

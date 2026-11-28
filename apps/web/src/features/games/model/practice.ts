@@ -55,7 +55,7 @@ export const PRACTICE_GAMES: Record<
 > = {
   memory: { title: "Memory", canDeal: canDealMemoryGame },
   match: { title: "Spoji riječi", canDeal: canDealMatchGame },
-  spell: { title: "Vješalo", canDeal: canDealSpellGame },
+  spell: { title: "Sastavi riječi", canDeal: canDealSpellGame },
 };
 
 /** A practice game's page title: "Vježbaj: Memory". */

@@ -43,7 +43,7 @@ function renderGame(props: Partial<SpellGameProps> = {}) {
 }
 
 function game() {
-  return screen.getByRole("group", { name: "Složi riječ za sliku" });
+  return screen.getByRole("group", { name: "Sastavi riječ za sliku" });
 }
 
 function picture() {

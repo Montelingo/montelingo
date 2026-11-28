@@ -94,10 +94,10 @@ export function WordsScreen({ words, avatar, needsRetry }: WordsData) {
 }
 
 // The practice games: Memory and Spoji riječi in the chapter's games' icons,
-// and Vješalo, which only practice has (#294), across the row. Dealt from
+// and Sastavi riječi, which only practice has (#294), in one row. Dealt from
 // every learned word. Shown whenever there are words, even too few to deal a
 // game: the game's page then says why.
-// The chapter games' art, and Vješalo's own.
+// The chapter games' art, and Sastavi riječi's own.
 const PRACTICE_ART = {
   ...GAME_ART,
   spell: { ActivityIcon: LanguageIcon, fill: "bg-kid-pink" },
@@ -106,7 +106,7 @@ const PRACTICE_ART = {
 const PRACTICE: readonly { id: PracticeGameId; label: string }[] = [
   { id: "memory", label: "Memory" },
   { id: "match", label: "Spoji riječi" },
-  { id: "spell", label: "Vješalo" },
+  { id: "spell", label: "Sastavi riječi" },
 ];
 
 function Practice() {
@@ -120,18 +120,19 @@ function Practice() {
       <h2 id={titleId} className="text-2xl font-bold text-kid-ink">
         Vježbaj
       </h2>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {PRACTICE.map(({ id, label }) => {
           const { ActivityIcon, fill } = PRACTICE_ART[id];
           return (
             <Link
               key={id}
               href={practicePath(id)}
+              // Three in a row: the icon above its label, so "Spoji
+              // riječi" fits a phone's third of the row.
               className={cn(
                 BIG_BUTTON,
-                "gap-2 px-3 text-xl",
+                "h-auto min-h-touch-xl flex-col gap-1 px-1 py-2 text-center text-lg leading-tight",
                 fill,
-                id === "spell" && "col-span-2",
               )}
             >
               <ActivityIcon aria-hidden="true" className="size-7 shrink-0" />
