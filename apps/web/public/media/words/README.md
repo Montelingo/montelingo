@@ -51,5 +51,6 @@ It reads every `NNNN.png` in the folder, writes both variants here, updates `med
 | 241–250 | Seosko dvorište (Pljevlja)             | #202     |
 | 251–260 | Livada i mali stanovnici (Kolašin)     | #199     |
 | 261–270 | Vrijeme i priroda (Durmitor / Žabljak) | #198     |
+| 271–280 | Zima i topla odjeća (Rožaje)           | #203     |
 | 281–290 | Brojimo (Berane)                       | #200     |
 | 291–300 | Svakodnevne radnje (Bijelo Polje)      | #201     |
