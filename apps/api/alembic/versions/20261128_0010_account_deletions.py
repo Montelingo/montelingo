@@ -5,8 +5,8 @@ restore from an older backup can delete those accounts again (ADR 0008, #251).
 The id identifies no one once the account is gone. Rows are purged 28 days
 after deleted_at (#253), hence the index.
 
-Revision ID: 20261128_0009
-Revises: 20261128_0008
+Revision ID: 20261128_0010
+Revises: 20261128_0009
 Create Date: 2026-11-28 00:00:00
 """
 
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "20261128_0009"
-down_revision: str | None = "20261128_0008"
+revision: str = "20261128_0010"
+down_revision: str | None = "20261128_0009"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
