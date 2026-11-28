@@ -27,6 +27,9 @@ from .templates import password_reset_email
 
 INVALID_CREDENTIALS = "Invalid email or password."
 INVALID_RESET_TOKEN = "This password reset link is invalid or has expired."
+# A signed-in request moves the account's last_active_at at most this often
+# (ADR 0008), so using the app is not a write on every request.
+ACTIVITY_WRITE_INTERVAL = timedelta(days=1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +171,8 @@ class AuthService:
 
             now = self.clock.now()
             raw_token = self.token.generate()
+            # Signing in is activity: it restarts the inactivity clock (ADR 0008).
+            await self.repository.record_activity(user.id, now=now, stale_before=now)
 
             if current_cookie is not None:
                 await self.repository.delete_session(self.token.hash(current_cookie))
@@ -210,6 +215,14 @@ class AuthService:
         user = await self.repository.get_user_by_id(session.user_id)
         if user is None:
             return None
+        stale_before = now - ACTIVITY_WRITE_INTERVAL
+        if (
+            user.last_active_at is None
+            or user.last_active_at <= stale_before
+            or user.inactivity_warning_sent_at is not None
+        ):
+            async with self.transaction_manager.transaction():
+                await self.repository.record_activity(user.id, now=now, stale_before=stale_before)
         return ResolvedSession(
             user=user,
             session_id=session.id,

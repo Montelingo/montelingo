@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .domain import UserAccount
@@ -31,7 +31,25 @@ class UserRepository(Protocol):
 
     async def lock(self, user_id: UUID) -> None: ...
 
-    async def delete(self, user_id: UUID) -> bool: ...
+    async def delete(
+        self,
+        user_id: UUID,
+        *,
+        inactive_before: datetime | None = None,
+        warned_before: datetime | None = None,
+    ) -> bool: ...
+
+    async def record_activity(
+        self, user_id: UUID, *, now: datetime, stale_before: datetime
+    ) -> None: ...
+
+    async def inactive(
+        self, *, inactive_before: datetime, warned: bool, warned_before: datetime | None = None
+    ) -> list[UserAccount]: ...
+
+    async def mark_warned(
+        self, user_id: UUID, *, at: datetime, inactive_before: datetime
+    ) -> bool: ...
 
 
 def _account(user: User) -> UserAccount:
@@ -44,6 +62,8 @@ def _account(user: User) -> UserAccount:
         updated_at=user.updated_at,
         consent_accepted_at=user.consent_accepted_at,
         privacy_policy_version=user.privacy_policy_version,
+        last_active_at=user.last_active_at,
+        inactivity_warning_sent_at=user.inactivity_warning_sent_at,
     )
 
 
@@ -92,12 +112,75 @@ class SqlAlchemyUserRepository:
         """Lock the account's row until the transaction ends."""
         await self.session.execute(select(User.id).where(User.id == user_id).with_for_update())
 
-    async def delete(self, user_id: UUID) -> bool:
+    async def delete(
+        self,
+        user_id: UUID,
+        *,
+        inactive_before: datetime | None = None,
+        warned_before: datetime | None = None,
+    ) -> bool:
         """Deletes the account. The foreign keys cascade to every row that holds its
         data: sessions, reset tokens, players and all their progress. False if it
         was already gone.
+
+        With `inactive_before` and `warned_before`, only while the account is still
+        inactive and was warned in time, checked in the same statement, so a
+        sign-in at that moment keeps it (ADR 0008).
         """
-        deleted = await self.session.scalar(
-            delete(User).where(User.id == user_id).returning(User.id)
-        )
+        statement = delete(User).where(User.id == user_id)
+        if inactive_before is not None:
+            statement = statement.where(User.last_active_at <= inactive_before)
+        if warned_before is not None:
+            statement = statement.where(User.inactivity_warning_sent_at <= warned_before)
+        deleted = await self.session.scalar(statement.returning(User.id))
         return deleted is not None
+
+    async def record_activity(
+        self, user_id: UUID, *, now: datetime, stale_before: datetime
+    ) -> None:
+        """Moves `last_active_at` to now and clears the warning, unless it moved after
+        `stale_before` and no warning is pending: at most one write a day.
+        """
+        await self.session.execute(
+            update(User)
+            .where(
+                User.id == user_id,
+                or_(
+                    User.last_active_at <= stale_before,
+                    User.inactivity_warning_sent_at.is_not(None),
+                ),
+            )
+            .values(last_active_at=now, inactivity_warning_sent_at=None)
+            .execution_options(synchronize_session=False)
+        )
+
+    async def inactive(
+        self, *, inactive_before: datetime, warned: bool, warned_before: datetime | None = None
+    ) -> list[UserAccount]:
+        """Accounts unused since `inactive_before`: not yet warned, or (with `warned`)
+        warned no later than `warned_before`.
+        """
+        statement = select(User).where(User.last_active_at <= inactive_before)
+        if not warned:
+            statement = statement.where(User.inactivity_warning_sent_at.is_(None))
+        else:
+            statement = statement.where(User.inactivity_warning_sent_at.is_not(None))
+            if warned_before is not None:
+                statement = statement.where(User.inactivity_warning_sent_at <= warned_before)
+        users = await self.session.scalars(statement.order_by(User.last_active_at, User.id))
+        return [_account(user) for user in users]
+
+    async def mark_warned(self, user_id: UUID, *, at: datetime, inactive_before: datetime) -> bool:
+        """Records the sent warning, unless the account was used or warned meanwhile."""
+        warned = await self.session.scalar(
+            update(User)
+            .where(
+                User.id == user_id,
+                User.last_active_at <= inactive_before,
+                User.inactivity_warning_sent_at.is_(None),
+            )
+            .values(inactivity_warning_sent_at=at)
+            .returning(User.id)
+            .execution_options(synchronize_session=False)
+        )
+        return warned is not None

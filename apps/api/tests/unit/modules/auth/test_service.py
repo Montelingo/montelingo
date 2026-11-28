@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
@@ -71,6 +72,7 @@ class FakeRepository:
         self.deleted: list[bytes] = []
         self.updated_password: tuple[object, str] | None = None
         self.created: dict[str, object] | None = None
+        self.activity: list[tuple[object, datetime, datetime]] = []
 
     async def get_user_by_email(self, email: str) -> UserAccount | None:
         return self.user if self.user and email == self.user.email else None
@@ -80,6 +82,11 @@ class FakeRepository:
 
     async def update_password(self, user_id: object, password_hash: str) -> None:
         self.updated_password = (user_id, password_hash)
+
+    async def record_activity(
+        self, user_id: object, *, now: datetime, stale_before: datetime
+    ) -> None:
+        self.activity.append((user_id, now, stale_before))
 
     async def get_session(self, token_hash: bytes) -> object | None:
         return self.session
@@ -235,3 +242,54 @@ async def test_sign_in_hashes_with_no_transaction_open() -> None:
 
     assert result.user == user
     assert open_while_hashing == [0, 0]
+
+
+def _session_for(user: UserAccount) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=uuid4(),
+        user_id=user.id,
+        expires_at=NOW + timedelta(days=1),
+        active_learning_profile_id=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_sign_in_restarts_the_inactivity_clock() -> None:
+    user = make_user()
+    repository = FakeRepository(user)
+    service = make_service(repository, FakeHasher())
+
+    await service.sign_in(email=user.email, password="secret")
+
+    assert repository.activity == [(user.id, NOW, NOW)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("last_active_at", "warned", "writes"),
+    [
+        (NOW - timedelta(hours=23), False, False),
+        (NOW - timedelta(days=1), False, True),
+        (NOW - timedelta(days=40), False, True),
+        # A pending warning is cleared at once, however recent the activity.
+        (NOW - timedelta(hours=1), True, True),
+    ],
+    ids=["used-today", "a-day-ago", "long-ago", "warning-pending"],
+)
+async def test_a_signed_in_request_records_activity_at_most_once_a_day(
+    last_active_at: datetime, warned: bool, writes: bool
+) -> None:
+    user = replace(
+        make_user(),
+        last_active_at=last_active_at,
+        inactivity_warning_sent_at=NOW - timedelta(days=5) if warned else None,
+    )
+    repository = FakeRepository(user)
+    repository.session = _session_for(user)
+    service = make_service(repository, FakeHasher())
+
+    resolved = await service.resolve_session("cookie")
+
+    assert resolved is not None
+    expected = [(user.id, NOW, NOW - timedelta(days=1))] if writes else []
+    assert repository.activity == expected

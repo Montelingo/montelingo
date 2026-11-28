@@ -14,7 +14,10 @@ class User(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(Text, nullable=False)
-    __table_args__ = (Index("uq_users_email_lower", func.lower(email), unique=True),)
+    __table_args__ = (
+        Index("uq_users_email_lower", func.lower(email), unique=True),
+        Index("ix_users_last_active_at", "last_active_at"),
+    )
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Set at sign-up (ADR 0008). Nullable only for accounts created before #250.
@@ -26,3 +29,10 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+    # When the account was last used (ADR 0008): sign-up, sign-in, and any
+    # signed-in request, at most once a day. Inactive accounts are deleted.
+    last_active_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    # Set when the inactivity warning email was sent. Any activity clears it.
+    inactivity_warning_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
