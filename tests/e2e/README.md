@@ -56,7 +56,10 @@ lesson returns to the chapter. Then, on the same account (#180), the Ja tab
 shows the child's name, title and counts; "Za roditelje" opens the grown-ups
 gate, a wrong digit keeps it shut, and holding the named digit opens the
 grown-ups area with the account's email and Obala's row; a reload shows the
-gate again. The gate's helpers ([`grown-ups.ts`](browser/grown-ups.ts)) read
+gate again. Then the grown-up logs out from the area (#185): "Odjavi se", then
+"Ostani prijavljen", closes the dialog and keeps them signed in; "Odjavi se"
+twice shows the welcome screen (`/`). After that, Back leads to sign-in, not
+the grown-ups area, and `/play` redirects to sign-in. The gate's helpers ([`grown-ups.ts`](browser/grown-ups.ts)) read
 the target number from its heading, so any random draw works, and hold it with
 Space, which the gate takes as a held finger. Each run signs up a fresh account.
 

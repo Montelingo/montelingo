@@ -20,16 +20,17 @@ const NA_PLAZI_WORDS = [
 ];
 
 // The happy path of phase 1: a new learner signs up, signs in, and reaches
-// the first words. Then a grown-up opens the Ja tab and passes the gate into
-// the grown-ups area (#180). Each run makes its own account, so runs never
-// share progress. Sign-up is rate limited per IP (10 an hour), so #180 shares
-// this test's account: README.md has how the suite shares them.
-test("a new learner reaches Budva's first words, and a grown-up opens the grown-ups area (#180)", async ({
+// the first words. Then a grown-up opens the Ja tab, passes the gate into
+// the grown-ups area (#180) and logs out from it (#185). Each run makes its own account, so runs never
+// share progress. Sign-up is rate limited per IP (10 an hour), so #180 and
+// #185 share this test's account: README.md has how the suite shares them.
+test("a new learner reaches Budva's first words, and a grown-up opens the grown-ups area and logs out (#180, #185)", async ({
   page,
 }) => {
-  // Two password hashes, a dozen screens and two 1.5 s holds of the gate:
-  // over the default 30 s when the stack is cold or every worker is busy.
-  test.setTimeout(90_000);
+  // Two password hashes, over a dozen screens and two 1.5 s holds of the
+  // gate: over the default 30 s when the stack is cold or every worker is
+  // busy.
+  test.setTimeout(120_000);
   const email = `e2e-budva-${randomUUID()}@example.com`;
   const password = `e2e-${randomUUID()}`;
 
@@ -213,5 +214,67 @@ test("a new learner reaches Budva's first words, and a grown-up opens the grown-
     await expect(page.getByRole("region", { name: "Nalog" })).toContainText(
       email,
     );
+  });
+
+  // Log out from the grown-ups area (#185), on the same account: the area is
+  // open, past the gate, from the step above.
+  const signOutDialog = page.getByRole("dialog", {
+    name: "Odjaviti se iz Montelinga?",
+  });
+
+  await test.step("Odjavi se, then Ostani prijavljen, stays signed in (#185)", async () => {
+    await page.getByRole("button", { name: "Odjavi se" }).click();
+    await expect(signOutDialog).toBeVisible();
+    await expect(signOutDialog).toContainText(email);
+
+    await signOutDialog
+      .getByRole("button", { name: "Ostani prijavljen" })
+      .click();
+
+    await expect(signOutDialog).toBeHidden();
+    await expect(page).toHaveURL("/play/me/grown-ups");
+    await expect(page.getByRole("region", { name: "Nalog" })).toContainText(
+      email,
+    );
+    const me = await page.request.get("/api/v1/auth/me");
+    expect(me.status()).toBe(200);
+  });
+
+  await test.step("Odjavi se, then Odjavi se, shows the welcome screen (#185)", async () => {
+    await page.getByRole("button", { name: "Odjavi se" }).click();
+    await signOutDialog.getByRole("button", { name: "Odjavi se" }).click();
+
+    await expect(page).toHaveURL("/");
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "Istraži Crnu Goru, riječ po riječ",
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Imam nalog" })).toBeVisible();
+    const me = await page.request.get("/api/v1/auth/me");
+    expect(me.status()).toBe(401);
+  });
+
+  await test.step("Back does not show the grown-ups area again (#185)", async () => {
+    // Signing out replaced the area's history entry with the welcome screen,
+    // so Back goes to the Ja screen, which now asks to sign in.
+    await page.goBack();
+
+    await expect(page).toHaveURL("/sign-in?next=%2Fplay%2Fme");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Za roditelje" }),
+    ).toHaveCount(0);
+    await expect(page.getByText(email)).toHaveCount(0);
+  });
+
+  await test.step("after logging out, /play asks to sign in (#185)", async () => {
+    await page.goto("/play");
+
+    // The map is where sign-in leads anyway, so the link carries no ?next=.
+    await expect(page).toHaveURL("/sign-in");
+    await expect(
+      page.getByRole("button", { name: "Prijavi se" }),
+    ).toBeVisible();
   });
 });
